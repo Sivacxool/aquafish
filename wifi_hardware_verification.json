@@ -1,0 +1,11 @@
+{
+  "actual_wifi_status_and_setup_ap": true,
+  "authenticated_provisioning": true,
+  "actual_24ghz_scan_and_no_secrets": true,
+  "invalid_inputs_do_not_change_wifi": true,
+  "request_idempotency_and_conflict": true,
+  "actual_https_wifi_change_and_commit": true,
+  "failed_candidate_restores_previous_network": true,
+  "physical_actuation_remains_disabled": true,
+  "reset_preserves_saved_wifi_and_reopens_setup_ap": true
+}

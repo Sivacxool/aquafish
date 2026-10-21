@@ -1,0 +1,25 @@
+# Private pairing, credentials and signing material
+**/private/
+**/device_private.h
+**/config.h
+**/.env
+**/*test-config.json
+**/*PRIVATE*
+**/*.keystore
+**/*.jks
+**/local.properties
+**/key.properties
+# Generated files and local tools
+**/build/
+**/.dart_tool/
+**/.flutter-plugins-dependencies
+**/.flutter-plugins
+**/.gradle/
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/data/
+**/*.pyc
+**/*.bin
+**/*.elf
+**/*.log
