@@ -1,3 +1,2 @@
-527211646131f9739324bf5cfd4a849e83c4621224743eb568057c9be8d17eb9  AquaHatch-v0.6.0-Android-universal.apk
-bf46ff6aa33848a80f902ab1aad1bca00e527b750938e0cfec03542f2a7a7b4f  AquaHatch-v0.6.0-source.zip
-206759640affbc136bbda60faa1a98b9ccffe1229e102cc92b8aebc630caaa00  AquaHatch_CTRL-LV01_3D_Print_Pack.zip
+7a2236b5ef07895c3bb64e2da17016bfed158e859d7d99e59cc95a3a53488d66  AquaHatch-v0.10.0-Android-universal.apk
+83a6b5495f343568416182e26214dbb0239b4504a437952fcf3be5743b68daf6  AquaHatch-v0.10.0-source.zip

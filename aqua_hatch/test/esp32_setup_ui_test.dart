@@ -55,8 +55,8 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.tap(find.text('ตั้งค่า').last);
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('เครื่องและการเชื่อมต่อ'));
-      await tester.tap(find.text('เครื่องและการเชื่อมต่อ'));
+      await tester.ensureVisible(find.text('เชื่อมต่อด้วย IP / Gateway'));
+      await tester.tap(find.text('เชื่อมต่อด้วย IP / Gateway'));
       await tester.pumpAndSettle();
       expect(find.text('ESP32 ในบ้าน'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'URL บอร์ด'), findsOneWidget);

@@ -15,6 +15,9 @@ class CameraConnectionCard extends ConsumerWidget {
     final demo = ref.watch(
       appControllerProvider.select((s) => s.connection.demo),
     );
+    final usb = ref.watch(
+      appControllerProvider.select((s) => s.usbCameraEnabled),
+    );
     return Surface(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,7 +49,9 @@ class CameraConnectionCard extends ConsumerWidget {
                 ],
                 const SizedBox(height: 8),
                 Pill(
-                  demo
+                  usb
+                      ? 'กล้อง USB'
+                      : demo
                       ? 'โหมดจำลอง'
                       : status?.ready == true
                       ? 'พร้อมถ่าย'

@@ -28,10 +28,15 @@ class DeviceCapture {
   final String id, cameraId;
   final DateTime receivedAt;
   final Uint8List bytes;
+  final int? width, height;
+  final bool? flashUsed;
   const DeviceCapture({
     required this.id,
     required this.cameraId,
     required this.receivedAt,
     required this.bytes,
+    this.width,
+    this.height,
+    this.flashUsed,
   });
 }

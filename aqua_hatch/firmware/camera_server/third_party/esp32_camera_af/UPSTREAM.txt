@@ -1,0 +1,3 @@
+Source: https://github.com/espressif/esp32-camera/tree/f37e65608f709bd94846dee01d947f02ae07c0b0
+License: Apache-2.0
+Files are unmodified; AquaHatch compiles the sensor AF implementation through a namespaced wrapper using public sensor register access.

@@ -5,6 +5,7 @@ import '../app/theme.dart';
 import '../core/controller.dart';
 import '../core/camera_ui.dart';
 import '../core/models.dart';
+import '../core/sensor_status.dart';
 import '../core/ui.dart';
 import 'history.dart';
 
@@ -92,14 +93,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 title: 'อุณหภูมิน้ำ',
                 value: number(data?.temperature),
                 unit: '°C',
-                detail:
-                    'ค่าตั้ง ${number(state.settings.temperatureTarget)} °C',
+                detail: state.connection.localEsp32
+                    ? sensorStatusLabel(
+                        data?.temperatureStatus,
+                        source: 'DS18B20 · GPIO4',
+                      )
+                    : 'ค่าตั้ง ${number(state.settings.temperatureTarget)} °C',
                 icon: Icons.thermostat_rounded,
                 warning:
                     data?.temperature == null ||
                     (data!.temperature! - state.settings.temperatureTarget)
                             .abs() >
                         1,
+              ),
+              MetricCard(
+                key: const ValueKey('dissolved-oxygen-card'),
+                title: 'ออกซิเจนละลายน้ำ (DO)',
+                value: number(data?.dissolvedOxygen, decimals: 2),
+                unit: 'mg/L',
+                detail: data?.dissolvedOxygen == 0
+                    ? 'หัววัดรายงานศูนย์ ตรวจหัววัดและสภาพน้ำ'
+                    : sensorStatusLabel(
+                        data?.dissolvedOxygenStatus,
+                        source: 'หัววัด DO ผ่าน RS485',
+                      ),
+                icon: Icons.air_rounded,
+                color: AquaColors.teal,
+                warning:
+                    data?.dissolvedOxygen == null || data?.dissolvedOxygen == 0,
               ),
               MetricCard(
                 title: 'ค่า pH',

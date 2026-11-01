@@ -6,7 +6,7 @@ import '../core/ui.dart';
 import '../core/models.dart';
 
 String telemetryCsv(List<Telemetry> samples) => [
-  'timestamp_utc,temperature_c,ph,ph_calibrated,flow_l_min,water_level_ok,simulated',
+  'timestamp_utc,temperature_c,ph,ph_calibrated,flow_l_min,water_level_ok,simulated,do_mg_l,temperature_status,do_status,temperature_sampled_at,do_sampled_at',
   ...samples.map(
     (t) => [
       t.at.toUtc().toIso8601String(),
@@ -16,6 +16,11 @@ String telemetryCsv(List<Telemetry> samples) => [
       t.flow ?? '',
       t.waterLevelOk ?? '',
       t.simulated,
+      t.dissolvedOxygen ?? '',
+      t.temperatureStatus ?? '',
+      t.dissolvedOxygenStatus ?? '',
+      t.temperatureSampledAt?.toUtc().toIso8601String() ?? '',
+      t.dissolvedOxygenSampledAt?.toUtc().toIso8601String() ?? '',
     ].join(','),
   ),
 ].join('\r\n');
@@ -50,8 +55,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             padding: const EdgeInsets.all(18),
             child: Column(
               children: [
-                const Text(
-                  'มือถือเก็บสูงสุด 1,440 จุด ประมาณ 1 จุดต่อนาที ขณะเปิดแอป ส่วน Gateway เก็บต่อเนื่องแม้ปิดแอปเมื่อเซิร์ฟเวอร์ยังทำงาน',
+                Text(
+                  state.connection.localEsp32
+                      ? 'แอปเก็บค่าเซนเซอร์สูงสุด 1,440 จุด ประมาณ 1 จุดต่อนาทีขณะเปิดแอป บอร์ด S3 รุ่นนี้ยังไม่มีประวัติย้อนหลังเมื่อปิดแอป'
+                      : 'มือถือเก็บสูงสุด 1,440 จุด ประมาณ 1 จุดต่อนาที ขณะเปิดแอป ส่วน Gateway เก็บต่อเนื่องแม้ปิดแอปเมื่อเซิร์ฟเวอร์ยังทำงาน',
                 ),
                 const SizedBox(height: 12),
                 Wrap(
@@ -112,7 +119,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       '${fullTime(t.at)}${t.simulated ? ' · จำลอง' : ''}',
                     ),
                     subtitle: Text(
-                      '${number(t.temperature)} °C   •   pH ${number(t.ph)}${t.phCalibrated ? '' : ' (ยังไม่สอบเทียบ)'}\nไหล ${number(t.flow)} L/min   •   น้ำ ${t.waterLevelOk == null
+                      '${number(t.temperature)} °C   •   DO ${number(t.dissolvedOxygen, decimals: 2)} mg/L\npH ${number(t.ph)}${t.phCalibrated ? '' : ' (ยังไม่สอบเทียบ)'}   •   ไหล ${number(t.flow)} L/min   •   น้ำ ${t.waterLevelOk == null
                           ? 'ไม่ทราบ'
                           : t.waterLevelOk!
                           ? 'ปกติ'

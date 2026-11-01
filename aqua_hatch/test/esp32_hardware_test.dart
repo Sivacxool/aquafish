@@ -31,11 +31,14 @@ void main() {
             await Future<void>.delayed(const Duration(milliseconds: 200));
           }
           expect(data.length, greaterThanOrEqualTo(2));
-          expect(data.last.firmwareVersion, '0.6.0-local');
+          expect(data.last.firmwareVersion, '0.9.0-sensors.1');
           expect(data.last.isFresh(DateTime.now()), isTrue);
           expect(data.last.simulated, isFalse);
           expect(data.last.hardwareReady, isFalse);
-          expect(data.last.temperature, isNull);
+          expect(data.last.temperature, isNotNull);
+          expect(data.last.temperatureStatus, 'ok');
+          expect(data.last.dissolvedOxygen, isNotNull);
+          expect(data.last.dissolvedOxygenStatus, 'ok');
           expect(data.last.ph, isNull);
           final result = await repo.command('ping', {});
           expect(result.applied, isTrue);

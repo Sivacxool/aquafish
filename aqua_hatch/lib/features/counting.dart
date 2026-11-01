@@ -9,6 +9,8 @@ import '../app/theme.dart';
 import '../core/controller.dart';
 import '../core/models.dart';
 import '../core/ui.dart';
+import '../core/camera.dart';
+import '../core/usb_preview.dart';
 
 class CountingScreen extends ConsumerStatefulWidget {
   const CountingScreen({super.key});
@@ -18,11 +20,14 @@ class CountingScreen extends ConsumerStatefulWidget {
 
 class _CountingScreenState extends ConsumerState<CountingScreen> {
   final _transform = TransformationController();
+  DeviceCapture? _usbLastFrame;
+  bool _usbLive = true;
   bool _workspace = false;
   Uint8List? _bytes;
   String _filename = 'ยังไม่มีภาพ', _model = '';
   String? _captureId;
   String _captureProgress = '';
+  String _captureDetails = '';
   DateTime? _receivedAt;
   int _imageGeneration = 0;
   double _aspect = 1.6;
@@ -99,8 +104,20 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
 
   Future<void> _capture() async {
     if (_busy) return;
+    final usb = ref.read(appControllerProvider).usbCameraEnabled;
+    final shownFrame =
+        usb &&
+            _bytes == null &&
+            !_sample &&
+            _usbLive &&
+            _usbLastFrame != null &&
+            DateTime.now().difference(_usbLastFrame!.receivedAt).abs() <
+                const Duration(seconds: 3)
+        ? _usbLastFrame
+        : null;
     final generation = ++_imageGeneration;
     setState(() {
+      _usbLive = false;
       _busy = true;
       _sample = false;
       _video = false;
@@ -108,21 +125,24 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
       _captureId = null;
       _receivedAt = null;
       _captureProgress = 'กำลังส่งคำสั่งถึงกล้อง…';
+      _captureDetails = '';
       _filename = 'รอภาพจากกล้องในเครื่อง';
       _reset();
     });
     try {
-      final image = await ref
-          .read(appControllerProvider.notifier)
-          .captureFromDevice(
-            createId(),
-            cancelled: () => !mounted || generation != _imageGeneration,
-            onProgress: (message) {
-              if (mounted && generation == _imageGeneration) {
-                setState(() => _captureProgress = message);
-              }
-            },
-          );
+      final image =
+          shownFrame ??
+          await ref
+              .read(appControllerProvider.notifier)
+              .captureFromDevice(
+                createId(),
+                cancelled: () => !mounted || generation != _imageGeneration,
+                onProgress: (message) {
+                  if (mounted && generation == _imageGeneration) {
+                    setState(() => _captureProgress = message);
+                  }
+                },
+              );
       final codec = await ui.instantiateImageCodec(image.bytes);
       final frame = await codec.getNextFrame();
       final aspect = frame.image.width / frame.image.height;
@@ -135,8 +155,12 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
         _captureId = image.id;
         _receivedAt = image.receivedAt;
         _filename = 'กล้อง ${image.cameraId} / ${image.id}';
-        _captureProgress =
-            'ได้รับภาพใหม่จากกล้องแล้ว พร้อมวิเคราะห์หรือนับด้วยมือ';
+        _captureProgress = 'ได้รับภาพใหม่จากกล้องแล้ว พร้อมนับด้วยมือ';
+        _captureDetails = [
+          if (image.width != null && image.height != null)
+            '${image.width} × ${image.height} พิกเซล',
+          if (image.flashUsed == true) 'เปิดแฟลชตอนถ่ายแล้ว',
+        ].join(' · ');
       });
     } catch (e) {
       if (mounted && generation == _imageGeneration) {
@@ -561,8 +585,11 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   Widget _input(AppState state) {
     final cameraAsync = ref.watch(cameraStatusProvider);
     final camera = cameraAsync.asData?.value;
+    final usb = state.usbCameraEnabled;
+    final demoCamera =
+        state.connection.demo && state.cameraConnection == null && !usb;
     final hasImage = _sample || _bytes != null;
-    final canAI = _sample || (_bytes != null && !state.connection.demo);
+    final canAI = _sample || (_bytes != null && !state.connection.demo && !usb);
     return PageBody(
       children: [
         const PageTitle(
@@ -580,17 +607,17 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                 children: [
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'กล้องในเครื่อง',
-                          style: TextStyle(
+                          usb ? 'กล้อง USB ผ่านคอม' : 'กล้องในเครื่อง',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                       Pill(
-                        state.connection.demo
+                        demoCamera
                             ? 'โหมดทดลอง'
                             : camera?.ready == true
                             ? 'พร้อมถ่าย'
@@ -605,7 +632,9 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  if (hasImage)
+                  if (usb && _usbLive && !hasImage)
+                    UsbLivePreview(onFrame: (frame) => _usbLastFrame = frame)
+                  else if (hasImage)
                     Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxHeight: 300),
@@ -617,17 +646,40 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                   const SizedBox(height: 14),
                   FilledButton.icon(
                     key: const ValueKey('device-capture-button'),
-                    onPressed:
-                        _busy || state.connection.demo || camera?.ready != true
+                    onPressed: _busy || demoCamera || camera?.ready != true
                         ? null
                         : _capture,
                     icon: const Icon(Icons.camera_alt_rounded),
                     label: Text(
-                      _captureId == null
+                      usb && _usbLive && !hasImage
+                          ? 'หยุดภาพนี้เพื่อนับ'
+                          : _captureId == null
                           ? 'ถ่ายภาพจากกล้องในเครื่อง'
                           : 'ถ่ายภาพใหม่จากกล้องในเครื่อง',
                     ),
                   ),
+                  if (usb && (!_usbLive || hasImage)) ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      key: const ValueKey('usb-resume-preview'),
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() {
+                              ++_imageGeneration;
+                              _bytes = null;
+                              _captureId = null;
+                              _receivedAt = null;
+                              _sample = false;
+                              _video = false;
+                              _captureProgress = '';
+                              _usbLastFrame = null;
+                              _reset();
+                              _usbLive = true;
+                            }),
+                      icon: const Icon(Icons.videocam_outlined),
+                      label: const Text('กลับไปดูภาพสด USB'),
+                    ),
+                  ],
                   if (_captureProgress.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Semantics(
@@ -644,11 +696,17 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                       'รับภาพเมื่อ ${fullTime(_receivedAt!)}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                    if (_captureDetails.isNotEmpty)
+                      Text(
+                        _captureDetails,
+                        key: const ValueKey('camera-photo-details'),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                   ],
-                  if (!hasImage && !_busy) ...[
+                  if (!hasImage && !_busy && !usb) ...[
                     const SizedBox(height: 12),
                     Text(
-                      state.connection.demo
+                      demoCamera
                           ? 'เชื่อมต่อเครื่องจริงในตั้งค่าเพื่อใช้กล้อง หรือทดลองขั้นตอนนับด้านล่าง'
                           : camera?.message ?? 'กำลังตรวจสถานะกล้อง…',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -1001,6 +1059,26 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
           _bytes = null;
           _sample = false;
           _video = false;
+          _captureId = null;
+          _receivedAt = null;
+          _captureProgress = '';
+          _filename = 'ยังไม่มีภาพ';
+          _reset();
+        });
+      },
+    );
+    ref.listen<ConnectionConfig?>(
+      appControllerProvider.select((s) => s.cameraConnection),
+      (before, after) {
+        if (before?.baseUrl == after?.baseUrl &&
+            before?.deviceId == after?.deviceId) {
+          return;
+        }
+        setState(() {
+          _imageGeneration++;
+          _busy = false;
+          _bytes = null;
+          _sample = false;
           _captureId = null;
           _receivedAt = null;
           _captureProgress = '';

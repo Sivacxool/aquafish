@@ -1,4 +1,4 @@
-// AquaHatch local HTTPS server. No peripheral GPIO is driven in this revision.
+// AquaHatch local HTTPS server, DS18B20 on GPIO4. No actuator GPIO control.
 // Arduino-ESP32 3.3.12, ArduinoJson 7.4.3, ESP32-S3 16 MB / OPI PSRAM 8 MB.
 #include <Arduino.h>
 #include <WiFi.h>
@@ -9,8 +9,10 @@
 #include <sys/time.h>
 #include <math.h>
 #include "device_private.h"
+#include "sensor_temperature.h"
+#include "sensor_do.h"
 
-static const char VERSION[] = "0.6.0-local";
+static const char VERSION[] = "0.9.0-sensors.1";
 Preferences prefs;
 httpd_handle_t httpsServer = nullptr;
 bool tlsReady = false, wasConnected = false;
@@ -48,14 +50,20 @@ void snapshot(JsonDocument &doc) {
   doc["capabilities"]["hardware_control"] = false;
   doc["capabilities"]["camera"] = false;
   doc["capabilities"]["ai"] = false;
+  doc["capabilities"]["temperature"] = true;
+  doc["capabilities"]["dissolved_oxygen"] = oxygen_sensor::enabled();
   configJson(doc["config"].to<JsonObject>());
   JsonObject t = doc["telemetry"].to<JsonObject>();
   t["timestamp"] = nowIso(); t["firmware_version"] = VERSION;
-  t["temperature_c"] = nullptr; t["ph"] = nullptr;
+  temperature_sensor::append(t);
+  oxygen_sensor::append(t);
+  t["ph"] = nullptr;
   t["flow_l_min"] = nullptr; t["water_level_ok"] = nullptr;
   t["ph_calibrated"] = false; t["simulated"] = false;
   t["device_online"] = true; t["hardware_ready"] = false;
-  t["hardware_message"] = "บอร์ดเชื่อมต่อแล้ว ยังไม่ได้ติดตั้งเซนเซอร์และตั้งค่าขาควบคุม";
+  t["hardware_message"] = oxygen_sensor::enabled()
+    ? "อ่าน DS18B20 และหัววัด DO จริง · ยังไม่ตั้งค่าวงจรควบคุมปั๊ม/ฮีตเตอร์"
+    : "อ่าน DS18B20 ที่ GPIO4 · DO รอตรวจระดับไฟ RS485 · ยังไม่ตั้งค่าวงจรควบคุม";
   t["wifi_rssi"] = WiFi.RSSI(); t["mode"] = "setup";
   t["outputs"].to<JsonObject>();
 }
@@ -67,6 +75,8 @@ void serialStatus(const char *type = "status") {
   doc["connected"] = WiFi.status() == WL_CONNECTED;
   doc["ssid"] = WiFi.SSID(); doc["ip"] = WiFi.localIP().toString();
   doc["tls_ready"] = tlsReady; doc["uptime_ms"] = millis();
+  temperature_sensor::append(doc["telemetry"].to<JsonObject>());
+  oxygen_sensor::append(doc["telemetry"].as<JsonObject>());
   doc["free_heap"] = ESP.getFreeHeap(); doc["command_count"] = commandCount;
   doc["wifi_status"] = (int)WiFi.status();
   doc["disconnect_reason"] = (int)lastDisconnectReason;
@@ -262,6 +272,8 @@ void serialCommand() {
 }
 void setup() {
   Serial.begin(115200); delay(200);
+  temperature_sensor::begin();
+  oxygen_sensor::begin();
   prefs.begin("aquahatch",false);
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
     lastDisconnectReason = info.wifi_sta_disconnected.reason; disconnectCount++;
@@ -283,6 +295,8 @@ void setup() {
   serialStatus("boot");
 }
 void loop() {
+  temperature_sensor::tick();
+  oxygen_sensor::tick();
   provisioning::tick();
   while (Serial.available()) {
     char c=Serial.read();

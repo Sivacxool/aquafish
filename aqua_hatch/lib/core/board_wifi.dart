@@ -126,11 +126,17 @@ class BoardWifiStatus {
 class BoardWifiClient {
   final ConnectionConfig config;
   final String token;
+  final String hostname, caAsset;
   final http.Client? _providedClient;
   http.Client? _client;
   bool _closed = false;
-  BoardWifiClient(this.config, this.token, {http.Client? client})
-    : _providedClient = client;
+  BoardWifiClient(
+    this.config,
+    this.token, {
+    http.Client? client,
+    this.hostname = deviceTlsHostname,
+    this.caAsset = 'assets/device/device_ca.pem',
+  }) : _providedClient = client;
 
   Future<Map<String, dynamic>> _request(
     String method,
@@ -145,7 +151,8 @@ class BoardWifiClient {
       throw StateError('ตรวจรหัสจับคู่และที่อยู่บอร์ด');
     }
     final client = _client ??=
-        _providedClient ?? await createDeviceClient(config);
+        _providedClient ??
+        await createPairedClient(config, hostname: hostname, caAsset: caAsset);
     if (_closed) {
       client.close();
       throw StateError('ปิดการตั้งค่าแล้ว');
@@ -154,7 +161,7 @@ class BoardWifiClient {
         http.Request(
             method,
             Uri.https(
-              deviceTlsHostname,
+              hostname,
               '/api/v1/devices/${config.deviceId}/wifi$suffix',
             ),
           )

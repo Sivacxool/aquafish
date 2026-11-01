@@ -9,10 +9,22 @@ import 'live_repository.dart';
 import 'esp32_repository.dart';
 import 'credentials.dart';
 import 'camera.dart';
+import 'direct_camera.dart';
+import 'usb_camera.dart';
+
+final usbCameraFactoryProvider = Provider<UsbCameraClient Function()>(
+  (ref) =>
+      () => UsbCameraClient(),
+);
 
 final credentialStoreProvider = Provider<CredentialStore>(
   (ref) => const CredentialStore(),
 );
+final directCameraFactoryProvider =
+    Provider<DirectCameraClient Function(ConnectionConfig, String)>(
+      (ref) =>
+          (config, token) => DirectCameraClient(config, token),
+    );
 
 final localStoreProvider = Provider<LocalStore>(
   (ref) => throw UnimplementedError('LocalStore must be provided at bootstrap'),
@@ -25,6 +37,10 @@ final cameraStatusProvider = FutureProvider.autoDispose<DeviceCameraStatus>((
   ref,
 ) async {
   ref.watch(appControllerProvider.select((s) => s.connection));
+  ref.watch(appControllerProvider.select((s) => s.cameraConnection));
+  final usb = ref.watch(
+    appControllerProvider.select((s) => s.usbCameraEnabled),
+  );
   Timer? refresh;
   var disposed = false;
   ref.onDispose(() {
@@ -34,8 +50,10 @@ final cameraStatusProvider = FutureProvider.autoDispose<DeviceCameraStatus>((
   try {
     return await ref.read(appControllerProvider.notifier).cameraStatus();
   } catch (_) {
-    return const DeviceCameraStatus(
-      message: 'ติดต่อกล้องไม่ได้ ตรวจการเชื่อมต่อเซิร์ฟเวอร์',
+    return DeviceCameraStatus(
+      message: usb
+          ? 'เปิดตัวรับภาพ USB บนคอม และตรวจสาย USB'
+          : 'ติดต่อกล้องไม่ได้ ตรวจการเชื่อมต่อเซิร์ฟเวอร์',
     );
   } finally {
     if (!disposed) {
@@ -46,6 +64,8 @@ final cameraStatusProvider = FutureProvider.autoDispose<DeviceCameraStatus>((
 
 class AppState {
   final ConnectionConfig connection;
+  final ConnectionConfig? cameraConnection;
+  final bool usbCameraEnabled;
   final DeviceSettings settings;
   final Telemetry? telemetry;
   final HatchBatch? batch;
@@ -57,6 +77,8 @@ class AppState {
   final DateTime now;
   const AppState({
     required this.connection,
+    this.cameraConnection,
+    this.usbCameraEnabled = false,
     required this.settings,
     required this.now,
     this.telemetry,
@@ -83,6 +105,10 @@ class AppState {
     if (!telemetry!.deviceOnline) return 'เครื่องออฟไลน์';
     if (!fresh) return 'ข้อมูลเครื่องขาดช่วง';
     if (connection.localEsp32 && telemetry?.hardwareReady == false) {
+      if (telemetry?.temperatureStatus == 'ok' ||
+          telemetry?.dissolvedOxygenStatus == 'ok') {
+        return 'บอร์ดออนไลน์ · อ่านค่าเซนเซอร์';
+      }
       return 'บอร์ดออนไลน์ · รอติดตั้งอุปกรณ์';
     }
     return 'เชื่อมต่อเครื่องแล้ว';
@@ -90,6 +116,8 @@ class AppState {
 
   AppState copyWith({
     ConnectionConfig? connection,
+    ConnectionConfig? cameraConnection,
+    bool? usbCameraEnabled,
     DeviceSettings? settings,
     Telemetry? telemetry,
     HatchBatch? batch,
@@ -105,6 +133,8 @@ class AppState {
     bool clearBatch = false,
   }) => AppState(
     connection: connection ?? this.connection,
+    cameraConnection: cameraConnection ?? this.cameraConnection,
+    usbCameraEnabled: usbCameraEnabled ?? this.usbCameraEnabled,
     settings: settings ?? this.settings,
     telemetry: clearTelemetry ? null : telemetry ?? this.telemetry,
     batch: clearBatch ? null : batch ?? this.batch,
@@ -120,6 +150,10 @@ class AppState {
 
 class AppController extends Notifier<AppState> {
   DeviceRepository? _repository;
+  DirectCameraClient? _cameraClient;
+  UsbCameraClient? _usbCameraClient;
+  String _cameraToken = '';
+  int _cameraGeneration = 0;
   StreamSubscription<Telemetry>? _subscription;
   Timer? _clock;
   String _token = '';
@@ -156,8 +190,18 @@ class AppController extends Notifier<AppState> {
       _clock?.cancel();
       unawaited(_subscription?.cancel());
       unawaited(_repository?.dispose());
+      _cameraClient?.close();
+      _usbCameraClient?.close();
     });
     Future.microtask(() async {
+      final camera = store.cameraConnection;
+      if (camera != null) {
+        try {
+          _cameraToken = await ref.read(credentialStoreProvider).read(camera);
+        } catch (_) {
+          /* The camera can be paired again in settings. */
+        }
+      }
       if (!config.demo) {
         try {
           _token = await ref.read(credentialStoreProvider).read(config);
@@ -174,6 +218,8 @@ class AppController extends Notifier<AppState> {
     });
     return AppState(
       connection: config,
+      cameraConnection: store.cameraConnection,
+      usbCameraEnabled: store.usbCameraEnabled,
       settings: store.settings,
       now: DateTime.now(),
       counts: store.counts,
@@ -413,6 +459,9 @@ class AppController extends Notifier<AppState> {
 
   Future<void> pauseForWifiSetup() async {
     _wifiSetupPaused = true;
+    ++_cameraGeneration;
+    _cameraClient?.close();
+    _cameraClient = null;
     ++_generation;
     _wasFresh = false;
     _reportedWaiting = false;
@@ -540,6 +589,14 @@ class AppController extends Notifier<AppState> {
   }
 
   Future<DeviceCameraStatus> cameraStatus() async {
+    if (state.usbCameraEnabled) return _ensureUsbCamera().status();
+    if (_wifiSetupPaused) {
+      return const DeviceCameraStatus(message: 'กำลังตั้ง Wi-Fi');
+    }
+    final camera = state.cameraConnection;
+    if (camera != null) {
+      return (await _ensureCamera(camera)).status();
+    }
     final repo = _repository;
     if (repo == null) {
       return const DeviceCameraStatus(message: 'กำลังเชื่อมต่อเซิร์ฟเวอร์');
@@ -552,6 +609,39 @@ class AppController extends Notifier<AppState> {
     void Function(String)? onProgress,
     bool Function()? cancelled,
   }) async {
+    if (state.usbCameraEnabled) {
+      final generation = _cameraGeneration;
+      final image = await _ensureUsbCamera().capture(
+        requestId,
+        onProgress: onProgress,
+        cancelled: () =>
+            _disposed ||
+            generation != _cameraGeneration ||
+            cancelled?.call() == true,
+      );
+      if (_disposed || generation != _cameraGeneration) {
+        throw StateError('เปลี่ยนการเชื่อมต่อกล้องแล้ว');
+      }
+      _event('ได้รับภาพจากกล้อง USB แล้ว');
+      return image;
+    }
+    final camera = state.cameraConnection;
+    if (camera != null) {
+      final generation = _cameraGeneration;
+      final image = await (await _ensureCamera(camera)).capture(
+        requestId,
+        onProgress: onProgress,
+        cancelled: () =>
+            _disposed ||
+            generation != _cameraGeneration ||
+            cancelled?.call() == true,
+      );
+      if (_disposed || generation != _cameraGeneration) {
+        throw StateError('เปลี่ยนการเชื่อมต่อกล้องแล้ว');
+      }
+      _event('ได้รับภาพจากกล้อง ${image.cameraId} แล้ว');
+      return image;
+    }
     final repo = _repository;
     if (repo == null) throw StateError('ยังไม่เชื่อมต่อเซิร์ฟเวอร์');
     final generation = _generation;
@@ -569,6 +659,16 @@ class AppController extends Notifier<AppState> {
   }
 
   Future<AnalysisResult> analyzeDeviceCapture(String captureId) async {
+    if (state.usbCameraEnabled) {
+      throw StateError(
+        'ภาพ USB พร้อมนับด้วยมือ ส่วน AI ยังไม่มีโมเดลที่ตรวจความแม่นยำแล้ว',
+      );
+    }
+    if (state.cameraConnection != null) {
+      throw StateError(
+        'ภาพจากกล้องตรงนับด้วยมือได้ ส่วน AI ยังต้องติดตั้งโมเดลและบริการประมวลผล',
+      );
+    }
     final repo = _repository;
     if (repo == null) throw StateError('ยังไม่เชื่อมต่อเซิร์ฟเวอร์');
     final generation = _generation;
@@ -577,5 +677,74 @@ class AppController extends Notifier<AppState> {
       throw StateError('การเชื่อมต่อถูกเปลี่ยน');
     }
     return result;
+  }
+
+  Future<String?> configureCamera(ConnectionConfig config, String token) async {
+    final invalid = config.validate();
+    if (invalid != null || config.demo || !config.localEsp32) {
+      return invalid ?? 'ตรวจที่อยู่กล้อง';
+    }
+    var secret = token.trim();
+    DirectCameraClient? candidate;
+    try {
+      if (secret.isEmpty) {
+        secret = await ref.read(credentialStoreProvider).read(config);
+      }
+      if (secret.isEmpty) return 'ใส่รหัสจับคู่กล้องจากบัตร';
+      candidate = ref.read(directCameraFactoryProvider)(config, secret);
+      final status = await candidate.status();
+      if (!status.ready) return status.message;
+      if (_disposed) return 'ปิดแอปแล้ว';
+      await ref.read(credentialStoreProvider).save(config, secret);
+      await _store.saveCameraConnection(config);
+      await _store.saveUsbCameraEnabled(false);
+      ++_cameraGeneration;
+      _cameraClient?.close();
+      _cameraClient = candidate;
+      candidate = null;
+      _cameraToken = secret;
+      state = state.copyWith(cameraConnection: config, usbCameraEnabled: false);
+      ref.invalidate(cameraStatusProvider);
+      _event('เชื่อมบอร์ดกล้องแล้ว');
+      return null;
+    } catch (error) {
+      return _message(error);
+    } finally {
+      candidate?.close();
+    }
+  }
+
+  Future<DirectCameraClient> _ensureCamera(ConnectionConfig config) async {
+    final generation = _cameraGeneration;
+    if (_cameraToken.isEmpty) {
+      _cameraToken = await ref.read(credentialStoreProvider).read(config);
+    }
+    if (_disposed || generation != _cameraGeneration || _wifiSetupPaused) {
+      throw StateError('การเชื่อมต่อกล้องถูกเปลี่ยน');
+    }
+    return _cameraClient ??= ref.read(directCameraFactoryProvider)(
+      config,
+      _cameraToken,
+    );
+  }
+
+  UsbCameraClient _ensureUsbCamera() =>
+      _usbCameraClient ??= ref.read(usbCameraFactoryProvider)();
+
+  Future<String?> configureUsbCamera(bool enabled) async {
+    try {
+      if (enabled) {
+        final camera = await _ensureUsbCamera().status();
+        if (!camera.ready) return camera.message;
+      }
+      if (_disposed) return 'ปิดแอปแล้ว';
+      await _store.saveUsbCameraEnabled(enabled);
+      ++_cameraGeneration;
+      state = state.copyWith(usbCameraEnabled: enabled);
+      ref.invalidate(cameraStatusProvider);
+      return null;
+    } catch (_) {
+      return 'ติดต่อกล้อง USB ไม่ได้ เปิดตัวรับภาพ USB บนคอมและปิด Serial Monitor';
+    }
   }
 }

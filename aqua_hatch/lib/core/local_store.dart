@@ -21,6 +21,18 @@ class LocalStore {
       const ConnectionConfig();
   DeviceSettings get settings =>
       _read('settings', DeviceSettings.fromJson) ?? const DeviceSettings();
+  ConnectionConfig? get cameraConnection =>
+      _read('camera_connection_v1', ConnectionConfig.fromJson);
+  Future<void> saveCameraConnection(ConnectionConfig config) =>
+      _write('camera_connection_v1', config.toJson());
+  bool get usbCameraEnabled =>
+      preferences.getBool('usb_camera_enabled_v1') ?? false;
+  Future<void> saveUsbCameraEnabled(bool enabled) async {
+    if (!await preferences.setBool('usb_camera_enabled_v1', enabled)) {
+      throw StateError('บันทึกโหมดกล้อง USB ไม่สำเร็จ');
+    }
+  }
+
   HatchBatch? get batch =>
       _read('batch_v2:${scope(connection)}', HatchBatch.fromJson);
   List<CountRecord> get counts {

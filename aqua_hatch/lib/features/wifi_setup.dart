@@ -7,13 +7,17 @@ import '../core/board_wifi.dart';
 import '../core/controller.dart';
 import '../core/models.dart';
 import '../core/wifi_platform.dart';
+import '../core/paired_camera.dart';
+import 'connection_journey.dart';
 
 class WifiSetupScreen extends ConsumerStatefulWidget {
   final WifiPlatform platform;
+  final bool camera;
   final BoardWifiClient Function(ConnectionConfig, String)? clientFactory;
   const WifiSetupScreen({
     super.key,
     this.platform = const WifiPlatform(),
+    this.camera = false,
     this.clientFactory,
   });
   @override
@@ -43,12 +47,23 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
       _showApPassword = false,
       _completed = false;
   int _stage = 0;
+  final _scroll = ScrollController();
+  bool _showPassword = false, _showPairing = false;
 
   @override
   void initState() {
     super.initState();
     _app = ref.read(appControllerProvider.notifier);
-    _initial = ref.read(appControllerProvider).connection;
+    final state = ref.read(appControllerProvider);
+    _initial = widget.camera
+        ? state.cameraConnection ??
+              const ConnectionConfig(
+                demo: false,
+                localEsp32: true,
+                baseUrl: setupBoardUrl,
+                deviceId: cameraDeviceId,
+              )
+        : state.connection;
     _initializing = _initialize();
   }
 
@@ -68,6 +83,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
   @override
   void dispose() {
     _client?.close();
+    _scroll.dispose();
     _pairing.dispose();
     _password.dispose();
     _hiddenName.dispose();
@@ -91,7 +107,14 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
   );
   BoardWifiClient _make(String url) =>
       widget.clientFactory?.call(_config(url), _token) ??
-      BoardWifiClient(_config(url), _token);
+      (widget.camera
+          ? BoardWifiClient(
+              _config(url),
+              _token,
+              hostname: cameraTlsHostname,
+              caAsset: cameraCaAsset,
+            )
+          : BoardWifiClient(_config(url), _token));
   void _replace(BoardWifiClient client) {
     _client?.close();
     _client = client;
@@ -115,6 +138,8 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
 
   Future<void> _run(Future<void> Function() action) async {
     if (_busy) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    final previousStage = _stage;
     setState(() {
       _busy = true;
       _error = null;
@@ -124,7 +149,20 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
     } catch (error) {
       if (mounted) setState(() => _error = _friendly(error));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        if (_stage != previousStage || _error != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _scroll.hasClients) {
+              _scroll.animateTo(
+                0,
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+              );
+            }
+          });
+        }
+      }
     }
   }
 
@@ -159,8 +197,10 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
           return;
         }
         _replace(known);
-        _status = status;
-        _stage = 2;
+        setState(() {
+          _status = status;
+          _stage = 2;
+        });
         await known.openSetupNetwork();
         await _scanInternal();
         return;
@@ -181,8 +221,10 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
         return;
       }
       _replace(client);
-      _status = status;
-      _stage = 2;
+      setState(() {
+        _status = status;
+        _stage = 2;
+      });
       await _scanInternal();
     } catch (_) {
       if (!identical(client, _client)) client.close();
@@ -320,389 +362,557 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
     } finally {
       target.close();
     }
-    final error = await _app.configure(_config('https://$_lanIp'), _token);
+    final error = widget.camera
+        ? await _app.configureCamera(_config('https://$_lanIp'), _token)
+        : await _app.configure(_config('https://$_lanIp'), _token);
     if (error != null) throw StateError(error);
+    if (widget.camera) await _app.reconnect();
     await widget.platform.releaseWifi();
     if (!mounted) return;
-    _completed = true;
-    Navigator.of(context).pop(true);
+    setState(() {
+      _completed = true;
+      _stage = 5;
+    });
   });
+
+  String get _deviceName => widget.camera ? 'กล้อง' : 'บอร์ด';
+  String get _activity => switch (_stage) {
+    0 => 'กำลังตรวจอุปกรณ์ที่บันทึกไว้…',
+    1 => 'กำลังตรวจ$_deviceNameและค้นหา Wi-Fi…',
+    2 => 'กำลังค้นหา Wi-Fi 2.4 GHz…',
+    3 => 'กำลังรอ$_deviceNameเชื่อม Wi-Fi บ้าน…',
+    _ => 'กำลังตรวจและบันทึกการเชื่อมต่อ…',
+  };
 
   Widget _button(
     String label,
     VoidCallback? action, {
     IconData icon = Icons.arrow_forward_rounded,
-  }) => SizedBox(
-    width: double.infinity,
-    child: FilledButton.icon(
-      onPressed: action,
-      icon: Icon(icon, size: 20),
-      label: Text(label),
+  }) => FilledButton.icon(
+    onPressed: action,
+    icon: Icon(icon, size: 20),
+    label: Text(label, textAlign: TextAlign.center),
+  );
+
+  Widget _instruction(String number, String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 25,
+          height: 25,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(
+            color: Color(0xFFE7F3F2),
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            number,
+            style: const TextStyle(
+              color: AquaColors.teal,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text, style: const TextStyle(height: 1.7))),
+      ],
     ),
   );
-  Widget _notice(String message) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: AquaColors.teal.withValues(alpha: .07),
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: Text(
-      message,
-      style: const TextStyle(color: AquaColors.teal, height: 1.6),
+
+  Widget _pairingField() => TextField(
+    key: const ValueKey('wifi-pairing-code'),
+    controller: _pairing,
+    enabled: !_busy,
+    obscureText: true,
+    autocorrect: false,
+    enableSuggestions: false,
+    decoration: InputDecoration(
+      labelText: 'รหัสจับคู่$_deviceName',
+      helperText: 'จากบัตรประจำเครื่อง · ไม่ใช่รหัส Wi-Fi บ้าน',
+      helperMaxLines: 2,
+      prefixIcon: const Icon(Icons.key_rounded),
     ),
   );
+
+  List<Widget> _stageContent() {
+    switch (_stage) {
+      case 0:
+        return [
+          const Text(
+            'เตรียม 3 อย่างนี้ก่อน',
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 18),
+          _instruction('1', 'จ่ายไฟให้$_deviceName แล้ววางใกล้เราเตอร์'),
+          _instruction('2', 'เตรียมชื่อและรหัส Wi-Fi บ้าน 2.4 GHz'),
+          _instruction('3', 'เตรียมรหัสจับคู่จากบัตรประจำเครื่อง'),
+          if (_savedToken.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const ConnectionHint(
+              'มีรหัสจับคู่ที่บันทึกไว้แล้ว ไม่ต้องกรอกใหม่',
+              icon: Icons.verified_user_outlined,
+            ),
+            TextButton(
+              onPressed: _busy
+                  ? null
+                  : () => setState(() {
+                      _showPairing = !_showPairing;
+                      if (!_showPairing) _pairing.clear();
+                    }),
+              child: Text(
+                _showPairing ? 'ใช้รหัสที่บันทึกไว้' : 'ใช้รหัสจับคู่อื่น',
+              ),
+            ),
+          ],
+          if (_savedToken.isEmpty || _showPairing) ...[
+            const SizedBox(height: 10),
+            _pairingField(),
+          ],
+          const SizedBox(height: 20),
+          _button('เริ่มตั้งค่า', _busy || !_loaded ? null : _start),
+          const SizedBox(height: 10),
+          const Text(
+            'ยังไม่มีอุปกรณ์? ย้อนกลับไปเลือก “ดูวิธีเชื่อมต่อ” ได้',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: AquaColors.muted),
+          ),
+        ];
+      case 1:
+        return [
+          _instruction(
+            '1',
+            'เปิดตั้งค่า Wi-Fi ของมือถือ แล้วเลือกเครือข่ายด้านล่าง',
+          ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AquaColors.background,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AquaColors.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'ชื่อ Wi-Fi ของอุปกรณ์',
+                  style: TextStyle(fontSize: 12, color: AquaColors.muted),
+                ),
+                const SizedBox(height: 6),
+                SelectableText(
+                  widget.camera ? cameraSetupNetworkName : setupNetworkName,
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w700,
+                    color: AquaColors.blue,
+                  ),
+                ),
+                const Divider(height: 24),
+                const Text(
+                  'รหัส Wi-Fi ของอุปกรณ์',
+                  style: TextStyle(fontSize: 12, color: AquaColors.muted),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SelectableText(
+                        _showApPassword
+                            ? setupNetworkPassword(_token)
+                            : '••••••••••••••••',
+                        style: const TextStyle(fontSize: 17),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: _showApPassword
+                          ? 'ซ่อนรหัส Wi-Fi บอร์ด'
+                          : 'แสดงรหัส Wi-Fi บอร์ด',
+                      onPressed: () =>
+                          setState(() => _showApPassword = !_showApPassword),
+                      icon: Icon(
+                        _showApPassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'คัดลอกรหัส Wi-Fi บอร์ด',
+                      onPressed: () async {
+                        await Clipboard.setData(
+                          ClipboardData(text: setupNetworkPassword(_token)),
+                        );
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('คัดลอกรหัส Wi-Fi อุปกรณ์แล้ว'),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.copy_rounded),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          const ConnectionHint(
+            'ถ้ามือถือแจ้ง “ไม่มีอินเทอร์เน็ต” ให้เชื่อมต่อเครือข่ายนี้ต่อ เพื่อส่ง Wi-Fi บ้านให้อุปกรณ์',
+          ),
+          const SizedBox(height: 16),
+          _button(
+            'เปิดหน้าตั้งค่า Wi-Fi',
+            _busy ? null : _openSettings,
+            icon: Icons.open_in_new_rounded,
+          ),
+          const SizedBox(height: 18),
+          _instruction('2', 'เชื่อมแล้ว กลับมาแอปและกดตรวจ$_deviceName'),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _connectSetup,
+            icon: const Icon(Icons.search_rounded),
+            label: Text(
+              'เชื่อม Wi-Fi $_deviceNameแล้ว ตรวจ$_deviceName',
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text(
+              'ไม่พบชื่อ Wi-Fi อุปกรณ์?',
+              style: TextStyle(fontSize: 13),
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'ตรวจไฟเลี้ยงและวางใกล้มือถือ หากยังไม่พบ ให้ปิดแล้วเปิดไฟเลี้ยง$_deviceName รอสักครู่แล้วค้นหาใหม่',
+                  style: const TextStyle(fontSize: 13, height: 1.7),
+                ),
+              ),
+            ],
+          ),
+        ];
+      case 2:
+        return [
+          const Text(
+            'ให้อุปกรณ์ใช้ Wi-Fi บ้านเดียวกับมือถือ',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'รายการนี้ค้นหาจากบอร์ด จึงแสดงเครือข่ายที่อุปกรณ์ใช้งานได้',
+            style: TextStyle(fontSize: 13, color: AquaColors.muted),
+          ),
+          const SizedBox(height: 18),
+          if (!_hidden)
+            DropdownButtonFormField<String>(
+              key: ValueKey(
+                'networks:${_status?.networks.map((n) => n.ssid).join('|')}:$_selected',
+              ),
+              initialValue:
+                  _status?.networks.any((n) => n.ssid == _selected) == true
+                  ? _selected
+                  : null,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Wi-Fi บ้าน',
+                prefixIcon: Icon(Icons.wifi_rounded),
+              ),
+              items: [
+                for (final n in _status?.networks ?? <BoardNetwork>[])
+                  DropdownMenuItem(
+                    value: n.ssid,
+                    child: Text(n.ssid, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: _busy
+                  ? null
+                  : (value) => setState(() {
+                      _selected = value ?? '';
+                      _reuse =
+                          _status!.credentialsSaved &&
+                          value == _status!.savedSsid;
+                      _password.clear();
+                    }),
+            ),
+          if (!_hidden && !_busy && _status?.networks.isEmpty == true) ...[
+            const SizedBox(height: 12),
+            const ConnectionHint(
+              'ยังไม่พบเครือข่าย ลองค้นหาใหม่ หรือกรอกชื่อ Wi-Fi ด้านล่าง',
+            ),
+          ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _busy ? null : () => _run(_scanInternal),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('ค้นหา Wi-Fi อีกครั้ง'),
+            ),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text(
+              'กรอกชื่อ Wi-Fi เอง / เครือข่ายซ่อน',
+              style: TextStyle(fontSize: 13),
+            ),
+            value: _hidden,
+            onChanged: _busy
+                ? null
+                : (value) => setState(() {
+                    _hidden = value ?? false;
+                    _reuse = false;
+                  }),
+          ),
+          if (_hidden) ...[
+            TextField(
+              controller: _hiddenName,
+              enabled: !_busy,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                labelText: 'ชื่อ Wi-Fi ที่ซ่อนอยู่',
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (!_hidden &&
+              _status?.credentialsSaved == true &&
+              _selected == _status?.savedSsid)
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'ใช้รหัส Wi-Fi เดิมที่บอร์ดบันทึกไว้',
+                style: TextStyle(fontSize: 13),
+              ),
+              value: _reuse,
+              onChanged: _busy
+                  ? null
+                  : (value) => setState(() => _reuse = value ?? false),
+            ),
+          if (!_reuse)
+            TextField(
+              controller: _password,
+              enabled: !_busy,
+              obscureText: !_showPassword,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: InputDecoration(
+                labelText: 'รหัส Wi-Fi บ้าน',
+                helperText: 'เครือข่ายเปิดไม่ใช้รหัส ให้เว้นว่าง',
+                helperMaxLines: 2,
+                suffixIcon: IconButton(
+                  tooltip: _showPassword
+                      ? 'ซ่อนรหัส Wi-Fi บ้าน'
+                      : 'แสดงรหัส Wi-Fi บ้าน',
+                  onPressed: () =>
+                      setState(() => _showPassword = !_showPassword),
+                  icon: Icon(
+                    _showPassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(height: 18),
+          _button(
+            'ส่ง Wi-Fi ให้$_deviceName',
+            _busy ? null : _submit,
+            icon: Icons.wifi_rounded,
+          ),
+        ];
+      case 3:
+        return [
+          Text(
+            'กำลังให้$_deviceNameเชื่อมกับ $_target',
+            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 16),
+          const ConnectionHint(
+            'ระหว่างเปลี่ยนเครือข่าย สัญญาณอาจหลุดชั่วคราว รอประมาณครึ่งนาที แอปกำลังตรวจผลจากอุปกรณ์',
+          ),
+          const SizedBox(height: 12),
+          if (!_busy) ...[
+            const ConnectionHint(
+              'ถ้าหลุดจาก Wi-Fi อุปกรณ์ ให้เชื่อมกลับแล้วกดตรวจผล โดยไม่ต้องส่งรหัสซ้ำ',
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: _openSettings,
+              child: const Text('เปิดหน้าตั้งค่า Wi-Fi'),
+            ),
+            const SizedBox(height: 10),
+            _button('ตรวจผลการเชื่อมต่อ', () => _run(_watchJob)),
+          ],
+        ];
+      case 4:
+        return [
+          ConnectionHint(
+            '$_deviceNameเชื่อมกับ $_target แล้ว',
+            icon: Icons.wifi_rounded,
+          ),
+          const SizedBox(height: 20),
+          _instruction('1', 'กลับไปเชื่อม Wi-Fi $_target บนมือถือ'),
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _openSettings,
+            icon: const Icon(Icons.wifi_rounded),
+            label: const Text('กลับไปเชื่อม Wi-Fi บ้าน'),
+          ),
+          const SizedBox(height: 18),
+          _instruction('2', 'กลับมาแอปเพื่อตรวจการเชื่อมต่อและบันทึกอุปกรณ์'),
+          _button(
+            'ยืนยันและเข้าใช้งาน',
+            _busy ? null : _finish,
+            icon: Icons.verified_user_outlined,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'ยังไม่เสร็จจนกว่ามือถือจะติดต่ออุปกรณ์ได้ใน Wi-Fi บ้าน',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: AquaColors.muted),
+          ),
+        ];
+      default:
+        return [
+          Text(
+            widget.camera
+                ? 'เพิ่มกล้องเรียบร้อยแล้ว'
+                : 'เพิ่มบอร์ดหลักเรียบร้อยแล้ว',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            widget.camera
+                ? 'ไปที่ “นับลูกปลา” เพื่อถ่ายภาพจากกล้องได้เลย'
+                : 'ดูค่าเซนเซอร์ได้ที่ “ภาพรวม”\nหากมีกล้อง ให้กลับไปเลือก “เพิ่มกล้อง”',
+            textAlign: TextAlign.center,
+            style: const TextStyle(height: 1.8),
+          ),
+          const SizedBox(height: 18),
+          ConnectionHint(
+            'Wi-Fi: $_target\nที่อยู่: $_lanIp',
+            icon: Icons.link_rounded,
+          ),
+          const SizedBox(height: 20),
+          _button(
+            'เสร็จสิ้น',
+            _busy ? null : () => Navigator.of(context).pop(true),
+            icon: Icons.check_rounded,
+          ),
+        ];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final step = _stage.clamp(0, 3);
     final titles = [
-      'เริ่มตั้งค่าเครื่อง',
-      'เชื่อม Wi-Fi ของบอร์ด',
+      'เตรียมอุปกรณ์',
+      'เชื่อม Wi-Fi ของ$_deviceName',
       'เลือก Wi-Fi บ้าน',
       'กำลังเชื่อม Wi-Fi',
-      'พร้อมเข้าใช้งาน',
+      'กลับสู่ Wi-Fi บ้าน',
+      'เชื่อมต่อสำเร็จ',
+    ];
+    const descriptions = [
+      'ตั้งค่าจากมือถือได้เลย แอปจะพาไปทีละขั้น',
+      'เชื่อมกับอุปกรณ์ชั่วคราว เพื่อส่งข้อมูล Wi-Fi บ้าน',
+      'เลือกเครือข่าย 2.4 GHz ที่ต้องการให้อุปกรณ์ใช้งาน',
+      'กำลังตรวจสถานะจริงจากอุปกรณ์ กรุณาเปิดหน้านี้ไว้',
+      'ขั้นสุดท้าย ให้มือถือกับอุปกรณ์อยู่ในเครือข่ายเดียวกัน',
+      'ตรวจการเชื่อมต่อและบันทึกอุปกรณ์แล้ว',
     ];
     return PopScope(
       canPop: !_busy,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('ตั้ง Wi-Fi ให้บอร์ด'),
+          title: Text(widget.camera ? 'เชื่อมต่อกล้อง' : 'เชื่อมต่อบอร์ดหลัก'),
           automaticallyImplyLeading: !_busy,
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+            controller: _scroll,
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 580),
+                constraints: const BoxConstraints(maxWidth: 600),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AquaColors.deep, AquaColors.navy],
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.wifi_rounded,
-                            color: Colors.white,
-                            size: 36,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            titles[_stage],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 25,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'ตั้งค่าจากมือถือ แล้วใช้งานกับบอร์ดได้โดยไม่เปิดคอม',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              height: 1.6,
-                            ),
-                          ),
-                        ],
-                      ),
+                    ConnectionJourneyHeader(
+                      step: step,
+                      title: titles[_stage],
+                      subtitle: descriptions[_stage],
+                      device: widget.camera
+                          ? 'ESP32-CAM · กล้อง'
+                          : 'ESP32-S3 · บอร์ดหลัก',
+                      busy: _busy,
+                      complete: _completed,
+                      icon: widget.camera
+                          ? Icons.photo_camera_outlined
+                          : Icons.router_rounded,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     if (_busy) ...[
-                      const LinearProgressIndicator(),
-                      const SizedBox(height: 16),
-                    ],
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (_stage == 0) ...[
-                              const Text(
-                                'สิ่งที่ต้องเตรียม',
-                                style: TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                '1. จ่ายไฟให้บอร์ด\n2. ชื่อและรหัส Wi-Fi บ้านย่าน 2.4 GHz\n3. รหัสจับคู่จากบัตรประจำเครื่อง',
-                                style: TextStyle(height: 1.9),
-                              ),
-                              const SizedBox(height: 18),
-                              if (_savedToken.isNotEmpty)
-                                _notice(
-                                  'ใช้รหัสบอร์ดที่บันทึกไว้แล้ว เว้นช่องด้านล่างว่างได้',
-                                ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _pairing,
-                                obscureText: true,
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                decoration: const InputDecoration(
-                                  labelText: 'รหัสจับคู่บอร์ด',
-                                  helperText: 'เป็นคนละรหัสกับ Wi-Fi บ้าน',
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              _button(
-                                'เริ่มตั้งค่า',
-                                _busy || !_loaded ? null : _start,
-                              ),
-                            ],
-                            if (_stage == 1) ...[
-                              const Text(
-                                'เปิด Wi-Fi ในมือถือ แล้วเลือกเครือข่ายนี้',
-                                style: TextStyle(height: 1.7),
-                              ),
-                              const SizedBox(height: 16),
-                              const SelectableText(
-                                setupNetworkName,
-                                style: TextStyle(
-                                  fontSize: 23,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: SelectableText(
-                                      _showApPassword
-                                          ? setupNetworkPassword(_token)
-                                          : '••••••••••••••••',
-                                      style: const TextStyle(fontSize: 19),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    tooltip: _showApPassword
-                                        ? 'ซ่อนรหัส Wi-Fi บอร์ด'
-                                        : 'แสดงรหัส Wi-Fi บอร์ด',
-                                    onPressed: () => setState(
-                                      () => _showApPassword = !_showApPassword,
-                                    ),
-                                    icon: Icon(
-                                      _showApPassword
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    tooltip: 'คัดลอกรหัส Wi-Fi บอร์ด',
-                                    onPressed: () => Clipboard.setData(
-                                      ClipboardData(
-                                        text: setupNetworkPassword(_token),
-                                      ),
-                                    ),
-                                    icon: const Icon(Icons.copy_rounded),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 14),
-                              _notice(
-                                'ถ้ามือถือแจ้งว่าไม่มีอินเทอร์เน็ต ให้เลือกเชื่อมต่อเครือข่ายนี้ต่อ แล้วกลับมาแอป\nหากไม่พบชื่อ ให้ปิดแล้วเปิดไฟเลี้ยงบอร์ดใหม่',
-                              ),
-                              const SizedBox(height: 18),
-                              OutlinedButton.icon(
-                                onPressed: _openSettings,
-                                icon: const Icon(Icons.settings_rounded),
-                                label: const Text('เปิดหน้าตั้งค่า Wi-Fi'),
-                              ),
-                              const SizedBox(height: 12),
-                              _button(
-                                'เชื่อม Wi-Fi บอร์ดแล้ว ตรวจบอร์ด',
-                                _busy ? null : _connectSetup,
-                              ),
-                            ],
-                            if (_stage == 2) ...[
-                              if (_status?.savedSsid.isNotEmpty == true) ...[
-                                _notice(
-                                  'Wi-Fi ที่บอร์ดบันทึกไว้: ${_status!.savedSsid}',
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-                              const Text(
-                                'เครือข่าย 2.4 GHz ที่บอร์ดค้นพบ',
-                                style: TextStyle(fontWeight: FontWeight.w700),
-                              ),
-                              const SizedBox(height: 12),
-                              if (!_hidden)
-                                DropdownButtonFormField<String>(
-                                  key: ValueKey(
-                                    'networks:${_status?.networks.map((n) => n.ssid).join('|')}:$_selected',
-                                  ),
-                                  initialValue:
-                                      _status?.networks.any(
-                                            (n) => n.ssid == _selected,
-                                          ) ==
-                                          true
-                                      ? _selected
-                                      : null,
-                                  isExpanded: true,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Wi-Fi บ้าน',
-                                  ),
-                                  items: [
-                                    for (final n
-                                        in _status?.networks ??
-                                            <BoardNetwork>[])
-                                      DropdownMenuItem(
-                                        value: n.ssid,
-                                        child: Text(
-                                          n.ssid,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                  ],
-                                  onChanged: _busy
-                                      ? null
-                                      : (value) => setState(() {
-                                          _selected = value ?? '';
-                                          _reuse =
-                                              _status!.credentialsSaved &&
-                                              value == _status!.savedSsid;
-                                        }),
-                                ),
-                              TextButton.icon(
-                                onPressed: _busy
-                                    ? null
-                                    : () => _run(_scanInternal),
-                                icon: const Icon(Icons.refresh_rounded),
-                                label: const Text('ค้นหา Wi-Fi อีกครั้ง'),
-                              ),
-                              CheckboxListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: const Text(
-                                  'กรอกชื่อเครือข่ายที่ซ่อนอยู่',
-                                ),
-                                value: _hidden,
-                                onChanged: _busy
-                                    ? null
-                                    : (value) => setState(() {
-                                        _hidden = value ?? false;
-                                        _reuse = false;
-                                      }),
-                              ),
-                              if (_hidden)
-                                TextField(
-                                  controller: _hiddenName,
-                                  decoration: const InputDecoration(
-                                    labelText: 'ชื่อ Wi-Fi ที่ซ่อนอยู่',
-                                  ),
-                                ),
-                              if (!_hidden &&
-                                  _status?.credentialsSaved == true &&
-                                  _selected == _status?.savedSsid)
-                                CheckboxListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text(
-                                    'ใช้รหัส Wi-Fi เดิมที่บอร์ดบันทึกไว้',
-                                  ),
-                                  value: _reuse,
-                                  onChanged: _busy
-                                      ? null
-                                      : (value) => setState(
-                                          () => _reuse = value ?? false,
-                                        ),
-                                ),
-                              if (!_reuse)
-                                TextField(
-                                  controller: _password,
-                                  obscureText: true,
-                                  autocorrect: false,
-                                  enableSuggestions: false,
-                                  decoration: const InputDecoration(
-                                    labelText: 'รหัส Wi-Fi บ้าน',
-                                    helperText:
-                                        'เว้นว่างได้เมื่อเครือข่ายเปิดไม่ใช้รหัส',
-                                  ),
-                                ),
-                              const SizedBox(height: 18),
-                              _button(
-                                'ส่ง Wi-Fi ให้บอร์ด',
-                                _busy ? null : _submit,
-                                icon: Icons.wifi_rounded,
-                              ),
-                            ],
-                            if (_stage == 3) ...[
-                              Text(
-                                'กำลังให้บอร์ดเชื่อมกับ $_target',
-                                style: const TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              _notice(
-                                'บอร์ดอาจเปลี่ยนช่องสัญญาณระหว่างเชื่อมต่อ ใช้เวลาประมาณครึ่งนาที\nถ้าหลุดจาก Wi-Fi บอร์ด ให้เชื่อมกลับแล้วกดตรวจผล',
-                              ),
-                              const SizedBox(height: 16),
-                              OutlinedButton(
-                                onPressed: _openSettings,
-                                child: const Text('เปิดหน้าตั้งค่า Wi-Fi'),
-                              ),
-                              _button(
-                                'ตรวจผลการเชื่อมต่อ',
-                                _busy ? null : () => _run(_watchJob),
-                              ),
-                            ],
-                            if (_stage == 4) ...[
-                              const Icon(
-                                Icons.check_circle_rounded,
-                                color: AquaColors.teal,
-                                size: 56,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'บอร์ดเชื่อมกับ $_target แล้ว',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              _notice(
-                                'กลับไปเชื่อม Wi-Fi บ้านบนมือถือ แล้วกดปุ่มด้านล่าง แอปจะบันทึกเครื่องและเชื่อมต่อให้',
-                              ),
-                              const SizedBox(height: 16),
-                              OutlinedButton.icon(
-                                onPressed: _openSettings,
-                                icon: const Icon(Icons.wifi_rounded),
-                                label: const Text('กลับไปเชื่อม Wi-Fi บ้าน'),
-                              ),
-                              const SizedBox(height: 12),
-                              _button(
-                                'ยืนยันและเข้าใช้งาน',
-                                _busy ? null : _finish,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 16),
                       Semantics(
                         liveRegion: true,
-                        child: Text(
-                          _error!,
-                          style: const TextStyle(
-                            color: AquaColors.red,
-                            height: 1.7,
+                        child: ConnectionHint(
+                          _activity,
+                          icon: Icons.sync_rounded,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    if (_error != null) ...[
+                      Semantics(
+                        liveRegion: true,
+                        child: ConnectionHint(_error!, error: true),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    AnimatedSwitcher(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 320),
+                      switchInCurve: Curves.easeOutCubic,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, .035),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      ),
+                      // Outgoing inputs must not keep semantics or accept taps.
+                      layoutBuilder: (current, previous) =>
+                          current ?? const SizedBox.shrink(),
+                      child: Card(
+                        key: ValueKey(_stage),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: _stageContent(),
                           ),
                         ),
                       ),
-                    ],
+                    ),
+                    if ((_stage == 1 || _stage == 2) && !_busy)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: TextButton.icon(
+                          onPressed: () => setState(() {
+                            _stage--;
+                            _error = null;
+                          }),
+                          icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                          label: const Text('ย้อนกลับหนึ่งขั้น'),
+                        ),
+                      ),
                   ],
                 ),
               ),

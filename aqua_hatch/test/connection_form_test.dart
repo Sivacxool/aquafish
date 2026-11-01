@@ -10,11 +10,14 @@ void main() {
       await mountApp(tester, size: size);
       await tester.tap(find.text('ตั้งค่า').last);
       await tester.pumpAndSettle();
-      final group = find.text('เครื่องและการเชื่อมต่อ');
+      final group = find.text('เชื่อมต่อด้วย IP / Gateway');
       await tester.ensureVisible(group);
       await tester.pump();
-      await tester.tap(group);
-      await tester.pumpAndSettle();
+      // Offline settings start expanded; a fresh demo can start collapsed.
+      if (find.text('เครื่องจริง').evaluate().isEmpty) {
+        await tester.tap(group);
+        await tester.pumpAndSettle();
+      }
       await tester.tap(find.text('เครื่องจริง'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

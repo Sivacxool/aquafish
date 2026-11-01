@@ -1,15 +1,16 @@
-# สร้างชุดสำหรับบอร์ดใหม่
+# สร้าง AquaHatch 0.10.0 สำหรับบอร์ดใหม่
 
-ชุดทดสอบเดิมใช้ ESP32-S3, flash 16 MB, OPI PSRAM 8 MB และพอร์ต USB-UART
-ค่าต่อไปนี้ตรงกับบอร์ดที่ทดสอบเท่านั้น ต้องตรวจรุ่นจริงก่อนใช้กับบอร์ดอื่น
+ชุดฮาร์ดแวร์ที่เคยทดสอบ: ESP32-S3 flash 16 MB / OPI PSRAM 8 MB และ AI Thinker ESP32-CAM + OV5640 แยกบอร์ด
+ตรวจรุ่นและผังขาจริงก่อนใช้กับบอร์ดอื่น
 
-## 1. เตรียมเครื่องมือ
+## เครื่องมือ
 
 - Python 3.11 ขึ้นไป
-- Arduino CLI / Arduino IDE พร้อม Arduino-ESP32 3.3.12 และ ArduinoJson 7.4.3
+- Arduino CLI / IDE พร้อม Arduino-ESP32 3.3.12
+- ArduinoJson 7.4.3, DallasTemperature 4.0.6, OneWire 2.3.8
 - Flutter 3.44.6 / Dart 3.12.2, Android SDK และ JDK 17 ขึ้นไป
 
-## 2. สร้างคู่ใบรับรองในเครื่อง
+## สร้างเอกลักษณ์ส่วนตัวและคู่ใบรับรอง
 
 จาก root ของ repository:
 
@@ -17,24 +18,28 @@
 python -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -r tools/requirements.txt
 ./.venv/Scripts/python.exe tools/prepare_device.py
+./.venv/Scripts/python.exe tools/prepare_camera.py
 ```
 
-เครื่องมือสร้าง `private/`, `aqua_hatch/firmware/local_server/device_private.h`
-และแทน `aqua_hatch/assets/device/device_ca.pem` ให้เป็นคู่ใหม่
-ไฟล์ใน private และ device_private.h ต้องเก็บในเครื่องผู้ประกอบ
-ห้ามคัดลอกใบรับรองใหม่เข้าแอปอย่างเดียวแล้วใช้คู่กับเฟิร์มแวร์เดิม
+เครื่องมือแรกสร้างเอกลักษณ์ของ S3, public CA ของแอป และโฟลเดอร์ outputs
+เครื่องมือที่สองสร้างเอกลักษณ์ของกล้อง, public CA ของกล้อง, ข้อมูล public identity ใน Dart และบัตรกล้อง
+ไฟล์ `private/`, `device_private.h` และบัตรจับคู่ใน outputs ต้องเก็บเป็นส่วนตัว
+ต้องใช้เฟิร์มแวร์กับแอปที่สร้างจากเอกลักษณ์ชุดเดียวกัน
 
-## 3. สร้างเฟิร์มแวร์
+## สร้างเฟิร์มแวร์
 
 ```powershell
 ./aqua_hatch/firmware/local_server/Build-Device.ps1
+./aqua_hatch/firmware/camera_server/Build-Camera.ps1
 ```
 
-เมื่อยืนยันพอร์ตและมีเฉพาะ USB ต่อกับบอร์ด จึงใช้ `-Upload -Port COM3`
-เปลี่ยน COM3 ให้ตรงกับเครื่องจริง การ build นี้ใช้ FlashSize=16M, PSRAM=opi,
-FlashMode=qio, PartitionScheme=app3M_fat9M_16MB, CDCOnBoot=default
+ตรวจพอร์ตจริงและวงจรที่ต่ออยู่ก่อนใช้ตัวเลือก Upload ตามพารามิเตอร์ในสคริปต์
+S3 ใช้ FlashSize=16M, PSRAM=opi, FlashMode=qio, PartitionScheme=app3M_fat9M_16MB, CDCOnBoot=default
+กล้องใช้บอร์ด AI Thinker ESP32-CAM ตาม Build-Camera.ps1
+DS18B20 ใช้ GPIO4; DO ใช้ TX16 / DE17 / RX18 ตาม [คู่มือสาย](aqua_hatch/SENSORS_SETUP_TH.md)
+รุ่นนี้อ่านเซนเซอร์ แต่ยังไม่เปิดการขับรีเลย์/ปั๊ม/ฮีตเตอร์
 
-## 4. สร้างแอปและบัตรของคู่ใหม่
+## สร้างแอปและบัตร S3
 
 ```powershell
 cd aqua_hatch
@@ -43,11 +48,6 @@ flutter pub get
 ../.venv/Scripts/python.exe tools/print_pairing_card.py
 ```
 
-ใช้ APK ที่สร้างใหม่นี้กับเฟิร์มแวร์คู่ใหม่ และเก็บบัตรใน `outputs/` เป็นส่วนตัว
-กุญแจลงนาม APK เดิมไม่เผยแพร่ จึงต้องใช้การลงนามของผู้ประกอบและจัดการการติดตั้งตามลายเซ็นของตน
-ไฟล์ .bin ที่ build แล้วมีรหัสและ private key ฝังอยู่ จึงไม่รวม binary เฟิร์มแวร์ใน GitHub
-
-## ผลที่คาดหวัง
-
-บอร์ดเปิด Wi-Fi ตั้งค่า แอปตั้งเครือข่าย 2.4 GHz และเชื่อมตรงได้
-เซนเซอร์ กล้อง และ GPIO ภายนอกยังไม่เปิดใช้ในเฟิร์มแวร์หลักรุ่นนี้
+APK Universal มี ARM32/ARM64/x86_64 ต้องรักษากุญแจลงนามของผู้ประกอบเพื่ออัปเดตทับได้ในอนาคต
+กุญแจลงนามเดิมและ binary เฟิร์มแวร์ที่มี private key ฝังอยู่ไม่เผยแพร่ใน GitHub
+วิธีบิลด์นี้ใช้ source เดียวกับชุดส่งมอบ 0.10.0 แต่บอร์ดใหม่และการสลับ SoftAP ของมือถือแต่ละรุ่นยังต้องทดสอบจริง

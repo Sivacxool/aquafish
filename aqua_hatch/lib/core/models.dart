@@ -119,7 +119,9 @@ bool isPrivateIpv4(String host) {
 
 class Telemetry {
   final DateTime at;
-  final double? temperature, ph, flow;
+  final double? temperature, dissolvedOxygen, ph, flow;
+  final String? temperatureStatus, dissolvedOxygenStatus;
+  final DateTime? temperatureSampledAt, dissolvedOxygenSampledAt;
   final bool? waterLevelOk;
   final bool phCalibrated;
   final DateTime? phCalibratedAt;
@@ -135,6 +137,11 @@ class Telemetry {
   const Telemetry({
     required this.at,
     this.temperature,
+    this.dissolvedOxygen,
+    this.temperatureStatus,
+    this.dissolvedOxygenStatus,
+    this.temperatureSampledAt,
+    this.dissolvedOxygenSampledAt,
     this.ph,
     this.flow,
     this.waterLevelOk,
@@ -182,6 +189,11 @@ class Telemetry {
   Map<String, dynamic> toJson() => {
     'timestamp': at.toUtc().toIso8601String(),
     'temperature_c': temperature,
+    'do_mg_l': dissolvedOxygen,
+    'temperature_status': temperatureStatus,
+    'do_status': dissolvedOxygenStatus,
+    'temperature_sampled_at': temperatureSampledAt?.toUtc().toIso8601String(),
+    'do_sampled_at': dissolvedOxygenSampledAt?.toUtc().toIso8601String(),
     'ph': ph,
     'ph_calibrated': phCalibrated,
     'ph_calibrated_at': phCalibratedAt?.toUtc().toIso8601String(),
@@ -203,9 +215,27 @@ class Telemetry {
       return n is num && n.isFinite ? n.toDouble() : null;
     }
 
+    double? sensorReading(String name, String status, {double? minimum}) {
+      final value = reading(name);
+      // A fresh HTTP response must not revive a stale/failed sensor reading.
+      if (j[status] != null && j[status] != 'ok') return null;
+      return value != null && (minimum == null || value >= minimum)
+          ? value
+          : null;
+    }
+
     return Telemetry(
       at: DateTime.parse(j['timestamp'] as String).toLocal(),
-      temperature: reading('temperature_c'),
+      temperature: sensorReading('temperature_c', 'temperature_status'),
+      dissolvedOxygen: sensorReading('do_mg_l', 'do_status', minimum: 0),
+      temperatureStatus: j['temperature_status'] as String?,
+      dissolvedOxygenStatus: j['do_status'] as String?,
+      temperatureSampledAt: DateTime.tryParse(
+        j['temperature_sampled_at']?.toString() ?? '',
+      )?.toLocal(),
+      dissolvedOxygenSampledAt: DateTime.tryParse(
+        j['do_sampled_at']?.toString() ?? '',
+      )?.toLocal(),
       ph: reading('ph') != null && reading('ph')! >= 0 && reading('ph')! <= 14
           ? reading('ph')
           : null,

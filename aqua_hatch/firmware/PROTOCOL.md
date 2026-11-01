@@ -1,5 +1,7 @@
 # สัญญาการสื่อสาร ESP32 สำหรับ Aqua Hatch 0.2
 
+> เอกสารนี้เป็นสถาปัตยกรรม MQTT/Gateway รุ่นเดิม ชุด S3 + DS18B20 + RS485 ปัจจุบันใช้ HTTPS โดยตรง ดู `../SENSORS_SETUP_TH.md` และ `local_server/local_server.ino`
+
 ยังไม่กำหนด GPIO หรือรุ่นเซนเซอร์ เอกสารนี้เป็นสัญญาที่ต้องนำไป implement ใน Firmware หลังตรวจวงจรจริง ไม่ใช่ Firmware พร้อม flash
 
 ## Transport และ Topic

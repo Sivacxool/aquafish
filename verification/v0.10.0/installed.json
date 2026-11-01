@@ -1,0 +1,18 @@
+{
+  "apk_sha256": "7a2236b5ef07895c3bb64e2da17016bfed158e859d7d99e59cc95a3a53488d66",
+  "installed_version": "0.10.0+2010",
+  "process_running": true,
+  "no_fatal_crash_for_current_pid": true,
+  "preference_connection_keys_present": [
+    "flutter.camera_connection_v1",
+    "flutter.connection"
+  ],
+  "physical_board_connected": false,
+  "native_ui_click_verification": "Not completed: window minimized; Computer Use blocked activation because user input was detected.",
+  "ui_verification": "Production widgets rendered with Thai fonts; simulated main-board/camera setup, failure/retry and read-only walkthrough tested.",
+  "tests": {
+    "suite_passed": 70,
+    "hardware_optional_skipped": 6,
+    "additional_ui_render_passed": 1
+  }
+}

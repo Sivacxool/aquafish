@@ -48,3 +48,9 @@ app.*.map.json
 firmware/camera_node/config.h
 firmware/**/config.h
 **/*test-config.json
+**/device_private.h
+**/private/
+**/*PRIVATE*
+**/*.keystore
+**/*.jks
+**/build/

@@ -6,6 +6,8 @@ import '../core/controller.dart';
 import '../core/models.dart';
 import '../core/ui.dart';
 import 'wifi_setup.dart';
+import 'connection_overview.dart';
+import '../core/paired_camera.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -22,6 +24,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _url,
       _device;
   final _token = TextEditingController();
+  final _cameraUrl = TextEditingController(),
+      _cameraToken = TextEditingController();
+  bool _cameraConnecting = false;
+  bool _usbConnecting = false;
   bool _demo = true,
       _localEsp32 = false,
       _connecting = false,
@@ -42,11 +48,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _device = TextEditingController(text: state.connection.deviceId);
     _demo = state.connection.demo;
     _localEsp32 = state.connection.localEsp32;
+    _cameraUrl.text = state.cameraConnection?.baseUrl ?? '';
   }
 
   @override
   void dispose() {
-    for (final c in [_temperature, _ph, _phMax, _flow, _url, _device, _token]) {
+    for (final c in [
+      _temperature,
+      _ph,
+      _phMax,
+      _flow,
+      _url,
+      _device,
+      _token,
+      _cameraUrl,
+      _cameraToken,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -93,6 +110,56 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     showFeedback(context, error, success: 'เครื่องยืนยันค่าตั้งแล้ว');
   }
 
+  Future<void> _openCameraWifi() async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const WifiSetupScreen(camera: true)),
+    );
+    if (!mounted) return;
+    setState(
+      () => _cameraUrl.text =
+          ref.read(appControllerProvider).cameraConnection?.baseUrl ?? '',
+    );
+  }
+
+  Future<void> _connectCamera() async {
+    setState(() => _cameraConnecting = true);
+    final error = await ref
+        .read(appControllerProvider.notifier)
+        .configureCamera(
+          ConnectionConfig(
+            demo: false,
+            localEsp32: true,
+            baseUrl: _cameraUrl.text.trim(),
+            deviceId: cameraDeviceId,
+          ),
+          _cameraToken.text,
+        );
+    if (!mounted) return;
+    setState(() => _cameraConnecting = false);
+    if (error == null) _cameraToken.clear();
+    showFeedback(
+      context,
+      error,
+      success: 'เชื่อมกล้องแล้ว ไปหน้านับลูกปลาเพื่อถ่ายภาพได้',
+    );
+  }
+
+  Future<void> _connectUsb(bool enabled) async {
+    setState(() => _usbConnecting = true);
+    final error = await ref
+        .read(appControllerProvider.notifier)
+        .configureUsbCamera(enabled);
+    if (!mounted) return;
+    setState(() => _usbConnecting = false);
+    showFeedback(
+      context,
+      error,
+      success: enabled
+          ? 'เชื่อมกล้อง USB แล้ว ไปดูภาพสดในหน้านับลูกปลา'
+          : 'เปลี่ยนไปใช้กล้อง Wi-Fi แล้ว',
+    );
+  }
+
   Future<void> _connect() async {
     setState(() => _connecting = true);
     final config = ConnectionConfig(
@@ -131,36 +198,103 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           'ตั้งค่า',
           'จัดการการเชื่อมต่อ ค่าตั้งเครื่อง และรอบฟัก',
         ),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'ตั้ง Wi-Fi ให้เครื่อง',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        ConnectionOverview(
+          state: state,
+          onBoard: state.busy || _connecting ? null : _openWifiSetup,
+          onCamera: state.busy || _cameraConnecting ? null : _openCameraWifi,
+          onDemo: _connecting || state.busy
+              ? null
+              : () {
+                  setState(() => _demo = true);
+                  _connect();
+                },
+        ),
+        const SizedBox(height: 22),
+        _SettingsGroup(
+          title: 'กล้อง: IP และ USB',
+          subtitle: 'สำหรับกล้องที่ตั้ง Wi-Fi แล้ว หรือใช้ผ่านคอม',
+          icon: Icons.photo_camera_outlined,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'กล้องอยู่ใน Wi-Fi บ้านแล้ว',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'ถ้าทราบ IP ของกล้องแล้ว กรอกเพื่อเชื่อมตรงได้',
+                style: TextStyle(color: AquaColors.muted, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _cameraUrl,
+                keyboardType: TextInputType.url,
+                decoration: const InputDecoration(
+                  labelText: 'URL บอร์ดกล้อง',
+                  hintText: 'https://192.168.1.51',
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'เลือก Wi-Fi บ้านจากในแอป แล้วเชื่อม ESP32 โดยตรง ใช้งานต่อได้โดยไม่เปิดคอม',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _cameraToken,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(
+                  labelText: 'รหัสจับคู่กล้อง',
+                  helperText: 'ใช้รหัสจากบัตรกล้อง ครั้งต่อไปเว้นว่างได้',
                 ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: state.busy || _connecting ? null : _openWifiSetup,
-                  icon: const Icon(Icons.wifi_rounded),
-                  label: const Text('ตั้ง Wi-Fi ให้บอร์ด'),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _cameraConnecting ? null : _connectCamera,
+                icon: const Icon(Icons.link_rounded),
+                label: Text(
+                  _cameraConnecting ? 'กำลังตรวจกล้อง…' : 'เชื่อมกล้องด้วย IP',
                 ),
+              ),
+              if (state.cameraConnection != null) ...[
+                const SizedBox(height: 10),
+                Text('บันทึกกล้องแล้ว: ${state.cameraConnection!.deviceId}'),
               ],
-            ),
+              const Divider(height: 32),
+              const Text(
+                'กล้อง USB · สำหรับ LDPlayer',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'ต้องต่อกล้องเข้าคอมและเปิดตัวรับภาพ USB ไว้',
+                style: TextStyle(fontSize: 13, color: AquaColors.muted),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                key: const ValueKey('connect-usb-camera'),
+                onPressed: _usbConnecting ? null : () => _connectUsb(true),
+                icon: const Icon(Icons.usb_rounded),
+                label: Text(
+                  _usbConnecting
+                      ? 'กำลังตรวจกล้อง USB…'
+                      : state.usbCameraEnabled
+                      ? 'ตรวจกล้อง USB อีกครั้ง'
+                      : 'เชื่อมกล้อง USB',
+                ),
+              ),
+              if (state.usbCameraEnabled)
+                TextButton(
+                  onPressed: _usbConnecting ? null : () => _connectUsb(false),
+                  child: const Text('เปลี่ยนไปใช้กล้อง Wi-Fi'),
+                ),
+            ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         _SettingsGroup(
-          title: 'เครื่องและการเชื่อมต่อ',
-          subtitle: 'โหมดทดลองและเซิร์ฟเวอร์ของเครื่อง',
+          title: 'เชื่อมต่อด้วย IP / Gateway',
+          subtitle: 'ตัวเลือกเพิ่มเติมสำหรับผู้ที่มีที่อยู่เครื่องแล้ว',
           icon: Icons.router_outlined,
-          initiallyExpanded: !state.fresh,
+          initiallyExpanded: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -250,7 +384,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 14),
                 Notice(
                   _localEsp32
-                      ? 'มือถือและบอร์ดต้องอยู่ Wi-Fi บ้านเดียวกัน ใช้ URL และรหัสจากหน้าตั้งค่าบอร์ด เชื่อมตรงได้ด้วยแอป Android รุ่น 0.5'
+                      ? 'มือถือและบอร์ดต้องอยู่ Wi-Fi บ้านเดียวกัน ใช้ URL และรหัสจับคู่จากบัตรประจำเครื่อง'
                       : kIsWeb
                       ? 'เว็บใช้รหัสเฉพาะครั้งนี้ การเชื่อมต่อภายนอกต้องใช้ HTTPS'
                       : 'มือถือเก็บรหัสแบบเข้ารหัสและเชื่อมต่อใหม่อัตโนมัติ การเชื่อมต่อภายนอกต้องใช้ HTTPS',

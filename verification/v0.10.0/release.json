@@ -1,0 +1,17 @@
+{
+  "version": "0.10.0+2010",
+  "scope": "connection UI/UX; no physical board connected during this revision",
+  "apk_abis": [
+    "armeabi-v7a",
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "private_credential_scan_passed": true,
+  "pinned_device_and_camera_CAs_preserved": true,
+  "core_firmware_android_files_unchanged_from_090": 65,
+  "sha256": {
+    "AquaHatch-v0.10.0-Android-universal.apk": "7a2236b5ef07895c3bb64e2da17016bfed158e859d7d99e59cc95a3a53488d66",
+    "AquaHatch-v0.10.0-source.zip": "83a6b5495f343568416182e26214dbb0239b4504a437952fcf3be5743b68daf6"
+  },
+  "physical_hardware_tested_this_revision": false
+}

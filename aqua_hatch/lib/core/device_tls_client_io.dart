@@ -6,25 +6,33 @@ import 'models.dart';
 
 const deviceTlsHostname = 'aquahatch-117c.local';
 
-Future<http.Client> createDeviceClient(ConnectionConfig config) async {
+Future<http.Client> createDeviceClient(ConnectionConfig config) =>
+    createPairedClient(config);
+
+Future<http.Client> createPairedClient(
+  ConnectionConfig config, {
+  String hostname = deviceTlsHostname,
+  String caAsset = 'assets/device/device_ca.pem',
+  Duration connectionTimeout = const Duration(seconds: 6),
+}) async {
   if (!config.localEsp32 || config.validate() != null) {
     throw StateError('การเชื่อมต่อบอร์ดไม่ถูกต้อง');
   }
   final address = Uri.parse(config.baseUrl).host;
-  final ca = await rootBundle.load('assets/device/device_ca.pem');
+  final ca = await rootBundle.load(caAsset);
   final context = SecurityContext(withTrustedRoots: false)
     ..setTrustedCertificatesBytes(
       ca.buffer.asUint8List(ca.offsetInBytes, ca.lengthInBytes),
     );
   final client = HttpClient(context: context)
-    ..connectionTimeout = const Duration(seconds: 6)
+    ..connectionTimeout = connectionTimeout
     ..idleTimeout = const Duration(seconds: 8)
     ..findProxy = (_) => 'DIRECT';
   // Use the configured LAN IP for the socket, while TLS still verifies the
   // device DNS identity and its own CA. No certificate-validation bypass.
   client.connectionFactory = (uri, proxyHost, proxyPort) async {
     if (uri.scheme != 'https' ||
-        uri.host != deviceTlsHostname ||
+        uri.host != hostname ||
         uri.port != 443 ||
         proxyHost != null) {
       throw StateError('ปลายทางไม่ตรงกับบอร์ดที่จับคู่ไว้');
@@ -39,7 +47,7 @@ Future<http.Client> createDeviceClient(ConnectionConfig config) async {
       try {
         final tls = await SecureSocket.secure(
           socket,
-          host: deviceTlsHostname,
+          host: hostname,
           context: context,
         );
         active = tls;
