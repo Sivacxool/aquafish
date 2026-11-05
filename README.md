@@ -4,6 +4,14 @@
 
 แอปควบคุมและดูสถานะเครื่องฟักไข่ปลา เชื่อม ESP32-S3 และ ESP32-CAM ผ่าน Wi-Fi บ้านโดยตรง บอร์ดแต่ละตัวมี IP แยกกัน
 
+## iOS 0.11.0 สำหรับติดตั้งทดสอบส่วนตัว
+
+- [คู่มือติดตั้ง iPhone ผ่าน Windows และ Apple ID ธรรมดา](IOS_INSTALL_TH.md)
+- [สถานะบิลด์ iOS บน macOS](https://github.com/Sivacxool/aquafish/actions/workflows/ios.yml)
+- ไฟล์ IPA จาก workflow ยังไม่เซ็น ต้องเซ็นด้วย Apple ID ของเจ้าของก่อนติดตั้ง
+- ตรวจการเข้าถึงเครือข่ายเฉพาะที่ และมีคำแนะนำสลับ Wi-Fi สำหรับ iPhone
+- การเปิดใน Simulator ยังไม่แทนการทดสอบเซ็น ติดตั้ง และเชื่อมบอร์ดบน iPhone จริง
+
 ## ดาวน์โหลด
 
 - [ติดตั้งแอป Android Universal 0.10.0](AquaHatch-v0.10.0-Android-universal.apk) — ARM 32/64 บิต และ x86_64 สำหรับ LDPlayer
