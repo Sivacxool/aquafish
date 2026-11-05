@@ -11,8 +11,9 @@
 #include "device_private.h"
 #include "sensor_temperature.h"
 #include "sensor_do.h"
+#include "sensor_ph.h"
 
-static const char VERSION[] = "0.9.0-sensors.1";
+static const char VERSION[] = "0.13.0-sensors.1";
 Preferences prefs;
 httpd_handle_t httpsServer = nullptr;
 bool tlsReady = false, wasConnected = false;
@@ -23,7 +24,7 @@ uint16_t firstDisconnectReasons[12] = {};
 volatile uint8_t firstReasonCount = 0;
 String serialLine;
 bool serialOverflow = false;
-float temperatureTarget = 28, phMinimum = 6.5, phMaximum = 8.5, flowTarget = 2.4;
+float temperatureTarget = 28, phMinimum = 6.5, phMaximum = 8.5;
 struct CachedCommand { String id, body, reply; } cache[8];
 uint8_t cacheIndex = 0;
 void startTls();
@@ -41,7 +42,6 @@ String nowIso() {
 void configJson(JsonObject obj) {
   obj["temperature_target"] = temperatureTarget;
   obj["ph_minimum"] = phMinimum; obj["ph_maximum"] = phMaximum;
-  obj["flow_target"] = flowTarget;
 }
 void snapshot(JsonDocument &doc) {
   doc["device_id"] = DEVICE_ID;
@@ -52,18 +52,19 @@ void snapshot(JsonDocument &doc) {
   doc["capabilities"]["ai"] = false;
   doc["capabilities"]["temperature"] = true;
   doc["capabilities"]["dissolved_oxygen"] = oxygen_sensor::enabled();
+  doc["capabilities"]["ph"] = true;
   configJson(doc["config"].to<JsonObject>());
   JsonObject t = doc["telemetry"].to<JsonObject>();
   t["timestamp"] = nowIso(); t["firmware_version"] = VERSION;
   temperature_sensor::append(t);
   oxygen_sensor::append(t);
-  t["ph"] = nullptr;
-  t["flow_l_min"] = nullptr; t["water_level_ok"] = nullptr;
-  t["ph_calibrated"] = false; t["simulated"] = false;
+  ph_sensor::append(t);
+  t["water_level_ok"] = nullptr;
+  t["simulated"] = false;
   t["device_online"] = true; t["hardware_ready"] = false;
   t["hardware_message"] = oxygen_sensor::enabled()
-    ? "อ่าน DS18B20 และหัววัด DO จริง · ยังไม่ตั้งค่าวงจรควบคุมปั๊ม/ฮีตเตอร์"
-    : "อ่าน DS18B20 ที่ GPIO4 · DO รอตรวจระดับไฟ RS485 · ยังไม่ตั้งค่าวงจรควบคุม";
+    ? "อ่าน DS18B20 / DO / pH ADS1115 · ยังไม่เปิดวงจรควบคุมปั๊ม/ฮีตเตอร์"
+    : "อ่าน DS18B20 / pH ADS1115 · DO ยังไม่เปิดใช้ · ยังไม่เปิดวงจรควบคุม";
   t["wifi_rssi"] = WiFi.RSSI(); t["mode"] = "setup";
   t["outputs"].to<JsonObject>();
 }
@@ -207,24 +208,32 @@ esp_err_t api(httpd_req_t *req) {
     String action = incoming["action"] | "";
     if (action == "set_mode" || action == "set_output")
       return error(req,"409 Conflict","ยังไม่กำหนดวงจรและ GPIO จึงยังเปิดอุปกรณ์จริงไม่ได้");
-    if (action != "ping" && action != "set_config")
+    if (action != "ping" && action != "set_config" && action != "calibrate_ph")
       return error(req,"422 Unprocessable Entity","บอร์ดยังไม่รองรับคำสั่งนี้");
     if (action == "set_config") {
       JsonObject p = incoming["payload"];
       if (!p["temperature_target"].is<double>() || !p["ph_minimum"].is<double>() ||
-          !p["ph_maximum"].is<double>() || !p["flow_target"].is<double>())
+          !p["ph_maximum"].is<double>())
         return error(req,"422 Unprocessable Entity","ค่าตั้งต้องเป็นตัวเลขครบทุกค่า");
-      float t=p["temperature_target"], low=p["ph_minimum"], high=p["ph_maximum"], flow=p["flow_target"];
-      if (!isfinite(t)||!isfinite(low)||!isfinite(high)||!isfinite(flow)||t<20||t>35||low<0||high>14||low>=high||flow<=0||flow>50)
+      float t=p["temperature_target"], low=p["ph_minimum"], high=p["ph_maximum"];
+      if (!isfinite(t)||!isfinite(low)||!isfinite(high)||t<20||t>35||low<0||high>14||low>=high)
         return error(req,"422 Unprocessable Entity","ค่าตั้งอยู่นอกช่วงที่รองรับ");
       String stored; serializeJson(p, stored);
       if (prefs.putString("config",stored) != stored.length())
         return error(req,"500 Internal Server Error","บันทึกค่าบนบอร์ดไม่สำเร็จ");
-      temperatureTarget=t; phMinimum=low; phMaximum=high; flowTarget=flow;
+      temperatureTarget=t; phMinimum=low; phMaximum=high;
+    }
+    String calibrationMessage;
+    if(action=="calibrate_ph") {
+      JsonObject p=incoming["payload"];
+      if(!p["buffer_ph"].is<double>() || !p["start_new"].is<bool>())
+        return error(req,"422 Unprocessable Entity","ข้อมูลน้ำยาสอบเทียบไม่ครบ");
+      if(!ph_sensor::calibrate(p["buffer_ph"].as<float>(),p["start_new"].as<bool>(),calibrationMessage))
+        return error(req,"409 Conflict",calibrationMessage.c_str());
     }
     commandCount++;
     JsonDocument response; response["command_id"]=id; response["status"]="applied";
-    response["message"]=action == "ping" ? "ESP32-S3 ตอบรับคำสั่งจริงแล้ว" : "บอร์ดบันทึกค่าตั้งแล้ว ยังไม่เปิดอุปกรณ์";
+    response["message"]=action=="calibrate_ph"?calibrationMessage:action == "ping" ? "ESP32-S3 ตอบรับคำสั่งจริงแล้ว" : "บอร์ดบันทึกค่าตั้งแล้ว ยังไม่เปิดอุปกรณ์";
     response["uptime_ms"]=millis(); response["command_count"]=commandCount;
     String reply; serializeJson(response,reply);
     cache[cacheIndex] = {id,body,reply}; cacheIndex=(cacheIndex+1)%8;
@@ -274,6 +283,7 @@ void setup() {
   Serial.begin(115200); delay(200);
   temperature_sensor::begin();
   oxygen_sensor::begin();
+  ph_sensor::begin();
   prefs.begin("aquahatch",false);
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
     lastDisconnectReason = info.wifi_sta_disconnected.reason; disconnectCount++;
@@ -286,7 +296,6 @@ void setup() {
   if (!deserializeJson(stored,prefs.getString("config","{}"))) {
     temperatureTarget=stored["temperature_target"] | 28.0f;
     phMinimum=stored["ph_minimum"] | 6.5f; phMaximum=stored["ph_maximum"] | 8.5f;
-    flowTarget=stored["flow_target"] | 2.4f;
   }
   WiFi.persistent(false); WiFi.setHostname("aquahatch-117c"); WiFi.mode(WIFI_AP_STA);
   WiFi.setAutoReconnect(true); provisioning::begin();
@@ -297,6 +306,7 @@ void setup() {
 void loop() {
   temperature_sensor::tick();
   oxygen_sensor::tick();
+  ph_sensor::tick();
   provisioning::tick();
   while (Serial.available()) {
     char c=Serial.read();

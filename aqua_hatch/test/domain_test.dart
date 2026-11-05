@@ -30,7 +30,6 @@ void main() {
       const DeviceSettings(phMinimum: 9, phMaximum: 8).validate(),
       isNotNull,
     );
-    expect(const DeviceSettings(flowTarget: -1).validate(), isNotNull);
     expect(const DeviceSettings().validate(), isNull);
   });
   test('remote connections require TLS and safe device identifiers', () {
@@ -100,7 +99,6 @@ void main() {
     final t = repo.snapshot();
     expect(t.output('heater'), isFalse);
     expect(t.output('tumbler'), isFalse);
-    expect(t.flow, 0);
   });
   test('low water forces outputs off and rejects unsafe activation', () async {
     final repo = DemoRepository(const DeviceSettings());

@@ -1,6 +1,6 @@
-# AquaHatch สำหรับ Android / LDPlayer — 0.12.0+2013
+# AquaHatch สำหรับ Android / LDPlayer — 0.13.0+2014
 
-[ดาวน์โหลด AquaHatch-v0.12.0-Android-universal.apk](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/ANDROID/AquaHatch-v0.12.0-Android-universal.apk)
+[ดาวน์โหลด AquaHatch-v0.13.0-Android-universal.apk](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/ANDROID/AquaHatch-v0.13.0-Android-universal.apk)
 
 APK Universal รวม ARM32, ARM64 และ x86_64 สำหรับมือถือ Android และ LDPlayer รุ่นที่รองรับ
 
@@ -20,3 +20,8 @@ APK Universal รวม ARM32, ARM64 และ x86_64 สำหรับมื�
 - LDPlayer ใช้เครือข่ายเสมือนของ Windows การเลือก Wi-Fi จริงต้องทำผ่านอะแดปเตอร์ของ Windows
 
 [เริ่มเชื่อมต่อทีละขั้น](../START_HERE_TH.md) · [ซอร์ส Android](../aqua_hatch/android/) · [ซอร์ส Flutter/Dart](../aqua_hatch/) · [ผลตรวจ](../VERIFICATION.md) · [SHA256](../SHA256SUMS.txt)
+
+## pH และวงนับมือใน 0.13.0
+
+วงนับเล็กลง ปรับขนาดได้ และแยกเพิ่มจุด/ลบจุด ส่วน pH ต้องอัปโหลด S3 0.13.0-sensors.1 ก่อน แล้วสอบเทียบสองจุด รุ่นนี้ยังไม่ได้ทดสอบ pH จริงหรือแฟลชบอร์ดตามคำขอเจ้าของ
+[ผังสาย GPIO8/9 และวิธีสอบเทียบ](../PH_ADS1115_SETUP_TH.md)

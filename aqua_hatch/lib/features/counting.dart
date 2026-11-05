@@ -23,6 +23,8 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   DeviceCapture? _usbLastFrame;
   bool _usbLive = true;
   bool _workspace = false;
+  bool _erasing = false;
+  double _markerRadius = 2;
   Uint8List? _bytes;
   String _filename = 'ยังไม่มีภาพ', _model = '';
   String? _captureId;
@@ -68,6 +70,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
     _points = [];
     _undo.clear();
     _editing = false;
+    _erasing = false;
     _reviewed = false;
     _hasResult = false;
     _saved = false;
@@ -265,13 +268,25 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
       (position.dx / size.width).clamp(0, 1),
       (position.dy / size.height).clamp(0, 1),
     );
-    final index = _points.indexWhere(
-      (p) => sqrt(pow(p.x - point.x, 2) + pow(p.y - point.y, 2)) < .03,
-    );
+    var index = -1;
+    if (_erasing) {
+      var closest = double.infinity;
+      final limit = (_markerRadius + 3) / _transform.value.getMaxScaleOnAxis();
+      for (var i = 0; i < _points.length; i++) {
+        final dx = (_points[i].x - point.x) * size.width;
+        final dy = (_points[i].y - point.y) * size.height;
+        final distance = sqrt(dx * dx + dy * dy);
+        if (distance <= limit && distance < closest) {
+          closest = distance;
+          index = i;
+        }
+      }
+      if (index < 0) return;
+    }
     setState(() {
       _undo.add(List.of(_points));
       _points = List.of(_points);
-      if (index >= 0) {
+      if (_erasing) {
         _points.removeAt(index);
       } else {
         _points.add(point);
@@ -430,7 +445,21 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                     CustomPaint(painter: _SampleTrayPainter())
                   else if (_bytes != null)
                     Image.memory(_bytes!, fit: BoxFit.fill),
-                  CustomPaint(painter: _PointsPainter(_points)),
+                  AnimatedBuilder(
+                    animation: _transform,
+                    builder: (_, _) {
+                      final zoom = interactive
+                          ? _transform.value.getMaxScaleOnAxis()
+                          : 1.0;
+                      return CustomPaint(
+                        painter: _PointsPainter(
+                          _points,
+                          radius: _markerRadius / zoom,
+                          strokeWidth: 0.9 / zoom,
+                        ),
+                      );
+                    },
+                  ),
                   if (!interactive)
                     Positioned(
                       left: 10,
@@ -463,7 +492,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
         panEnabled: !_editing && !_busy,
         scaleEnabled: !_editing && !_busy,
         minScale: 1,
-        maxScale: 5,
+        maxScale: 12,
         child: image,
       ),
     );
@@ -507,6 +536,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   void _manualCount() => setState(() {
     _workspace = true;
     _editing = true;
+    _erasing = false;
     _hasResult = true;
   });
 
@@ -904,23 +934,47 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                         runSpacing: 4,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          SegmentedButton<bool>(
+                          SegmentedButton<String>(
+                            key: const ValueKey('count-tool-selector'),
+                            showSelectedIcon: false,
+                            style: const ButtonStyle(
+                              padding: WidgetStatePropertyAll(
+                                EdgeInsets.symmetric(horizontal: 8),
+                              ),
+                            ),
                             segments: const [
                               ButtonSegment(
-                                value: false,
-                                icon: Icon(Icons.zoom_in_rounded),
-                                label: Text('ซูม/เลื่อน'),
+                                value: 'move',
+                                icon: Icon(Icons.zoom_in_rounded, size: 18),
+                                label: Text('ซูม'),
                               ),
                               ButtonSegment(
-                                value: true,
-                                icon: Icon(Icons.touch_app_outlined),
-                                label: Text('เพิ่ม/ลบจุด'),
+                                value: 'add',
+                                icon: Icon(Icons.add_circle_outline, size: 18),
+                                label: Text('เพิ่มจุด'),
+                              ),
+                              ButtonSegment(
+                                value: 'remove',
+                                icon: Icon(
+                                  Icons.remove_circle_outline,
+                                  size: 18,
+                                ),
+                                label: Text('ลบจุด'),
                               ),
                             ],
-                            selected: {_editing},
+                            selected: {
+                              !_editing
+                                  ? 'move'
+                                  : _erasing
+                                  ? 'remove'
+                                  : 'add',
+                            },
                             onSelectionChanged: _busy
                                 ? null
-                                : (s) => setState(() => _editing = s.first),
+                                : (s) => setState(() {
+                                    _editing = s.first != 'move';
+                                    _erasing = s.first == 'remove';
+                                  }),
                           ),
                           IconButton(
                             tooltip: 'ย้อนกลับ',
@@ -963,10 +1017,30 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                           ),
                         ],
                       ),
+                      Row(
+                        children: [
+                          const Text('ขนาดจุด'),
+                          Expanded(
+                            child: Slider(
+                              key: const ValueKey('count-marker-size'),
+                              value: _markerRadius,
+                              min: 1,
+                              max: 5,
+                              divisions: 8,
+                              onChanged: _busy
+                                  ? null
+                                  : (v) => setState(() => _markerRadius = v),
+                            ),
+                          ),
+                          const Text('เล็ก / ใหญ่'),
+                        ],
+                      ),
                       Text(
                         _editing
-                            ? 'แตะพื้นที่ว่างเพื่อเพิ่ม แตะจุดเดิมเพื่อลบ'
-                            : 'ใช้สองนิ้วซูม แล้วเลือกเพิ่ม/ลบจุดเพื่อตรวจแก้',
+                            ? _erasing
+                                  ? 'แตะจุดที่ต้องการลบ ระบบเลือกจุดที่ใกล้ที่สุด'
+                                  : 'แตะหัวลูกปลาเพื่อเพิ่มจุด จุดที่อยู่ใกล้กันจะไม่ลบกัน'
+                            : 'ใช้สองนิ้วซูม แล้วเลือกเพิ่มจุดหรือลบจุด วงนับคงขนาดบนหน้าจอ',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
@@ -1171,28 +1245,44 @@ class _SampleTrayPainter extends CustomPainter {
 
 class _PointsPainter extends CustomPainter {
   final List<CountPoint> points;
-  _PointsPainter(this.points);
+  final double radius, strokeWidth;
+  _PointsPainter(
+    this.points, {
+    required this.radius,
+    required this.strokeWidth,
+  });
   @override
   void paint(Canvas canvas, Size size) {
     for (final point in points) {
       final at = Offset(point.x * size.width, point.y * size.height);
       canvas.drawCircle(
         at,
-        8,
+        radius,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth * 2,
+      );
+      canvas.drawCircle(
+        at,
+        radius,
         Paint()..color = AquaColors.teal.withValues(alpha: .1),
       );
       canvas.drawCircle(
         at,
-        8,
+        radius,
         Paint()
           ..color = AquaColors.teal
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.6,
+          ..strokeWidth = strokeWidth,
       );
-      canvas.drawCircle(at, 2, Paint()..color = AquaColors.teal);
+      canvas.drawCircle(at, radius * .28, Paint()..color = AquaColors.teal);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _PointsPainter old) => old.points != points;
+  bool shouldRepaint(covariant _PointsPainter old) =>
+      old.points != points ||
+      old.radius != radius ||
+      old.strokeWidth != strokeWidth;
 }

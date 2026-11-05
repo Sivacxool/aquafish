@@ -331,7 +331,7 @@ async def command(device_id: str, value: Command):
             raise HTTPException(422, "รูปแบบคำสั่งอุปกรณ์ไม่ถูกต้อง")
     else:
         try:
-            if set(payload) != {"temperature_target", "ph_minimum", "ph_maximum", "flow_target"}:
+            if not {"temperature_target", "ph_minimum", "ph_maximum"} <= set(payload) <= {"temperature_target", "ph_minimum", "ph_maximum", "flow_target"}:
                 raise ValueError("incomplete config")
             Settings.model_validate(payload)
         except ValueError:

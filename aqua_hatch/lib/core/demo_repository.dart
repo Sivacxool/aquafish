@@ -55,9 +55,6 @@ class DemoRepository implements DeviceRepository {
       phCalibratedAt: time.subtract(const Duration(days: 1)),
       wifiRssi: -54,
       firmwareVersion: 'sim-0.2',
-      flow: outputs['pump'] == true
-          ? settings.flowTarget + .08 * sin(_tick / 3)
-          : 0,
       waterLevelOk: !lowWater,
       simulated: true,
       mode: mode,

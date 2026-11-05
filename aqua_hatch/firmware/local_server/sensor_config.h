@@ -9,3 +9,8 @@ constexpr uint8_t DO_ADDRESS = 1;
 // A genuine MAX485 is specified for 5V; if unreliable, use a 3.3V MAX3485
 // or a 5V transceiver with a proper RO level converter. Never drive GPIO at 5V.
 constexpr bool DO_ENABLED = true;
+// ADS1115 VDD=3.3V, ADDR=GND (0x48). PH-4502C PO MUST pass through
+// 10k to A0 and another 10k from A0 to GND. PH board V+=5V, all GND joined.
+constexpr int PH_SDA_PIN=8;
+constexpr int PH_SCL_PIN=9;
+constexpr uint8_t PH_ADS_ADDRESS=0x48;

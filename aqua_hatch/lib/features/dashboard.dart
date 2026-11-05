@@ -126,8 +126,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 title: 'ค่า pH',
                 value: number(data?.ph),
                 unit: 'pH',
-                detail:
-                    'ช่วง ${number(state.settings.phMinimum)}–${number(state.settings.phMaximum)}',
+                detail: data?.phSensor.supported == true && data?.ph == null
+                    ? data!.phSensor.message
+                    : 'ช่วง ${number(state.settings.phMinimum)}–${number(state.settings.phMaximum)}',
                 icon: Icons.bubble_chart_outlined,
                 color: AquaColors.teal,
                 warning:
@@ -135,16 +136,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     !data!.phCalibrated ||
                     data.ph! < state.settings.phMinimum ||
                     data.ph! > state.settings.phMaximum,
-              ),
-              MetricCard(
-                title: 'อัตราการไหล',
-                value: number(data?.flow),
-                unit: 'L/min',
-                detail: 'เป้าหมาย ${number(state.settings.flowTarget)}',
-                icon: Icons.waves_rounded,
-                warning:
-                    data?.flow == null ||
-                    (data!.output('pump') && data.flow! < .1),
               ),
               MetricCard(
                 title: 'ระดับน้ำ',

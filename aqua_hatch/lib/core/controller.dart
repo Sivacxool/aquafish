@@ -512,6 +512,16 @@ class AppController extends Notifier<AppState> {
     }
   }
 
+  Future<String?> calibratePh(double bufferPh, {required bool startNew}) async {
+    if (state.connection.demo || !state.connection.localEsp32) {
+      return 'เชื่อมบอร์ด S3 จริงก่อนสอบเทียบ pH';
+    }
+    if (state.telemetry?.phSensor.supported != true) {
+      return 'อัปเฟิร์มแวร์ S3 เป็น 0.13.0 เพื่อรองรับ pH ผ่าน ADS1115';
+    }
+    return send('calibrate_ph', {'buffer_ph': bufferPh, 'start_new': startNew});
+  }
+
   Future<String?> saveSettings(DeviceSettings settings) async {
     final error = settings.validate();
     if (error != null) return error;

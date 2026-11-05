@@ -2,7 +2,7 @@ name: iOS personal install
 
 on:
   push:
-    branches: [main, codex/ios-personal-install, codex/ov3660-camera]
+    branches: [main, codex/ios-personal-install, codex/ov3660-camera, codex/ph-ads1115]
     paths:
       - aqua_hatch/**
       - .github/workflows/ios.yml
@@ -41,6 +41,14 @@ jobs:
           if swift tools/verify_apple_device_certificates.swift assets/device/camera_ca.pem test/fixtures/camera_server_public.pem wrong-camera.local > build/ios-delivery/apple-wrong-host.log 2>&1; then
             echo 'Wrong camera hostname was accepted'; exit 1
           fi
+      - name: Verify pH calibration math
+        run: |
+          c++ -std=c++17 ../tools/test_ph_calibration.cpp -o build/ios-delivery/test-ph-calibration
+          build/ios-delivery/test-ph-calibration
+      - name: Verify main S3 certificate with Apple trust policy
+        run: |
+          set -o pipefail
+          swift tools/verify_apple_device_certificates.swift assets/device/device_ca.pem test/fixtures/s3_server_public.pem aquahatch-117c.local 2>&1 | tee build/ios-delivery/apple-s3-trust.log
       - name: Install pinned Flutter SDK
         run: |
           git clone --depth 1 --branch 3.44.6 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
@@ -65,8 +73,8 @@ jobs:
         run: |
           mkdir -p build/ios-delivery/stage/Payload
           ditto build/ios/iphoneos/Runner.app build/ios-delivery/stage/Payload/Runner.app
-          ditto -c -k --keepParent build/ios-delivery/stage/Payload build/ios-delivery/AquaHatch-v0.12.0-iOS-unsigned.ipa
-          python3 tools/verify_ios_ipa.py build/ios-delivery/AquaHatch-v0.12.0-iOS-unsigned.ipa
+          ditto -c -k --keepParent build/ios-delivery/stage/Payload build/ios-delivery/AquaHatch-v0.13.0-iOS-unsigned.ipa
+          python3 tools/verify_ios_ipa.py build/ios-delivery/AquaHatch-v0.13.0-iOS-unsigned.ipa
           cp ../IOS_INSTALL_TH.md build/ios-delivery/
       - name: Upload install package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

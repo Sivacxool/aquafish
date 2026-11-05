@@ -113,3 +113,10 @@ def test_null_sensors_are_not_coerced_to_safe_values():
     assert reading.ph is None
     assert reading.water_level_ok is None
     assert reading.ph_calibrated is False
+
+
+def test_config_without_removed_flow_field_is_accepted():
+    with TestClient(main.app) as client:
+        cmd = make_command("config-no-flow-013", "set_config", {
+            "temperature_target": 28, "ph_minimum": 6.5, "ph_maximum": 8.5})
+        assert client.post("/api/v1/devices/incubator-01/commands", headers=HEADERS, json=cmd).status_code == 202

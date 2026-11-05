@@ -22,6 +22,36 @@ Future<void> sampleWorkspace(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('nearby fry heads can be added separately and erased precisely', (
+    tester,
+  ) async {
+    await mountApp(tester);
+    await sampleWorkspace(tester);
+    await tester.tap(find.text('เพิ่มจุด'));
+    await tester.pump();
+    final image = find.byKey(const ValueKey('count-review-image'));
+    final rect = tester.getRect(image);
+    final first = rect.topLeft + Offset(rect.width * .5, rect.height * .98);
+    final second = first + const Offset(6, 0);
+    await tester.tapAt(first);
+    await tester.pump();
+    await tester.tapAt(second);
+    await tester.pump();
+    expect(find.text('50'), findsOneWidget);
+    await tester.tap(find.text('ลบจุด'));
+    await tester.pump();
+    await tester.tapAt(second);
+    await tester.pump();
+    expect(find.text('49'), findsOneWidget);
+    await tester.tapAt(second);
+    await tester.pump();
+    expect(find.text('49'), findsOneWidget);
+    final slider = find.byKey(const ValueKey('count-marker-size'));
+    await tester.drag(slider, const Offset(-120, 0));
+    await tester.pump();
+    expect(find.text('49'), findsOneWidget);
+    await closeApp(tester);
+  });
   testWidgets('manual mode shows remaining lease and can return to automatic', (
     tester,
   ) async {
@@ -54,7 +84,7 @@ void main() {
       );
       viewer.transformationController!.value = Matrix4.diagonal3Values(2, 2, 1);
       await tester.pump();
-      await tester.tap(find.text('เพิ่ม/ลบจุด'));
+      await tester.tap(find.text('ลบจุด'));
       await tester.pump();
       final image = find.byKey(const ValueKey('count-review-image'));
       final size = tester.getSize(image);
@@ -74,7 +104,12 @@ void main() {
   ) async {
     await mountApp(tester);
     final navTop = tester.getRect(find.byType(NavigationBar)).top;
-    for (final label in ['อุณหภูมิน้ำ', 'ค่า pH', 'อัตราการไหล', 'ระดับน้ำ']) {
+    for (final label in [
+      'อุณหภูมิน้ำ',
+      'ออกซิเจนละลายน้ำ (DO)',
+      'ค่า pH',
+      'ระดับน้ำ',
+    ]) {
       expect(
         tester.getRect(find.text(label)).bottom,
         lessThan(navTop),
@@ -91,7 +126,7 @@ void main() {
       await sampleWorkspace(tester);
       expect(find.text('48'), findsOneWidget);
       final image = find.byKey(const ValueKey('count-review-image'));
-      final edit = find.text('เพิ่ม/ลบจุด');
+      final edit = find.text('เพิ่มจุด');
       final review = find.text('ตรวจสอบจำนวนในภาพแล้ว');
       final save = find.widgetWithText(FilledButton, 'บันทึกผลนับ');
       final navTop = tester.getRect(find.byType(NavigationBar)).top;

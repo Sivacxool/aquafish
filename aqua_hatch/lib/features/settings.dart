@@ -8,6 +8,7 @@ import '../core/ui.dart';
 import 'wifi_setup.dart';
 import 'connection_overview.dart';
 import '../core/paired_camera.dart';
+import 'ph_calibration.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -17,12 +18,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _settingsForm = GlobalKey<FormState>();
-  late final TextEditingController _temperature,
-      _ph,
-      _phMax,
-      _flow,
-      _url,
-      _device;
+  late final TextEditingController _temperature, _ph, _phMax, _url, _device;
   final _token = TextEditingController();
   final _cameraUrl = TextEditingController(),
       _cameraToken = TextEditingController();
@@ -43,7 +39,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
     _ph = TextEditingController(text: number(state.settings.phMinimum));
     _phMax = TextEditingController(text: number(state.settings.phMaximum));
-    _flow = TextEditingController(text: number(state.settings.flowTarget));
     _url = TextEditingController(text: state.connection.baseUrl);
     _device = TextEditingController(text: state.connection.deviceId);
     _demo = state.connection.demo;
@@ -57,7 +52,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _temperature,
       _ph,
       _phMax,
-      _flow,
       _url,
       _device,
       _token,
@@ -73,7 +67,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _temperature.text = number(settings.temperatureTarget);
     _ph.text = number(settings.phMinimum);
     _phMax.text = number(settings.phMaximum);
-    _flow.text = number(settings.flowTarget);
     _dirty = false;
   }
 
@@ -100,7 +93,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       temperatureTarget: _parse(_temperature.text)!,
       phMinimum: _parse(_ph.text)!,
       phMaximum: _parse(_phMax.text)!,
-      flowTarget: _parse(_flow.text)!,
     );
     final error = await ref
         .read(appControllerProvider.notifier)
@@ -449,8 +441,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 22),
         _SettingsGroup(
+          title: 'pH ผ่าน ADS1115',
+          subtitle: 'E-201-C / PH-4502C · ตั้งค่าและสอบเทียบ',
+          icon: Icons.science_outlined,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('SDA → GPIO8 · SCL → GPIO9 · อ่านแรงดันที่ A0'),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const PhCalibrationScreen(),
+                  ),
+                ),
+                icon: const Icon(Icons.science_outlined),
+                label: const Text('เปิดคู่มือและสอบเทียบ pH'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+        _SettingsGroup(
           title: 'ค่าควบคุม',
-          subtitle: 'อุณหภูมิ ช่วง pH และอัตราการไหล',
+          subtitle: 'อุณหภูมิและช่วง pH',
           icon: Icons.tune_rounded,
           initiallyExpanded: false,
           child: Form(
@@ -480,7 +494,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       _field(_temperature, 'อุณหภูมิเป้าหมาย', '°C', 20, 35),
                       _field(_ph, 'pH ต่ำสุด', 'pH', 0, 14),
                       _field(_phMax, 'pH สูงสุด', 'pH', 0, 14),
-                      _field(_flow, 'อัตราไหลเป้าหมาย', 'L/min', .1, 50),
                     ];
                     final width = c.maxWidth >= 700
                         ? (c.maxWidth - 16) / 2

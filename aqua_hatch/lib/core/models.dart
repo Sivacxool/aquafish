@@ -1,14 +1,14 @@
 import 'dart:math';
+import 'ph.dart';
 
 enum RunMode { automatic, manual }
 
 class DeviceSettings {
-  final double temperatureTarget, phMinimum, phMaximum, flowTarget;
+  final double temperatureTarget, phMinimum, phMaximum;
   const DeviceSettings({
     this.temperatureTarget = 28,
     this.phMinimum = 6.5,
     this.phMaximum = 8.5,
-    this.flowTarget = 2.4,
   });
   String? validate() {
     if (!temperatureTarget.isFinite ||
@@ -23,9 +23,6 @@ class DeviceSettings {
         phMinimum >= phMaximum) {
       return 'ช่วง pH ต้องอยู่ระหว่าง 0–14 และค่าต่ำสุดต้องน้อยกว่าค่าสูงสุด';
     }
-    if (!flowTarget.isFinite || flowTarget <= 0 || flowTarget > 50) {
-      return 'อัตราไหลต้องมากกว่า 0 และไม่เกิน 50 L/min';
-    }
     return null;
   }
 
@@ -33,13 +30,11 @@ class DeviceSettings {
     'temperature_target': temperatureTarget,
     'ph_minimum': phMinimum,
     'ph_maximum': phMaximum,
-    'flow_target': flowTarget,
   };
   factory DeviceSettings.fromJson(Map<String, dynamic> json) => DeviceSettings(
     temperatureTarget: (json['temperature_target'] as num?)?.toDouble() ?? 28,
     phMinimum: (json['ph_minimum'] as num?)?.toDouble() ?? 6.5,
     phMaximum: (json['ph_maximum'] as num?)?.toDouble() ?? 8.5,
-    flowTarget: (json['flow_target'] as num?)?.toDouble() ?? 2.4,
   );
 }
 
@@ -118,8 +113,9 @@ bool isPrivateIpv4(String host) {
 }
 
 class Telemetry {
+  final PhSensorInfo phSensor;
   final DateTime at;
-  final double? temperature, dissolvedOxygen, ph, flow;
+  final double? temperature, dissolvedOxygen, ph;
   final String? temperatureStatus, dissolvedOxygenStatus;
   final DateTime? temperatureSampledAt, dissolvedOxygenSampledAt;
   final bool? waterLevelOk;
@@ -135,6 +131,7 @@ class Telemetry {
   final Map<String, bool> outputs;
   final DateTime? manualUntil;
   const Telemetry({
+    this.phSensor = const PhSensorInfo(),
     required this.at,
     this.temperature,
     this.dissolvedOxygen,
@@ -143,7 +140,6 @@ class Telemetry {
     this.temperatureSampledAt,
     this.dissolvedOxygenSampledAt,
     this.ph,
-    this.flow,
     this.waterLevelOk,
     this.phCalibrated = false,
     this.phCalibratedAt,
@@ -170,16 +166,11 @@ class Telemetry {
       result.add('อุณหภูมิออกนอกช่วงที่ตั้งไว้');
     }
     if (ph == null) {
-      result.add('อ่านค่า pH ไม่ได้');
+      result.add(phSensor.supported ? phSensor.message : 'อ่านค่า pH ไม่ได้');
     } else if (!phCalibrated) {
       result.add('เซนเซอร์ pH ยังไม่ยืนยันการสอบเทียบ');
     } else if (ph! < settings.phMinimum || ph! > settings.phMaximum) {
       result.add('pH อยู่นอกช่วงที่ตั้งไว้');
-    }
-    if (flow == null) {
-      result.add('อ่านค่าอัตราไหลไม่ได้');
-    } else if (output('pump') && flow! < 0.1) {
-      result.add('ปั๊มเปิดอยู่ แต่ไม่พบการไหล');
     }
     if (waterLevelOk == null) result.add('อ่านค่าระดับน้ำไม่ได้');
     if (waterLevelOk == false) result.add('ระดับน้ำต่ำ ระบบป้องกันทำงาน');
@@ -187,6 +178,7 @@ class Telemetry {
   }
 
   Map<String, dynamic> toJson() => {
+    ...phSensor.toJson(),
     'timestamp': at.toUtc().toIso8601String(),
     'temperature_c': temperature,
     'do_mg_l': dissolvedOxygen,
@@ -199,7 +191,6 @@ class Telemetry {
     'ph_calibrated_at': phCalibratedAt?.toUtc().toIso8601String(),
     'wifi_rssi': wifiRssi,
     'firmware_version': firmwareVersion,
-    'flow_l_min': flow,
     'water_level_ok': waterLevelOk,
     'simulated': simulated,
     'device_online': deviceOnline,
@@ -225,6 +216,7 @@ class Telemetry {
     }
 
     return Telemetry(
+      phSensor: PhSensorInfo.fromJson(j),
       at: DateTime.parse(j['timestamp'] as String).toLocal(),
       temperature: sensorReading('temperature_c', 'temperature_status'),
       dissolvedOxygen: sensorReading('do_mg_l', 'do_status', minimum: 0),
@@ -236,8 +228,11 @@ class Telemetry {
       dissolvedOxygenSampledAt: DateTime.tryParse(
         j['do_sampled_at']?.toString() ?? '',
       )?.toLocal(),
-      ph: reading('ph') != null && reading('ph')! >= 0 && reading('ph')! <= 14
-          ? reading('ph')
+      ph:
+          sensorReading('ph', 'ph_status') != null &&
+              reading('ph')! >= 0 &&
+              reading('ph')! <= 14
+          ? sensorReading('ph', 'ph_status')
           : null,
       phCalibrated: j['ph_calibrated'] == true,
       phCalibratedAt: DateTime.tryParse(
@@ -245,7 +240,6 @@ class Telemetry {
       )?.toLocal(),
       wifiRssi: j['wifi_rssi'] is int ? j['wifi_rssi'] as int : null,
       firmwareVersion: j['firmware_version'] as String?,
-      flow: reading('flow_l_min'),
       waterLevelOk: j['water_level_ok'] is bool
           ? j['water_level_ok'] as bool
           : null,

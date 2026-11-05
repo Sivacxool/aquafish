@@ -1,6 +1,6 @@
-# AquaHatch 0.12.0 — ติดตั้งทดสอบบน iPhone จาก Windows
+# AquaHatch 0.13.0 — ติดตั้งทดสอบบน iPhone จาก Windows
 
-ไฟล์ **AquaHatch-v0.12.0-iOS-unsigned.ipa** เป็นแอป iOS สำหรับเครื่องจริงที่ยังไม่เซ็น ต้องเซ็นด้วย Apple ID ของเจ้าของก่อนติดตั้ง เปิดไฟล์จาก Safari เพื่อติดตั้งตรง ๆ ไม่ได้
+ไฟล์ **AquaHatch-v0.13.0-iOS-unsigned.ipa** เป็นแอป iOS สำหรับเครื่องจริงที่ยังไม่เซ็น ต้องเซ็นด้วย Apple ID ของเจ้าของก่อนติดตั้ง เปิดไฟล์จาก Safari เพื่อติดตั้งตรง ๆ ไม่ได้
 
 ดาวน์โหลดชุดล่าสุดจาก [โฟลเดอร์ IOS](IOS/) · [Android / LDPlayer](ANDROID/)
 
@@ -51,3 +51,8 @@ Apple ID ธรรมดาใช้สำหรับทดสอบส่ว�
 ต้องมีสมาชิก Apple Developer พร้อมสิทธิ์และข้อมูลเซ็นแอป สำหรับเส้นทางนี้ยังไม่ได้สร้าง signed IPA หรืออัปโหลด TestFlight
 
 ข้อมูลต้นทาง: [Flutter — Build and release an iOS app](https://docs.flutter.dev/deployment/ios), [Apple — Local network privacy](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy), [Apple — Developer Mode](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device)
+
+## pH และวงนับมือใน 0.13.0
+
+วงนับเล็กลง ปรับขนาดได้ และแยกเพิ่มจุด/ลบจุด ส่วน pH ต้องอัปโหลด S3 0.13.0-sensors.1 ก่อน แล้วสอบเทียบสองจุด รุ่นนี้ยังไม่ได้ทดสอบ pH จริงหรือแฟลชบอร์ดตามคำขอเจ้าของ
+[ผังสาย GPIO8/9 และวิธีสอบเทียบ](PH_ADS1115_SETUP_TH.md)

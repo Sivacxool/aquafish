@@ -74,6 +74,11 @@ void main() {
     await tester.tap(find.text('ลองนับภาพตัวอย่าง'));
     await tester.pump(const Duration(seconds: 1));
     await capture('counting-desktop');
+    tester.view.physicalSize = const Size(390, 844);
+    await tester.pump();
+    await capture('counting-mobile');
+    tester.view.physicalSize = const Size(1440, 1024);
+    await tester.pump();
     await tester.tap(find.text('ตั้งค่า').first);
     await tester.pump(const Duration(milliseconds: 350));
     await capture('settings-desktop');
