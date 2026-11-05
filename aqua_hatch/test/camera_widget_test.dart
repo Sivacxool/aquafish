@@ -59,6 +59,30 @@ class CameraController extends AppController {
   );
 }
 
+class Ov3660Controller extends CameraController {
+  @override
+  AppState build() => super.build().copyWith(
+    cameraConnection: const ConnectionConfig(
+      demo: false,
+      localEsp32: true,
+      baseUrl: 'https://192.168.1.55',
+      deviceId: 'camera-7c60',
+    ),
+  );
+
+  @override
+  Future<DeviceCameraStatus> cameraStatus() async => const DeviceCameraStatus(
+    cameraId: 'camera-7c60',
+    configured: true,
+    online: true,
+    message: 'กล้องพร้อมถ่ายภาพ',
+    sensor: 'OV3660',
+    captureWidth: 2048,
+    captureHeight: 1536,
+    autofocusSupported: false,
+  );
+}
+
 DeviceCapture captured() => DeviceCapture(
   id: 'capture-from-machine',
   cameraId: 'camera-01',
@@ -85,6 +109,45 @@ Future<void> mount(WidgetTester tester, CameraController controller) async {
 }
 
 void main() {
+  testWidgets(
+    'OV3660 photo supports manual head counting without claiming AI is ready',
+    (tester) async {
+      final controller = Ov3660Controller();
+      await mount(tester, controller);
+      expect(find.text('OV3660 · 2048 × 1536 พิกเซล'), findsOneWidget);
+      await tester.tap(find.text('ถ่ายภาพจากกล้องในเครื่อง'));
+      await tester.pump();
+      controller.photo.complete(captured());
+      final wait = Stopwatch()..start();
+      while (find.text('ภาพจากกล้องในเครื่อง').evaluate().isEmpty &&
+          wait.elapsed < const Duration(seconds: 5)) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+      expect(find.text('ภาพจากกล้องในเครื่อง'), findsOneWidget);
+      final ai = find.widgetWithText(FilledButton, 'AI ยังไม่พร้อมใช้งาน');
+      expect(tester.widget<FilledButton>(ai).onPressed, isNull);
+      final manual = find.text('นับด้วยมือ');
+      await tester.ensureVisible(manual);
+      await tester.tap(manual);
+      await tester.pumpAndSettle();
+      final image = find.byKey(const ValueKey('count-review-image'));
+      await tester.ensureVisible(image);
+      await tester.tap(image);
+      await tester.pump();
+      expect(find.text('1'), findsOneWidget);
+      expect(controller.analyzedId, isNull);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+    variant: TargetPlatformVariant({
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
+  );
+
   testWidgets(
     'embedded camera is primary, works without main telemetry, and analyzes captured ID',
     (tester) async {

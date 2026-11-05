@@ -1,6 +1,6 @@
-# AquaHatch สำหรับ Android / LDPlayer — 0.11.1+2012
+# AquaHatch สำหรับ Android / LDPlayer — 0.12.0+2013
 
-[ดาวน์โหลด AquaHatch-v0.11.1-Android-universal.apk](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/ANDROID/AquaHatch-v0.11.1-Android-universal.apk)
+[ดาวน์โหลด AquaHatch-v0.12.0-Android-universal.apk](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/ANDROID/AquaHatch-v0.12.0-Android-universal.apk)
 
 APK Universal รวม ARM32, ARM64 และ x86_64 สำหรับมือถือ Android และ LDPlayer รุ่นที่รองรับ
 
@@ -14,7 +14,7 @@ APK Universal รวม ARM32, ARM64 และ x86_64 สำหรับมื�
 
 ## กล้องและ Wi-Fi
 
-- ใช้ public CA กล้องชุดเดียวกับ iOS 0.11.1 และเฟิร์มแวร์กล้องที่แก้ล่าสุด
+- ใช้ public CA กล้องชุดเดียวกับ iOS 0.12.0 และเฟิร์มแวร์กล้องที่แก้ล่าสุด
 - รหัสจับคู่กล้องและ Wi-Fi บ้านที่บันทึกไว้ในกล้องยังคงเดิม
 - APK เก่าที่ใช้ CA กล้องชุดก่อนต้องอัปเดตเป็นไฟล์นี้เพื่อใช้กับกล้องที่อัปเดตใบรับรองแล้ว
 - LDPlayer ใช้เครือข่ายเสมือนของ Windows การเลือก Wi-Fi จริงต้องทำผ่านอะแดปเตอร์ของ Windows

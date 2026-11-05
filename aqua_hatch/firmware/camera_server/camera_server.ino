@@ -13,7 +13,7 @@
 #include "camera_pins.h"
 #include "camera_quality.h"
 
-static const char VERSION[]="0.9.0-camera.2";
+static const char VERSION[]="0.12.0-camera.1";
 Preferences prefs;
 httpd_handle_t server=nullptr;
 bool tlsReady=false,wasConnected=false,cameraReady=false,cameraActive=false;
@@ -21,6 +21,10 @@ uint32_t lastCameraProbeAt=0;
 uint32_t lastWifiAttempt=0;
 volatile uint16_t lastDisconnectReason=0;
 String serialLine,cameraError,sensorName;
+framesize_t nativeFrameSize=FRAMESIZE_QXGA;
+uint16_t nativeWidth=2048,nativeHeight=1536;
+bool autofocusSupported=false;
+const char *nativeResolution="3mp";
 bool serialOverflow=false;
 camera_fb_t *photo=nullptr;
 camera_fb_t storedPhoto={};
@@ -32,7 +36,7 @@ uint32_t lastWarmupMs=0,lastCaptureMs=0;
 bool flashAttached=false,flashActive=false,lastFlashUsed=false;
 uint8_t lastFlashDuty=0,lastJpegQuality=10;
 void startTls();
-void initCamera(framesize_t size=FRAMESIZE_QSXGA,int quality=10);
+void initCamera(framesize_t size=FRAMESIZE_INVALID,int quality=10);
 void shutdownCamera();
 void flashOff();
 esp_err_t sendJson(httpd_req_t*,const char*,const JsonDocument&);
@@ -55,7 +59,8 @@ void status(JsonDocument &doc) {
   doc["capture_mode"]="on_demand";doc["camera_awake"]=cameraActive;
   doc["focus_status"]=lastFocus.status;
   doc["flash_active"]=flashActive;
-  doc["default_flash"]=true;doc["default_capture_width"]=2560;doc["default_capture_height"]=1920;
+  doc["default_flash"]=true;doc["default_capture_width"]=nativeWidth;doc["default_capture_height"]=nativeHeight;
+  doc["default_capture_resolution"]=nativeResolution;doc["autofocus_supported"]=autofocusSupported;
   doc["message"]=cameraReady?"กล้องพร้อมถ่ายภาพผ่าน Wi-Fi":cameraError;
   doc["last_seen"]=nowIso(); doc["ip"]=WiFi.localIP().toString();
   doc["wifi_rssi"]=WiFi.RSSI();doc["free_heap"]=ESP.getFreeHeap();
@@ -74,6 +79,7 @@ esp_err_t error(httpd_req_t *req,const char *code,const char *message) {
 void releasePhoto() { if(photo) { heap_caps_free(photo->buf); photo=nullptr; storedPhoto={}; } }
 void job(JsonDocument &doc) {
   identity(doc); doc["capture_id"]=captureId; doc["received_at"]=receivedAt;
+  doc["sensor"]=sensorName;
   doc["status"]=photo?"captured":"expired";
   if(photo) { doc["bytes"]=photo->len; doc["width"]=photo->width; doc["height"]=photo->height; doc["sha256"]=photoDigest; }
   doc["focus_status"]=lastFocus.status;doc["focus_firmware_ready"]=lastFocus.firmwareReady;
@@ -136,9 +142,11 @@ esp_err_t api(httpd_req_t *req) {
     const int duty=incoming["flash_duty"]|64;
     const int quality=incoming["jpeg_quality"]|10;
     if(duty<16||duty>96||quality<4||quality>16)return error(req,"422 Unprocessable Entity","ค่าคุณภาพหรือความสว่างแฟลชไม่ถูกต้อง");
-    const String resolution=incoming["resolution"]|"5mp";
+    const String resolution=incoming["resolution"]|"sensor_max";
     framesize_t frameSize;
-    if(resolution=="5mp")frameSize=FRAMESIZE_QSXGA; // Driver maximum on this OV5640 build.
+    if(resolution=="sensor_max")frameSize=nativeFrameSize;
+    else if(resolution=="5mp")frameSize=FRAMESIZE_QSXGA;
+    else if(resolution=="3mp")frameSize=FRAMESIZE_QXGA;
     else if(resolution=="uxga")frameSize=FRAMESIZE_UXGA;
     else if(resolution=="svga")frameSize=FRAMESIZE_SVGA;
     else return error(req,"422 Unprocessable Entity","ขนาดภาพไม่ถูกต้อง");
@@ -156,7 +164,8 @@ esp_err_t api(httpd_req_t *req) {
     const uint32_t captureStart=millis();lastFlashUsed=false;lastWarmupMs=warmup;lastCaptureMs=0;lastFlashDuty=0;lastJpegQuality=quality;
     initCamera(frameSize,quality);
     if(!cameraReady) {shutdownCamera();return error(req,"503 Service Unavailable",cameraError.c_str());}
-    sensor_t *sensor=esp_camera_sensor_get();lastFocus=aquaPrepareFocus(sensor,focus);
+    sensor_t *sensor=esp_camera_sensor_get();lastFocus=aquaPrepareFocus(sensor,focus&&autofocusSupported);
+    if(!autofocusSupported)lastFocus.status="not_supported_sensor";
     if(flash) {
       lastFlashUsed=flashOn(duty);lastFlashDuty=lastFlashUsed?duty:0;
       if(!lastFlashUsed) {shutdownCamera();return error(req,"503 Service Unavailable","เปิดแฟลชกล้องไม่สำเร็จ");}
@@ -223,13 +232,27 @@ void initCamera(framesize_t size,int quality) {
   c.pin_d4=Y6_GPIO_NUM;c.pin_d5=Y7_GPIO_NUM;c.pin_d6=Y8_GPIO_NUM;c.pin_d7=Y9_GPIO_NUM;
   c.pin_xclk=XCLK_GPIO_NUM;c.pin_pclk=PCLK_GPIO_NUM;c.pin_vsync=VSYNC_GPIO_NUM;c.pin_href=HREF_GPIO_NUM;
   c.pin_sccb_sda=SIOD_GPIO_NUM;c.pin_sccb_scl=SIOC_GPIO_NUM;c.pin_pwdn=PWDN_GPIO_NUM;c.pin_reset=RESET_GPIO_NUM;
-  c.xclk_freq_hz=20000000;c.pixel_format=PIXFORMAT_JPEG;c.frame_size=size;
+  // Clamp legacy 5mp requests to the detected sensor's native size. Never
+  // upscale OV3660 or advertise a 5MP image from its 3MP sensor.
+  c.xclk_freq_hz=20000000;c.pixel_format=PIXFORMAT_JPEG;
+  c.frame_size=size==FRAMESIZE_INVALID?nativeFrameSize:(size>nativeFrameSize?nativeFrameSize:size);
   c.jpeg_quality=quality;c.fb_count=1;c.fb_location=CAMERA_FB_IN_PSRAM;c.grab_mode=CAMERA_GRAB_WHEN_EMPTY;
   esp_err_t result=esp_camera_init(&c);
   if(result!=ESP_OK) { cameraError=String("เริ่มกล้องไม่สำเร็จ รหัส ")+String(result,HEX); return; }
   cameraActive=true;
   sensor_t *sensor=esp_camera_sensor_get();
-  sensorName=sensor->id.PID==OV5640_PID?"OV5640":sensor->id.PID==OV2640_PID?"OV2640":String("PID-")+String(sensor->id.PID,HEX);
+  autofocusSupported=sensor->id.PID==OV5640_PID;
+  if(sensor->id.PID==OV3660_PID) {
+    sensorName="OV3660";nativeFrameSize=FRAMESIZE_QXGA;nativeWidth=2048;nativeHeight=1536;nativeResolution="3mp";
+    // Match Espressif's CameraWebServer OV3660 setup used in the real test.
+    sensor->set_vflip(sensor,1);sensor->set_brightness(sensor,1);sensor->set_saturation(sensor,-2);
+  } else if(sensor->id.PID==OV5640_PID) {
+    sensorName="OV5640";nativeFrameSize=FRAMESIZE_QSXGA;nativeWidth=2560;nativeHeight=1920;nativeResolution="5mp";
+  } else if(sensor->id.PID==OV2640_PID) {
+    sensorName="OV2640";nativeFrameSize=FRAMESIZE_UXGA;nativeWidth=1600;nativeHeight=1200;nativeResolution="uxga";
+  } else {
+    cameraError="ยังไม่รองรับเซนเซอร์กล้องรุ่นนี้";return;
+  }
   cameraReady=true; Serial.printf("CAMERA_READY sensor=%s pid=0x%04x psram=%u\n",sensorName.c_str(),sensor->id.PID,ESP.getPsramSize());
 }
 void shutdownCamera() {

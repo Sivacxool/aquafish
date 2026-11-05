@@ -157,6 +157,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
         _filename = 'กล้อง ${image.cameraId} / ${image.id}';
         _captureProgress = 'ได้รับภาพใหม่จากกล้องแล้ว พร้อมนับด้วยมือ';
         _captureDetails = [
+          if (image.sensor?.isNotEmpty == true) image.sensor!,
           if (image.width != null && image.height != null)
             '${image.width} × ${image.height} พิกเซล',
           if (image.flashUsed == true) 'เปิดแฟลชตอนถ่ายแล้ว',
@@ -589,7 +590,10 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
     final demoCamera =
         state.connection.demo && state.cameraConnection == null && !usb;
     final hasImage = _sample || _bytes != null;
-    final canAI = _sample || (_bytes != null && !state.connection.demo && !usb);
+    final directCapture = _captureId != null && state.cameraConnection != null;
+    final canAI =
+        _sample ||
+        (_bytes != null && !state.connection.demo && !usb && !directCapture);
     return PageBody(
       children: [
         const PageTitle(
@@ -632,6 +636,13 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  if (camera?.description.isNotEmpty == true) ...[
+                    Text(
+                      camera!.description,
+                      style: const TextStyle(color: AquaColors.muted),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   if (usb && _usbLive && !hasImage)
                     UsbLivePreview(onFrame: (frame) => _usbLastFrame = frame)
                   else if (hasImage)
@@ -743,6 +754,8 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                             ? 'กำลังประมวลผล…'
                             : _sample
                             ? 'ลองนับภาพตัวอย่าง'
+                            : directCapture || usb
+                            ? 'AI ยังไม่พร้อมใช้งาน'
                             : 'วิเคราะห์ด้วย AI',
                       ),
                     ),
@@ -755,6 +768,8 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                     Text(
                       _sample
                           ? 'ภาพตัวอย่าง 48 ตัว ใช้ทดลองขั้นตอน ไม่ใช่ผลจาก AI'
+                          : directCapture || usb
+                          ? 'ใช้ปุ่มนับด้วยมือแตะหัวลูกปลาในภาพได้ ส่วน AI ยังต้องติดตั้งโมเดลที่ฝึกและตรวจความแม่นยำแล้ว'
                           : _video
                           ? 'นับเฉพาะตัวที่เห็นในเฟรมที่เลือก'
                           : 'ตรวจภาพให้ชัด เห็นถาดครบ และลดเงาสะท้อนก่อนนับ',

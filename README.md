@@ -1,4 +1,4 @@
-# AquaHatch — iOS / Android 0.11.1
+# AquaHatch — iOS / Android 0.12.0
 
 อัปเดต 5 พฤศจิกายน 2026 · แอปดูสถานะเครื่องฟักไข่ปลา เชื่อม ESP32-S3 และ ESP32-CAM ผ่าน Wi-Fi บ้านโดยตรง อุปกรณ์แต่ละตัวมี IP แยกกัน
 
@@ -6,24 +6,30 @@
 
 | ระบบ | ชุดติดตั้งล่าสุด | วิธีติดตั้ง |
 | --- | --- | --- |
-| **iPhone / iOS** | [เปิดโฟลเดอร์ IOS](IOS/) · [ดาวน์โหลด IPA](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/IOS/AquaHatch-v0.11.1-iOS-unsigned.ipa) | [คู่มือ iPhone](IOS/README.md) — IPA ยังไม่เซ็น ใช้ Sideloadly กับ Apple ID ของเจ้าของ |
-| **Android / LDPlayer** | [เปิดโฟลเดอร์ ANDROID](ANDROID/) · [ดาวน์โหลด APK Universal](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/ANDROID/AquaHatch-v0.11.1-Android-universal.apk) | [คู่มือ Android](ANDROID/README.md) — ARM32 / ARM64 / x86_64 |
+| **iPhone / iOS** | [เปิดโฟลเดอร์ IOS](IOS/) · [ดาวน์โหลด IPA](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/IOS/AquaHatch-v0.12.0-iOS-unsigned.ipa) | [คู่มือ iPhone](IOS/README.md) — IPA ยังไม่เซ็น ใช้ Sideloadly กับ Apple ID ของเจ้าของ |
+| **Android / LDPlayer** | [เปิดโฟลเดอร์ ANDROID](ANDROID/) · [ดาวน์โหลด APK Universal](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/ANDROID/AquaHatch-v0.12.0-Android-universal.apk) | [คู่มือ Android](ANDROID/README.md) — ARM32 / ARM64 / x86_64 |
 
-ทั้งสองระบบเป็น **0.11.1+2012** และใช้ public CA กล้องชุดเดียวกันกับเฟิร์มแวร์ที่แก้ใบรับรองล่าสุด
+ทั้งสองระบบเป็น **0.12.0+2013** และใช้ public CA กล้องชุดเดียวกันกับเฟิร์มแวร์ที่แก้ใบรับรองล่าสุด
 ซอร์ส Flutter/Dart ใช้ร่วมกันใน [aqua_hatch](aqua_hatch/) โดยมี native project แยกใน [ios](aqua_hatch/ios/) และ [android](aqua_hatch/android/)
 
-- [ดาวน์โหลดซอร์ส 0.11.1](AquaHatch-v0.11.1-source.zip)
+- [ดาวน์โหลดซอร์ส 0.12.0](AquaHatch-v0.12.0-source.zip)
 - [ตรวจ SHA256 ของไฟล์ดาวน์โหลด](SHA256SUMS.txt)
 - [ผลทดสอบและข้อจำกัด](VERIFICATION.md)
 
-## สิ่งที่แก้ใน 0.11.1
+## สิ่งที่แก้ใน 0.12.0
+
+- ใช้ OV3660 เป็นกล้องหลัก ถ่าย 2048×1536 ตามเซนเซอร์จริง พร้อมแฟลช
+- แอปอ่านรุ่นกล้องและเลือกขนาดภาพ / การใช้ autofocus ให้ตรงรุ่น ยังรองรับ OV5640 และ OV2640 ในโค้ด แต่ยังไม่ได้สลับมาทดสอบฮาร์ดแวร์สองรุ่นนั้นซ้ำในรอบนี้
+- หน้านับลูกปลาแสดงรุ่นและขนาดภาพจริง แตะหัวลูกปลาเพื่อนับด้วยมือได้ ปุ่ม AI ระบุว่ายังไม่พร้อมเมื่อเป็นภาพจากกล้องตรง เพราะยังไม่มีโมเดลที่ผ่านการยืนยัน
+- เฟิร์มแวร์รองรับคำสั่ง 5mp ของแอปรุ่นเดิม โดยจำกัด OV3660 ที่ขนาด native 3MP เพื่อไม่ขยายภาพเทียม
+
 
 - รองรับขั้นตอนเปลี่ยน Wi-Fi บน iPhone พร้อมคำอธิบายสิทธิ์เครือข่ายเฉพาะที่
 - แก้ใบรับรอง ESP32-CAM เดิมที่มีอายุ 10 ปีซึ่ง Apple ปฏิเสธ ใช้ใบรับรองเซิร์ฟเวอร์ 730 วัน พร้อมตรวจชื่อกล้องและ CA ตามเดิม
 - แอป iOS และ Android ชุดนี้ใช้ใบรับรองกล้องใหม่ตรงกัน ต้องใช้คู่กับเฟิร์มแวร์กล้องที่อัปเดตแล้ว รหัสจับคู่และ Wi-Fi ที่บันทึกในบอร์ดเดิมยังใช้ได้
 - ปรับข้อความแจ้งปัญหาใบรับรองให้ระบุบอร์ดหรือกล้อง โดยไม่สรุปว่าเป็นอุปกรณ์คนละตัวเสมอ
 
-ผู้ใช้ยืนยันว่า **เพิ่มกล้อง ESP32-CAM บน iPhone ด้วยแอป 0.11.1 ได้แล้ว** การถ่ายภาพจาก iPhone ยังไม่ได้รับการยืนยันแยกต่างหาก
+ผู้ใช้เคยยืนยันเพิ่มกล้องบน iPhone ด้วยรุ่น 0.11.1 แล้ว รุ่น 0.12.0 เพิ่มการรองรับ OV3660; การถ่ายภาพบน iPhone หลังอัปเดตยังต้องยืนยันแยกต่างหาก
 
 ## เริ่มเชื่อมต่อ
 
@@ -33,7 +39,7 @@
 - [เริ่มใช้งานทีละขั้น](START_HERE_TH.md)
 - [คู่มือ UI การเชื่อมต่อ](CONNECTION_UI_TH.md)
 - [DS18B20 / DO และสายเซนเซอร์](aqua_hatch/SENSORS_SETUP_TH.md)
-- [กล้อง OV5640 และแฟลช](AquaHatch-Camera-Start-TH.md)
+- [กล้อง OV3660 และแฟลช](AquaHatch-Camera-Start-TH.md)
 - [สร้างชุดสำหรับบอร์ดใหม่ / ต่ออายุใบรับรอง](REBUILD.md)
 - [กล่องควบคุมสำหรับพิมพ์ 3D](AquaHatch_CTRL-LV01_3D_Print_Pack.zip)
 
@@ -47,9 +53,9 @@
 | ส่วน | สถานะ |
 | --- | --- |
 | ESP32-S3 | DS18B20 ที่ GPIO4 และ DO RS485 ที่ TX16 / DE17 / RX18; เคยตรวจการสื่อสารกับ Android ในรอบ 0.9.0 |
-| ESP32-CAM | AI Thinker ESP32-CAM + OV5640 เฟิร์มแวร์ 0.9.0-camera.2 พร้อมใบรับรองใหม่; ตรวจ HTTPS และรหัสจับคู่เดิมผ่าน |
-| การส่งภาพ | โค้ดแอป Dart รับภาพใหม่ 2560×1920 พร้อมแฟลชต่อเนื่องสองครั้งผ่านกล้องจริง |
-| iPhone | ผู้ใช้ยืนยันเพิ่มกล้องสำเร็จ; native IPA และ iPhone Simulator ผ่าน |
+| ESP32-CAM | AI Thinker ESP32-CAM + OV3660 เฟิร์มแวร์ 0.12.0-camera.1; ตรวจ HTTPS และรหัสจับคู่เดิมผ่าน |
+| การส่งภาพ | OV3660 รับภาพใหม่ 2048×1536 พร้อมแฟลชผ่าน HTTPS และโค้ด Dart ของแอป |
+| iPhone | รุ่น 0.11.1 เคยเพิ่มกล้องสำเร็จ; ผลตรวจ 0.12.0 ดู VERIFICATION.md |
 | โฟกัส | ยังไม่ยืนยันความคมเชิงแสง; เคยพบ af_trigger_failed |
 | รีเลย์ / ปั๊ม / ฮีตเตอร์ | ยังไม่เปิดการขับโหลด; hardware_control / hardware_ready คง false |
 | AI นับลูกปลา | ยังไม่มีโมเดลที่ยืนยันกับข้อมูลลูกปลาจริงในชุดนี้ |

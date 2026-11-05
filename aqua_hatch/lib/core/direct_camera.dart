@@ -169,10 +169,8 @@ class DirectCameraClient {
     if (!RegExp(r'^[a-zA-Z0-9_-]{1,64}$').hasMatch(id)) {
       throw StateError('รหัสถ่ายภาพไม่ถูกต้อง');
     }
-    onProgress?.call(
-      'กำลังเปิดแฟลช ปรับแสงและโฟกัสเพื่อถ่ายภาพความละเอียดสูง…',
-    );
-    await status();
+    onProgress?.call('กำลังเปิดแฟลชและปรับแสงเพื่อถ่ายภาพความละเอียดสูง…');
+    final camera = await status();
     _check(cancelled);
     if (_boardTime == null) throw StateError('นาฬิกากล้องยังไม่พร้อม');
     Map<String, dynamic> job;
@@ -186,8 +184,8 @@ class DirectCameraClient {
             'expires_at_unix': _boardTime! + 30,
             'flash': true,
             'flash_duty': 64,
-            'autofocus': true,
-            'resolution': '5mp',
+            'autofocus': camera.requestAutofocus,
+            'resolution': camera.captureResolution,
             'jpeg_quality': 10,
             'warmup_ms': 1800,
           },
@@ -242,6 +240,7 @@ class DirectCameraClient {
       width: job['width'] is int ? job['width'] as int : null,
       height: job['height'] is int ? job['height'] as int : null,
       flashUsed: job['flash_used'] is bool ? job['flash_used'] as bool : null,
+      sensor: job['sensor'] is String ? job['sensor'] as String : null,
     );
   }
 

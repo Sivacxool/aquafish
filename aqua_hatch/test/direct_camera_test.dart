@@ -36,6 +36,57 @@ http.Response json(Object data, [int code = 200]) =>
     http.Response.bytes(utf8.encode(jsonEncode(data)), code);
 void main() {
   test(
+    'capture selects native resolution and focus support for each sensor',
+    () async {
+      for (final spec in [
+        ('OV3660', '3mp', false, 2048, 1536),
+        ('OV5640', '5mp', true, 2560, 1920),
+        ('OV2640', 'uxga', false, 1600, 1200),
+      ]) {
+        final camera = DirectCameraClient(
+          config,
+          'camera-secret',
+          client: MockClient((request) async {
+            if (request.url.path.endsWith('/image')) {
+              return http.Response.bytes(
+                jpeg,
+                200,
+                headers: {'content-type': 'image/jpeg'},
+              );
+            }
+            if (request.method == 'POST') {
+              final body = jsonDecode(request.body) as Map;
+              expect(body['resolution'], spec.$2);
+              expect(body['autofocus'], spec.$3);
+              expect(body['flash'], isTrue);
+              return json({
+                ...job(body['capture_id'] as String),
+                'sensor': spec.$1,
+                'width': spec.$4,
+                'height': spec.$5,
+                'flash_used': true,
+              }, 202);
+            }
+            return json({
+              ...status(),
+              'sensor': spec.$1,
+              'default_capture_width': spec.$4,
+              'default_capture_height': spec.$5,
+              'autofocus_supported': spec.$3,
+            });
+          }),
+        );
+        addTearDown(camera.close);
+        final photo = await camera.capture('native-sensor-photo');
+        expect(photo.sensor, spec.$1);
+        expect(photo.width, spec.$4);
+        expect(photo.height, spec.$5);
+        expect(photo.flashUsed, isTrue);
+      }
+    },
+  );
+
+  test(
     'reads reuse TLS and retry a transient transport failure once',
     () async {
       var attempts = 0;
