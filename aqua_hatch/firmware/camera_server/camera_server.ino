@@ -296,7 +296,9 @@ void serialCommand() {
 }
 void setup() {
   Serial.begin(115200);delay(250);
-  WiFi.persistent(false);WiFi.mode(WIFI_AP_STA);WiFi.setSleep(false);
+  WiFi.persistent(false);
+  if(!WiFi.mode(WIFI_AP_STA)){Serial.println("WIFI_INIT_FAILED");while(true)delay(1000);}
+  WiFi.setSleep(false);
   if(!boardIdentity.begin("camera")){Serial.println("IDENTITY_ERROR:"+boardIdentity.error());while(true)delay(1000);}
   provisioning::apName=boardIdentity.setupSsid();
   prefs.begin("aquacam",false);initCamera();shutdownCamera();
