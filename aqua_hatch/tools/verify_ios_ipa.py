@@ -7,7 +7,7 @@ with zipfile.ZipFile(path) as archive:
     assert archive.testzip() is None, 'Corrupt IPA archive'
     info=plistlib.loads(archive.read('Payload/Runner.app/Info.plist'))
     assert info['CFBundleIdentifier']=='th.ac.aquahatch.aquaHatch'
-    assert info['CFBundleShortVersionString']=='0.11.0'
+    assert info['CFBundleShortVersionString']=='0.11.1'
     assert info['NSLocalNetworkUsageDescription']
     assert info['NSAppTransportSecurity']['NSAllowsLocalNetworking'] is True
     assert not info['NSAppTransportSecurity'].get('NSAllowsArbitraryLoads',False)

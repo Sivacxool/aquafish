@@ -4,7 +4,7 @@
 
 แอปควบคุมและดูสถานะเครื่องฟักไข่ปลา เชื่อม ESP32-S3 และ ESP32-CAM ผ่าน Wi-Fi บ้านโดยตรง บอร์ดแต่ละตัวมี IP แยกกัน
 
-## iOS 0.11.0 สำหรับติดตั้งทดสอบส่วนตัว
+## iOS 0.11.1 สำหรับติดตั้งทดสอบส่วนตัว
 
 - [คู่มือติดตั้ง iPhone ผ่าน Windows และ Apple ID ธรรมดา](IOS_INSTALL_TH.md)
 - [สถานะบิลด์ iOS บน macOS](https://github.com/Sivacxool/aquafish/actions/workflows/ios.yml)

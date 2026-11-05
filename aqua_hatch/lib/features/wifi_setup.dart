@@ -123,7 +123,8 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
   String _friendly(Object error) {
     final text = error.toString();
     if (text.contains('CERTIFICATE_VERIFY_FAILED')) {
-      return 'ใบรับรองไม่ตรงกับบอร์ดที่จับคู่ ตรวจว่าใช้แอปรุ่นที่มากับเครื่อง';
+      final device = widget.camera ? 'กล้อง' : 'บอร์ด';
+      return 'ยืนยันใบรับรอง$deviceไม่ได้ ตรวจว่าเชื่อม Wi-Fi ของ$deviceถูกตัว และใช้แอปกับเฟิร์มแวร์ชุดเดียวกัน หากใช้ iPhone เฟิร์มแวร์ต้องมีใบรับรองที่รองรับ iOS';
     }
     if (text.contains('TimeoutException') ||
         text.contains('SocketException') ||

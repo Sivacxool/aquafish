@@ -34,6 +34,13 @@ jobs:
           mkdir -p build/ios-delivery
           set -o pipefail
           swift tools/verify_apple_device_certificates.swift assets/device/camera_ca.pem test/fixtures/camera_server_public.pem aquahatch-camera-7c60.local 2>&1 | tee build/ios-delivery/apple-camera-trust.log
+          if swift tools/verify_apple_device_certificates.swift test/fixtures/legacy_camera_ca.pem test/fixtures/legacy_camera_server_public.pem aquahatch-camera-7c60.local > build/ios-delivery/apple-legacy-trust.log 2>&1; then
+            echo 'Expected Apple to reject the legacy ten-year leaf certificate'; exit 1
+          fi
+          grep -q 'maximum temporal validity period' build/ios-delivery/apple-legacy-trust.log
+          if swift tools/verify_apple_device_certificates.swift assets/device/camera_ca.pem test/fixtures/camera_server_public.pem wrong-camera.local > build/ios-delivery/apple-wrong-host.log 2>&1; then
+            echo 'Wrong camera hostname was accepted'; exit 1
+          fi
       - name: Install pinned Flutter SDK
         run: |
           git clone --depth 1 --branch 3.44.6 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
@@ -58,8 +65,8 @@ jobs:
         run: |
           mkdir -p build/ios-delivery/stage/Payload
           ditto build/ios/iphoneos/Runner.app build/ios-delivery/stage/Payload/Runner.app
-          ditto -c -k --keepParent build/ios-delivery/stage/Payload build/ios-delivery/AquaHatch-v0.11.0-iOS-unsigned.ipa
-          python3 tools/verify_ios_ipa.py build/ios-delivery/AquaHatch-v0.11.0-iOS-unsigned.ipa
+          ditto -c -k --keepParent build/ios-delivery/stage/Payload build/ios-delivery/AquaHatch-v0.11.1-iOS-unsigned.ipa
+          python3 tools/verify_ios_ipa.py build/ios-delivery/AquaHatch-v0.11.1-iOS-unsigned.ipa
           cp ../IOS_INSTALL_TH.md build/ios-delivery/
       - name: Upload install package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

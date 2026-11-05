@@ -1,10 +1,7 @@
 from pathlib import Path
-from datetime import datetime, timezone
+import argparse
+from device_certificates import ensure_certificates
 import json, secrets
-from cryptography import x509
-from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 
 ROOT = Path(__file__).resolve().parent.parent
 APP = ROOT/'work/aqua_hatch' if (ROOT/'work/aqua_hatch').exists() else ROOT/'aqua_hatch'
@@ -23,32 +20,11 @@ else:
     config = {'hostname': hostname, 'device_id': 'incubator-01', 'token': secrets.token_urlsafe(24)}
     config_path.write_text(json.dumps(config, indent=2))
 ca_path = PRIVATE / 'device_ca.pem'
-if not ca_path.exists():
-    ca_key = ec.generate_private_key(ec.SECP256R1())
-    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'AquaHatch device 117C private CA')])
-    ca = (x509.CertificateBuilder().subject_name(ca_name).issuer_name(ca_name)
-          .public_key(ca_key.public_key()).serial_number(x509.random_serial_number())
-          .not_valid_before(datetime(2025, 1, 1, tzinfo=timezone.utc))
-          .not_valid_after(datetime(2036, 1, 1, tzinfo=timezone.utc))
-          .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
-          .add_extension(x509.KeyUsage(digital_signature=True, key_encipherment=False,
-              content_commitment=False,data_encipherment=False,key_agreement=False,
-              key_cert_sign=True,crl_sign=True,encipher_only=None,decipher_only=None),critical=True)
-          .sign(ca_key, hashes.SHA256()))
-    key = ec.generate_private_key(ec.SECP256R1())
-    cert = (x509.CertificateBuilder().subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, hostname)]))
-            .issuer_name(ca.subject).public_key(key.public_key()).serial_number(x509.random_serial_number())
-            .not_valid_before(datetime(2025,1,1,tzinfo=timezone.utc))
-            .not_valid_after(datetime(2035,1,1,tzinfo=timezone.utc))
-            .add_extension(x509.BasicConstraints(ca=False,path_length=None),critical=True)
-            .add_extension(x509.SubjectAlternativeName([x509.DNSName(hostname)]),critical=False)
-            .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),critical=False)
-            .sign(ca_key, hashes.SHA256()))
-    for name, data in [('device_ca.pem', ca.public_bytes(serialization.Encoding.PEM)),
-          ('server.pem', cert.public_bytes(serialization.Encoding.PEM)),
-          ('server-key.pem', key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.TraditionalOpenSSL,serialization.NoEncryption())),
-          ('ca-key.pem', ca_key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.TraditionalOpenSSL,serialization.NoEncryption()))]:
-        (PRIVATE/name).write_bytes(data)
+parser=argparse.ArgumentParser()
+parser.add_argument('--renew-certificate', action='store_true')
+args=parser.parse_args()
+ensure_certificates(PRIVATE, 'device_ca.pem', 'AquaHatch device 117C private CA',
+                    hostname, renew=args.renew_certificate)
 header = '#pragma once\n'
 for name, value in [('DEVICE_ID', config['device_id']), ('DEVICE_HOSTNAME', hostname), ('API_TOKEN', config['token'])]:
     header += 'static const char '+name+'[] = '+json.dumps(value)+';\n'

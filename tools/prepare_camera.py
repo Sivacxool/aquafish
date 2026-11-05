@@ -1,37 +1,24 @@
 from pathlib import Path
-from datetime import datetime, timezone
+import argparse
+from device_certificates import ensure_certificates
 import hashlib, html, json, secrets
-from cryptography import x509
-from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 
 ROOT=Path(__file__).resolve().parent.parent
 APP=ROOT/'work/aqua_hatch' if (ROOT/'work/aqua_hatch').exists() else ROOT/'aqua_hatch'
 PRIVATE=ROOT/'work/private/camera' if (ROOT/'work').exists() else ROOT/'private/camera'
 PRIVATE.mkdir(parents=True,exist_ok=True)
+(ROOT/'outputs').mkdir(exist_ok=True)
 firmware=APP/'firmware/camera_server'; firmware.mkdir(exist_ok=True)
 identity=PRIVATE/'identity.json'
 if not identity.exists():
     identity.write_text(json.dumps({'hostname':'aquahatch-camera-7c60.local','device_id':'camera-7c60',
       'ap_ssid':'AquaHatch-CAM-7C60','token':secrets.token_urlsafe(24)},indent=2))
 device=json.loads(identity.read_text())
-if not (PRIVATE/'server.pem').exists():
-    ca_key=ec.generate_private_key(ec.SECP256R1()); key=ec.generate_private_key(ec.SECP256R1())
-    ca_name=x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,'AquaHatch camera 7C60 private CA')])
-    ca=(x509.CertificateBuilder().subject_name(ca_name).issuer_name(ca_name).public_key(ca_key.public_key())
-        .serial_number(x509.random_serial_number()).not_valid_before(datetime(2025,1,1,tzinfo=timezone.utc))
-        .not_valid_after(datetime(2036,1,1,tzinfo=timezone.utc)).add_extension(x509.BasicConstraints(ca=True,path_length=0),True)
-        .sign(ca_key,hashes.SHA256()))
-    cert=(x509.CertificateBuilder().subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,device['hostname'])]))
-        .issuer_name(ca_name).public_key(key.public_key()).serial_number(x509.random_serial_number())
-        .not_valid_before(datetime(2025,1,1,tzinfo=timezone.utc)).not_valid_after(datetime(2035,1,1,tzinfo=timezone.utc))
-        .add_extension(x509.BasicConstraints(ca=False,path_length=None),True)
-        .add_extension(x509.SubjectAlternativeName([x509.DNSName(device['hostname'])]),False)
-        .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),False).sign(ca_key,hashes.SHA256()))
-    for name, value in [('camera_ca.pem',ca.public_bytes(serialization.Encoding.PEM)),('server.pem',cert.public_bytes(serialization.Encoding.PEM)),
-       ('server-key.pem',key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.TraditionalOpenSSL,serialization.NoEncryption()))]:
-        (PRIVATE/name).write_bytes(value)
+parser=argparse.ArgumentParser()
+parser.add_argument('--renew-certificate', action='store_true')
+args=parser.parse_args()
+ensure_certificates(PRIVATE, 'camera_ca.pem', 'AquaHatch camera 7C60 private CA',
+                    device['hostname'], renew=args.renew_certificate)
 header='#pragma once\n'
 for name,value in [('DEVICE_ID',device['device_id']),('DEVICE_HOSTNAME',device['hostname']),('API_TOKEN',device['token'])]:
     header+='static const char '+name+'[] = '+json.dumps(value)+';\n'
