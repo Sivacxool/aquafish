@@ -134,9 +134,10 @@ class BoardWifiClient {
     this.config,
     this.token, {
     http.Client? client,
-    this.hostname = deviceTlsHostname,
+    String hostname = deviceTlsHostname,
     this.caAsset = 'assets/device/device_ca.pem',
-  }) : _providedClient = client;
+  }) : hostname = config.identity?.hostname ?? hostname,
+       _providedClient = client;
 
   Future<Map<String, dynamic>> _request(
     String method,

@@ -16,7 +16,7 @@ bool queued=false, connecting=false, scanRequested=false, scanRunning=false, sca
 bool apRequested=false, apActive=false;
 uint32_t queuedAt=0, startedAt=0, apStartedAt=0;
 uint16_t reason=0;
-String apName="AquaHatch-CAM-7C60";
+String apName;
 
 void loadSaved(String &ssid, String &password) {
   JsonDocument doc;

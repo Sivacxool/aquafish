@@ -1,6 +1,6 @@
-# AquaHatch สำหรับ Android / LDPlayer — 0.13.0+2014
+# AquaHatch สำหรับ Android / LDPlayer — 0.14.0+2015
 
-[ดาวน์โหลด AquaHatch-v0.13.0-Android-universal.apk](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/ANDROID/AquaHatch-v0.13.0-Android-universal.apk)
+[ดาวน์โหลด AquaHatch-v0.14.0-Android-universal.apk](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/ANDROID/AquaHatch-v0.14.0-Android-universal.apk)
 
 APK Universal รวม ARM32, ARM64 และ x86_64 สำหรับมือถือ Android และ LDPlayer รุ่นที่รองรับ
 
@@ -25,3 +25,8 @@ APK Universal รวม ARM32, ARM64 และ x86_64 สำหรับมื�
 
 วงนับเล็กลง ปรับขนาดได้ และแยกเพิ่มจุด/ลบจุด ส่วน pH ต้องอัปโหลด S3 0.13.0-sensors.1 ก่อน แล้วสอบเทียบสองจุด รุ่นนี้ยังไม่ได้ทดสอบ pH จริงหรือแฟลชบอร์ดตามคำขอเจ้าของ
 [ผังสาย GPIO8/9 และวิธีสอบเทียบ](../PH_ADS1115_SETUP_TH.md)
+
+## บอร์ดใหม่สร้างรหัสเองใน 0.14.0
+
+เฟิร์มแวร์ generic ของ S3/CAM สร้าง token และใบรับรองเองในบอร์ด และจำไว้หลังรีสตาร์ต โปรแกรมลงเฟิร์มแวร์รับ QR ผ่าน USB ให้มือถือสแกน ไม่ต้องบิลด์แอปประจำบอร์ด
+[เริ่มติดตั้งและจับคู่ด้วย QR](../FIRST_BOOT_PAIRING_TH.md)

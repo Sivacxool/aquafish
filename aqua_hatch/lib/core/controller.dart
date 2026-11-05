@@ -433,6 +433,7 @@ class AppController extends Notifier<AppState> {
       }
       _wifiSetupPaused = false;
       await _start(config);
+      if (state.error == null) await _store.rememberPairedDevice(config);
       return state.error;
     } catch (e) {
       return _message(e);
@@ -707,6 +708,7 @@ class AppController extends Notifier<AppState> {
       if (_disposed) return 'ปิดแอปแล้ว';
       await ref.read(credentialStoreProvider).save(config, secret);
       await _store.saveCameraConnection(config);
+      await _store.rememberPairedDevice(config);
       await _store.saveUsbCameraEnabled(false);
       ++_cameraGeneration;
       _cameraClient?.close();

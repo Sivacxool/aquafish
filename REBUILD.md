@@ -1,74 +1,46 @@
-# สร้าง AquaHatch 0.13.0 สำหรับบอร์ดใหม่
+# สร้าง AquaHatch 0.14.0 และ generic firmware
 
-ชุดฮาร์ดแวร์ที่เคยทดสอบ: ESP32-S3 flash 16 MB / OPI PSRAM 8 MB และ AI Thinker ESP32-CAM + OV3660 แยกบอร์ด (เคยทดสอบ OV5640 ในรุ่นก่อน)
-ตรวจรุ่นและผังขาจริงก่อนใช้กับบอร์ดอื่น
+รุ่นนี้ S3/CAM สร้างตัวตนและ private keys ในบอร์ดตอนเปิดครั้งแรก ไม่ต้องสร้าง device_private.h หรือบิลด์แอปประจำบอร์ด
+อ่าน [คู่มือติดตั้งและจับคู่ด้วย QR](FIRST_BOOT_PAIRING_TH.md) ก่อนใช้งาน
 
 ## เครื่องมือ
 
-- Python 3.11 ขึ้นไป
 - Arduino CLI / IDE พร้อม Arduino-ESP32 3.3.12
-- ArduinoJson 7.4.3, DallasTemperature 4.0.6, OneWire 2.3.8
-- Flutter 3.44.6 / Dart 3.12.2, Android SDK และ JDK 17 ขึ้นไป
+- ArduinoJson7.4.3, DallasTemperature4.0.6, OneWire2.3.8
+- Flutter3.44.6 / Dart3.12.2, Android SDK, JDK17ขึ้นไป
+- iOS build ใช้ macOS/Xcode หรือ GitHub Actions ใน repository
 
-## สร้างเอกลักษณ์ส่วนตัวและคู่ใบรับรอง
-
-จาก root ของ repository:
-
-```powershell
-python -m venv .venv
-./.venv/Scripts/python.exe -m pip install -r tools/requirements.txt
-./.venv/Scripts/python.exe tools/prepare_device.py
-./.venv/Scripts/python.exe tools/prepare_camera.py
-```
-
-เครื่องมือแรกสร้างเอกลักษณ์ของ S3, public CA ของแอป และโฟลเดอร์ outputs
-เครื่องมือที่สองสร้างเอกลักษณ์ของกล้อง, public CA ของกล้อง, ข้อมูล public identity ใน Dart และบัตรกล้อง
-ไฟล์ `private/`, `device_private.h` และบัตรจับคู่ใน outputs ต้องเก็บเป็นส่วนตัว
-ต้องใช้เฟิร์มแวร์กับแอปที่สร้างจากเอกลักษณ์ชุดเดียวกัน
-
-## สร้างเฟิร์มแวร์
+## เฟิร์มแวร์
 
 ```powershell
 ./aqua_hatch/firmware/local_server/Build-Device.ps1
 ./aqua_hatch/firmware/camera_server/Build-Camera.ps1
 ```
 
-ตรวจพอร์ตจริงและวงจรที่ต่ออยู่ก่อนใช้ตัวเลือก Upload ตามพารามิเตอร์ในสคริปต์
-S3 ใช้ FlashSize=16M, PSRAM=opi, FlashMode=qio, PartitionScheme=app3M_fat9M_16MB, CDCOnBoot=default
-กล้องใช้บอร์ด AI Thinker ESP32-CAM ตาม Build-Camera.ps1
-DS18B20 ใช้ GPIO4; DO ใช้ TX16 / DE17 / RX18 ตาม [คู่มือสาย](aqua_hatch/SENSORS_SETUP_TH.md)
-รุ่นนี้อ่านเซนเซอร์ แต่ยังไม่เปิดการขับรีเลย์/ปั๊ม/ฮีตเตอร์
+สคริปต์รวม `firmware/libraries/AquaIdentity` ให้อัตโนมัติ
+S3 เป้าหมาย Flash16MB / OPI PSRAM8MB; CAM ใช้ AI Thinker ESP32-CAM
+เพิ่ม `-Upload -Port COM3` หรือพอร์ตจริงเมื่อต้องการลงบอร์ด แต่รอบนี้ผู้พัฒนาไม่ได้รันคำสั่งอัปโหลด
+เพื่อรับบัตร QR หลังลง ใช้ FirstBoot package หรือตัวอ่าน `tools/pairing_card.py --read-only`
+อย่าสั่งล้าง NVS เพื่ออัปเดตรุ่นปกติ เพราะการล้างทำให้ CA/token เปลี่ยนและต้องสแกนใหม่
 
-## สร้างแอปและบัตร S3
+## แอป
 
 ```powershell
 cd aqua_hatch
-flutter pub get
-./tools/Build-Android.ps1 -Python ../.venv/Scripts/python.exe
-../.venv/Scripts/python.exe tools/print_pairing_card.py
+flutter pub get --enforce-lockfile
+flutter analyze
+flutter test --concurrency=2
+./tools/Build-Android.ps1
 ```
 
-APK Universal มี ARM32/ARM64/x86_64 ต้องรักษากุญแจลงนามของผู้ประกอบเพื่ออัปเดตทับได้ในอนาคต
-กุญแจลงนามเดิมและ binary เฟิร์มแวร์ที่มี private key ฝังอยู่ไม่เผยแพร่ใน GitHub
-วิธีบิลด์นี้ใช้ source เดียวกับชุดส่งมอบ 0.12.0 แต่บอร์ดใหม่และการสลับ SoftAP ของมือถือแต่ละรุ่นยังต้องทดสอบจริง
+APK Universal รวม ARM32 / ARM64 / x86_64 ต้องใช้กุญแจลงนามเดิมเพื่ออัปเดตทับ
+CA ที่อยู่ใน assets เป็น fallback ของบอร์ดรุ่นเก่าเท่านั้น บอร์ด generic ใหม่ใช้ CA จาก QR ที่ผู้ใช้สแกน
+ไม่รันเครื่องมือ `prepare_device.py` หรือ `prepare_camera.py` ของระบบเก่าเพื่อแทนที่ trust anchor เมื่อสร้าง generic firmware
 
-## iOS และการต่ออายุใบรับรอง
+## ตรวจโค้ดสร้างตัวตนบนคอม
 
-โค้ดแอปใช้ร่วมกันใน aqua_hatch; ชุดติดตั้งแยกที่ IOS/ และ ANDROID/
-[วิธีบิลด์ iOS บน macOS และติดตั้งจาก Windows](IOS_INSTALL_TH.md)
-
-ใบรับรองเซิร์ฟเวอร์ที่เครื่องมือสร้างใหม่มีอายุ 730 วัน เก็บ ca-key.pem เป็นส่วนตัวเพื่อเซ็นใบรับรองต่ออายุโดยไม่เปลี่ยน CA ในแอป
-เมื่อต่ออายุ ใช้ข้อมูล private/ เดิมก่อนสั่ง:
-
-```powershell
-./.venv/Scripts/python.exe tools/prepare_camera.py --renew-certificate
-# สำหรับ S3 ให้ใช้ tools/prepare_device.py --renew-certificate แยกต่างหาก
-```
-
-ใบรับรองเก่า 10 ปีจะถูกปฏิเสธโดย Apple หากไม่มี CA signing key เดิม การต่ออายุต้องเปลี่ยน CA ด้วย และบิลด์แอปทั้ง iOS/Android กับเฟิร์มแวร์ให้ตรงกัน
-อย่ารันเครื่องมือบนโฟลเดอร์ private/ ว่างเพื่ออัปเดตบอร์ดที่จับคู่แล้ว เพราะจะสร้าง token ใหม่
-
-## pH และวงนับมือใน 0.13.0
-
-วงนับเล็กลง ปรับขนาดได้ และแยกเพิ่มจุด/ลบจุด ส่วน pH ต้องอัปโหลด S3 0.13.0-sensors.1 ก่อน แล้วสอบเทียบสองจุด รุ่นนี้ยังไม่ได้ทดสอบ pH จริงหรือแฟลชบอร์ดตามคำขอเจ้าของ
-[ผังสาย GPIO8/9 และวิธีสอบเทียบ](PH_ADS1115_SETUP_TH.md)
+ใช้ CMake / C++17, Mbed TLS3.6.6 และ ArduinoJson7.4.3 ตามขั้นตอนใน `.github/workflows/ios.yml`
+`tools/runtime-certificates` สร้างโปรแกรมตรวจ crypto และโปรแกรมรัน AquaIdentity.cpp ตัวจริงกับ NVS/hardware adapters จำลอง
+หลังสร้าง fixture ใน `aqua_hatch/build/runtime-private` ชุด Flutter จะตรวจ TLS จริงบน loopback กับ CA จาก QR โดยไม่ติดต่อบอร์ดผู้ใช้
+หากไม่มี fixture ชุด TLS4รายการจะข้าม ส่วน hardware tests เดิมข้ามเมื่อไม่ได้ระบุอุปกรณ์จริง
+macOS CI ตรวจ chain/hostname ด้วย Apple trust policy และตรวจ native IPA / Simulator ด้วย

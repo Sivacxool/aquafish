@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'ph.dart';
+import 'device_identity.dart';
 
 enum RunMode { automatic, manual }
 
@@ -39,16 +40,25 @@ class DeviceSettings {
 }
 
 class ConnectionConfig {
+  final DeviceIdentity? identity;
   final bool demo;
   final bool localEsp32;
   final String baseUrl, deviceId;
   const ConnectionConfig({
+    this.identity,
     this.demo = true,
     this.localEsp32 = false,
     this.baseUrl = 'http://localhost:8000',
     this.deviceId = 'incubator-01',
   });
   String? validate() {
+    if (identity != null) {
+      final invalid = identity!.validate();
+      if (invalid != null) return invalid;
+      if (!localEsp32 || demo || deviceId != identity!.deviceId) {
+        return 'ข้อมูลจับคู่ไม่ตรงกับอุปกรณ์นี้';
+      }
+    }
     if (!RegExp(r'^[a-zA-Z0-9_-]{1,64}$').hasMatch(deviceId)) {
       return 'รหัสเครื่องใช้ตัวอักษรอังกฤษ ตัวเลข - หรือ _';
     }
@@ -84,12 +94,18 @@ class ConnectionConfig {
   }
 
   Map<String, dynamic> toJson() => {
+    if (identity != null) 'identity': identity!.toJson(),
     'demo': demo,
     'local_esp32': localEsp32,
     'base_url': baseUrl,
     'device_id': deviceId,
   };
   factory ConnectionConfig.fromJson(Map<String, dynamic> j) => ConnectionConfig(
+    identity: j['identity'] is Map
+        ? DeviceIdentity.fromJson(
+            Map<String, dynamic>.from(j['identity'] as Map),
+          )
+        : null,
     demo: j['demo'] != false,
     localEsp32: j['local_esp32'] == true,
     baseUrl: j['base_url'] as String? ?? 'http://localhost:8000',

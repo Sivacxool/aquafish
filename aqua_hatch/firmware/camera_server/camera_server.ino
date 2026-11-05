@@ -9,11 +9,17 @@
 #include <esp_heap_caps.h>
 #include <sys/time.h>
 #include "esp_camera.h"
-#include "device_private.h"
+#include <AquaIdentity.h>
+AquaIdentity boardIdentity;
+#define DEVICE_ID boardIdentity.deviceId().c_str()
+#define DEVICE_HOSTNAME boardIdentity.hostname().c_str()
+#define API_TOKEN boardIdentity.token().c_str()
+#define SERVER_CERT boardIdentity.serverCertificate().c_str()
+#define SERVER_KEY boardIdentity.serverKey().c_str()
 #include "camera_pins.h"
 #include "camera_quality.h"
 
-static const char VERSION[]="0.12.0-camera.1";
+static const char VERSION[]="0.14.0-camera.1";
 Preferences prefs;
 httpd_handle_t server=nullptr;
 bool tlsReady=false,wasConnected=false,cameraReady=false,cameraActive=false;
@@ -268,6 +274,19 @@ void serialCommand() {
   JsonDocument doc;if(deserializeJson(doc,serialLine)) return;
   String op=doc["op"]|"";
   if(op=="status") {serialStatus();return;}
+  if(op=="pairing"){
+    // The physically connected owner's PC supplies UTC for offline first boot.
+    const int64_t epoch=doc["time_unix"]|(int64_t)0;
+    if(epoch>=1735689600LL && epoch<4102444800LL){
+      timeval now={(time_t)epoch,0};settimeofday(&now,nullptr);
+      if(boardIdentity.needsRenewal((time_t)epoch)){
+        if(tlsReady){httpd_ssl_stop(server);server=nullptr;tlsReady=false;}
+        if(!boardIdentity.renew((time_t)epoch)){Serial.println("{\"type\":\"pairing_error\"}");startTls();return;}
+        startTls();
+      }
+    }
+    JsonDocument response;boardIdentity.pairing(response);serializeJson(response,Serial);Serial.println();return;
+  }
   if(op=="wifi") {
     String ssid=doc["ssid"]|"",password=doc["password"]|"";
     if(ssid.isEmpty()||ssid.length()>32||!provisioning::validPassword(password)) {Serial.println("WIFI_INVALID");return;}
@@ -276,9 +295,13 @@ void serialCommand() {
   }
 }
 void setup() {
-  Serial.begin(115200);delay(250);prefs.begin("aquacam",false);initCamera();shutdownCamera();
+  Serial.begin(115200);delay(250);
+  WiFi.persistent(false);WiFi.mode(WIFI_AP_STA);WiFi.setSleep(false);
+  if(!boardIdentity.begin("camera")){Serial.println("IDENTITY_ERROR:"+boardIdentity.error());while(true)delay(1000);}
+  provisioning::apName=boardIdentity.setupSsid();
+  prefs.begin("aquacam",false);initCamera();shutdownCamera();
   WiFi.onEvent([](WiFiEvent_t,WiFiEventInfo_t info){lastDisconnectReason=info.wifi_sta_disconnected.reason;},ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
-  WiFi.persistent(false);WiFi.setHostname("aquahatch-camera-7c60");WiFi.mode(WIFI_AP_STA);WiFi.setAutoReconnect(true);WiFi.setSleep(false);
+  WiFi.persistent(false);WiFi.setHostname(boardIdentity.mdnsName().c_str());WiFi.mode(WIFI_AP_STA);WiFi.setAutoReconnect(true);WiFi.setSleep(false);
   provisioning::begin();String ssid,password;provisioning::loadSaved(ssid,password);
   if(!ssid.isEmpty()){WiFi.begin(ssid.c_str(),password.c_str());lastWifiAttempt=millis();}serialStatus();
 }
@@ -287,7 +310,16 @@ void loop() {
   while(Serial.available()) {char c=Serial.read();if(c=='\n'){if(!serialOverflow&&serialLine.length())serialCommand();serialLine="";serialOverflow=false;}
     else if(c!='\r'&&!serialOverflow){if(serialLine.length()<1024)serialLine+=c;else{serialLine="";serialOverflow=true;}}}
   bool connected=WiFi.status()==WL_CONNECTED;
-  if(connected&&!wasConnected){configTime(0,0,"pool.ntp.org","time.nist.gov");MDNS.begin("aquahatch-camera-7c60");MDNS.addService("https","tcp",443);serialStatus();}
+  if(connected&&!wasConnected){configTime(0,0,"pool.ntp.org","time.nist.gov");MDNS.begin(boardIdentity.mdnsName().c_str());MDNS.addService("https","tcp",443);serialStatus();}
   if(!connected&&!provisioning::busy()&&millis()-lastWifiAttempt>30000){String ssid,password;provisioning::loadSaved(ssid,password);if(!ssid.isEmpty())WiFi.begin(ssid.c_str(),password.c_str());lastWifiAttempt=millis();}
+  static uint32_t lastCertificateCheck=0;
+  if(millis()-lastCertificateCheck>60000 && !photo && !provisioning::busy()){
+    lastCertificateCheck=millis();
+    if(boardIdentity.needsRenewal(time(nullptr))){
+      if(tlsReady){httpd_ssl_stop(server);server=nullptr;tlsReady=false;}
+      bool renewed=boardIdentity.renew(time(nullptr));
+      Serial.println(renewed?"CERTIFICATE_RENEWED":"CERTIFICATE_RENEWAL_FAILED");startTls();
+    }
+  }
   wasConnected=connected;delay(5);
 }

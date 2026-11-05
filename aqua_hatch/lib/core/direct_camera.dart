@@ -94,7 +94,7 @@ class DirectCameraClient {
         http.Request(
             method,
             Uri.https(
-              cameraTlsHostname,
+              config.identity?.hostname ?? cameraTlsHostname,
               '/api/v1/devices/${config.deviceId}/camera$suffix',
             ),
           )
@@ -148,7 +148,7 @@ class DirectCameraClient {
     if (data is! Map<String, dynamic> ||
         data['backend'] != 'esp32-camera' ||
         data['device_id'] != config.deviceId ||
-        data['camera_id'] != cameraDeviceId) {
+        data['camera_id'] != (config.identity?.deviceId ?? cameraDeviceId)) {
       throw StateError('ข้อมูลไม่ตรงกับบอร์ดกล้องที่จับคู่');
     }
     final clock = data['server_time_unix'];
@@ -234,7 +234,7 @@ class DirectCameraClient {
     if (received == null) throw StateError('ภาพไม่มีเวลาที่บอร์ดยืนยัน');
     return DeviceCapture(
       id: id,
-      cameraId: cameraDeviceId,
+      cameraId: config.identity?.deviceId ?? cameraDeviceId,
       receivedAt: received.toLocal(),
       bytes: bytes,
       width: job['width'] is int ? job['width'] as int : null,

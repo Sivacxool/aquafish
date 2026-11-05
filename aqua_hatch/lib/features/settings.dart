@@ -9,6 +9,7 @@ import 'wifi_setup.dart';
 import 'connection_overview.dart';
 import '../core/paired_camera.dart';
 import 'ph_calibration.dart';
+import 'qr_pairing.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -72,6 +73,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   double? _parse(String? value) =>
       double.tryParse((value ?? '').replaceAll(',', '.'));
+  Future<void> _openQrPairing() async {
+    await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const QrPairingScreen()));
+    if (!mounted) return;
+    final state = ref.read(appControllerProvider);
+    setState(() {
+      _demo = state.connection.demo;
+      _localEsp32 = state.connection.localEsp32;
+      _url.text = state.connection.baseUrl;
+      _device.text = state.connection.deviceId;
+      _cameraUrl.text = state.cameraConnection?.baseUrl ?? '';
+      _token.clear();
+      _cameraToken.clear();
+    });
+  }
+
   Future<void> _openWifiSetup() async {
     await Navigator.of(
       context,
@@ -122,7 +140,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             demo: false,
             localEsp32: true,
             baseUrl: _cameraUrl.text.trim(),
-            deviceId: cameraDeviceId,
+            deviceId:
+                ref
+                    .read(appControllerProvider)
+                    .cameraConnection
+                    ?.identity
+                    ?.deviceId ??
+                cameraDeviceId,
+            identity: ref
+                .read(appControllerProvider)
+                .cameraConnection
+                ?.identity,
           ),
           _cameraToken.text,
         );
@@ -155,6 +183,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _connect() async {
     setState(() => _connecting = true);
     final config = ConnectionConfig(
+      identity:
+          !_demo &&
+              _localEsp32 &&
+              _device.text.trim() ==
+                  ref.read(appControllerProvider).connection.deviceId
+          ? ref.read(appControllerProvider).connection.identity
+          : null,
       demo: _demo,
       localEsp32: _localEsp32,
       baseUrl: _url.text.trim(),
@@ -190,6 +225,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           'ตั้งค่า',
           'จัดการการเชื่อมต่อ ค่าตั้งเครื่อง และรอบฟัก',
         ),
+        FilledButton.icon(
+          key: const ValueKey('add-device-by-qr'),
+          onPressed: state.busy ? null : _openQrPairing,
+          icon: const Icon(Icons.qr_code_scanner),
+          label: const Text('บอร์ดใหม่? สแกน QR เพื่อจับคู่'),
+        ),
+        const SizedBox(height: 16),
         ConnectionOverview(
           state: state,
           onBoard: state.busy || _connecting ? null : _openWifiSetup,

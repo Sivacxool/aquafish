@@ -48,7 +48,7 @@ class Esp32Repository implements DeviceRepository {
   ]) async {
     if (_closed) throw StateError('ปิดการเชื่อมต่อแล้ว');
     final uri = Uri.https(
-      deviceTlsHostname,
+      config.identity?.hostname ?? deviceTlsHostname,
       '/api/v1/devices/${config.deviceId}$suffix',
     );
     final request = http.Request(method, uri)..followRedirects = false;

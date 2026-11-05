@@ -67,7 +67,7 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>ใช้กล้องเพื่อถ่ายภาพถาดฟักและนับลูกปลา</string>
+	<string>ใช้กล้องเพื่อสแกน QR จับคู่บอร์ด AquaHatch และถ่ายภาพถาดฟัก</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>เลือกภาพหรือคลิปถาดฟักเพื่อวิเคราะห์และตรวจแก้จำนวนลูกปลา</string>
 	<key>NSAppTransportSecurity</key>

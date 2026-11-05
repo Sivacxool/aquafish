@@ -16,6 +16,7 @@
 **/.flutter-plugins
 **/.gradle/
 **/.venv/
+**/.venv-pairing/
 **/__pycache__/
 **/.pytest_cache/
 **/data/

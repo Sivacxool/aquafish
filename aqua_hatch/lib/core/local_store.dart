@@ -25,6 +25,25 @@ class LocalStore {
       _read('camera_connection_v1', ConnectionConfig.fromJson);
   Future<void> saveCameraConnection(ConnectionConfig config) =>
       _write('camera_connection_v1', config.toJson());
+  List<ConnectionConfig> get pairedDevices => _list(
+    'paired_devices_v1',
+    ConnectionConfig.fromJson,
+  ).where((c) => c.identity != null && c.validate() == null).toList();
+  Future<void> rememberPairedDevice(ConnectionConfig config) async {
+    if (config.identity == null) return;
+    final items = pairedDevices
+        .where(
+          (c) =>
+              !(c.identity!.kind == config.identity!.kind &&
+                  c.deviceId == config.deviceId),
+        )
+        .toList();
+    await _write(
+      'paired_devices_v1',
+      [config.toJson(), ...items.map((c) => c.toJson())].take(64).toList(),
+    );
+  }
+
   bool get usbCameraEnabled =>
       preferences.getBool('usb_camera_enabled_v1') ?? false;
   Future<void> saveUsbCameraEnabled(bool enabled) async {
@@ -45,7 +64,9 @@ class LocalStore {
     }
   }
 
-  String scope(ConnectionConfig c) => c.demo
+  String scope(ConnectionConfig c) => c.identity != null
+      ? 'paired:${c.identity!.stableKey}'
+      : c.demo
       ? 'demo'
       : '${c.localEsp32 ? 'esp32:' : ''}${c.baseUrl}|${c.deviceId}';
   List<T> _list<T>(String key, T Function(Map<String, dynamic>) decode) {

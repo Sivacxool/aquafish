@@ -8,12 +8,18 @@
 #include <esp_https_server.h>
 #include <sys/time.h>
 #include <math.h>
-#include "device_private.h"
+#include <AquaIdentity.h>
+AquaIdentity boardIdentity;
+#define DEVICE_ID boardIdentity.deviceId().c_str()
+#define DEVICE_HOSTNAME boardIdentity.hostname().c_str()
+#define API_TOKEN boardIdentity.token().c_str()
+#define SERVER_CERT boardIdentity.serverCertificate().c_str()
+#define SERVER_KEY boardIdentity.serverKey().c_str()
 #include "sensor_temperature.h"
 #include "sensor_do.h"
 #include "sensor_ph.h"
 
-static const char VERSION[] = "0.13.0-sensors.1";
+static const char VERSION[] = "0.14.0-sensors.1";
 Preferences prefs;
 httpd_handle_t httpsServer = nullptr;
 bool tlsReady = false, wasConnected = false;
@@ -249,8 +255,8 @@ void startTls() {
   config.httpd.uri_match_fn=httpd_uri_match_wildcard;
   config.httpd.max_open_sockets=3; config.httpd.lru_purge_enable=true;
   config.httpd.recv_wait_timeout=3; config.httpd.send_wait_timeout=3;
-  config.servercert=(const uint8_t*)SERVER_CERT; config.servercert_len=sizeof(SERVER_CERT);
-  config.prvtkey_pem=(const uint8_t*)SERVER_KEY; config.prvtkey_len=sizeof(SERVER_KEY);
+  config.servercert=(const uint8_t*)SERVER_CERT; config.servercert_len=strlen(SERVER_CERT)+1;
+  config.prvtkey_pem=(const uint8_t*)SERVER_KEY; config.prvtkey_len=strlen(SERVER_KEY)+1;
   if (httpd_ssl_start(&httpsServer,&config)!=ESP_OK) { Serial.println("{\"type\":\"tls_error\"}"); return; }
   for (httpd_method_t method : {HTTP_GET,HTTP_POST}) {
     httpd_uri_t route={}; route.uri="/*"; route.method=method; route.handler=api;
@@ -263,6 +269,19 @@ void serialCommand() {
   if (deserializeJson(doc, serialLine)) { Serial.println("{\"type\":\"invalid_command\"}"); return; }
   String op=doc["op"] | "";
   if (op=="status") { serialStatus(); return; }
+  if(op=="pairing"){
+    // The physically connected owner's PC supplies UTC for offline first boot.
+    const int64_t epoch=doc["time_unix"]|(int64_t)0;
+    if(epoch>=1735689600LL && epoch<4102444800LL){
+      timeval now={(time_t)epoch,0};settimeofday(&now,nullptr);
+      if(boardIdentity.needsRenewal((time_t)epoch)){
+        if(tlsReady){httpd_ssl_stop(httpsServer);httpsServer=nullptr;tlsReady=false;}
+        if(!boardIdentity.renew((time_t)epoch)){Serial.println("{\"type\":\"pairing_error\"}");startTls();return;}
+        startTls();
+      }
+    }
+    JsonDocument response;boardIdentity.pairing(response);serializeJson(response,Serial);Serial.println();return;
+  }
   if (op=="diagnose") { wifiDiagnostics(); return; }
   if (op=="wifi") {
     String ssid=doc["ssid"] | "";
@@ -281,6 +300,9 @@ void serialCommand() {
 }
 void setup() {
   Serial.begin(115200); delay(200);
+  WiFi.persistent(false); WiFi.mode(WIFI_AP_STA); WiFi.setSleep(false);
+  if(!boardIdentity.begin("s3")){Serial.println("IDENTITY_ERROR:"+boardIdentity.error());while(true)delay(1000);}
+  provisioning::apName=boardIdentity.setupSsid();
   temperature_sensor::begin();
   oxygen_sensor::begin();
   ph_sensor::begin();
@@ -297,7 +319,7 @@ void setup() {
     temperatureTarget=stored["temperature_target"] | 28.0f;
     phMinimum=stored["ph_minimum"] | 6.5f; phMaximum=stored["ph_maximum"] | 8.5f;
   }
-  WiFi.persistent(false); WiFi.setHostname("aquahatch-117c"); WiFi.mode(WIFI_AP_STA);
+  WiFi.persistent(false); WiFi.setHostname(boardIdentity.mdnsName().c_str()); WiFi.mode(WIFI_AP_STA);
   WiFi.setAutoReconnect(true); provisioning::begin();
   String ssid,password; provisioning::loadSaved(ssid,password);
   if (!ssid.isEmpty()) { WiFi.begin(ssid.c_str(),password.c_str()); lastWifiAttempt=millis(); }
@@ -321,7 +343,7 @@ void loop() {
   bool connected=WiFi.status()==WL_CONNECTED;
   if (connected && !wasConnected) {
     configTime(0,0,"pool.ntp.org","time.nist.gov");
-    MDNS.end(); MDNS.begin("aquahatch-117c"); MDNS.addService("https","tcp",443);
+    MDNS.end(); MDNS.begin(boardIdentity.mdnsName().c_str()); MDNS.addService("https","tcp",443);
     startTls(); serialStatus("wifi_connected");
   }
   if (!connected && wasConnected) serialStatus("wifi_disconnected");
@@ -329,6 +351,15 @@ void loop() {
     String ssid,password; provisioning::loadSaved(ssid,password);
     if (!ssid.isEmpty()) WiFi.begin(ssid.c_str(),password.c_str());
     lastWifiAttempt=millis();
+  }
+  static uint32_t lastCertificateCheck=0;
+  if(millis()-lastCertificateCheck>60000 && !provisioning::busy()){
+    lastCertificateCheck=millis();
+    if(boardIdentity.needsRenewal(time(nullptr))){
+      if(tlsReady){httpd_ssl_stop(httpsServer);httpsServer=nullptr;tlsReady=false;}
+      bool renewed=boardIdentity.renew(time(nullptr));
+      Serial.println(renewed?"CERTIFICATE_RENEWED":"CERTIFICATE_RENEWAL_FAILED");startTls();
+    }
   }
   wasConnected=connected; delay(5);
 }

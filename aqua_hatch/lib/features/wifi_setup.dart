@@ -9,8 +9,11 @@ import '../core/models.dart';
 import '../core/wifi_platform.dart';
 import '../core/paired_camera.dart';
 import 'connection_journey.dart';
+import '../core/pairing.dart';
 
 class WifiSetupScreen extends ConsumerStatefulWidget {
+  final PairingBundle? pairing;
+  final ConnectionConfig? savedConfig;
   final WifiPlatform platform;
   final bool camera;
   final BoardWifiClient Function(ConnectionConfig, String)? clientFactory;
@@ -19,6 +22,8 @@ class WifiSetupScreen extends ConsumerStatefulWidget {
     this.platform = const WifiPlatform(),
     this.camera = false,
     this.clientFactory,
+    this.pairing,
+    this.savedConfig,
   });
   @override
   ConsumerState<WifiSetupScreen> createState() => _WifiSetupScreenState();
@@ -55,15 +60,18 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
     super.initState();
     _app = ref.read(appControllerProvider.notifier);
     final state = ref.read(appControllerProvider);
-    _initial = widget.camera
-        ? state.cameraConnection ??
-              const ConnectionConfig(
-                demo: false,
-                localEsp32: true,
-                baseUrl: setupBoardUrl,
-                deviceId: cameraDeviceId,
-              )
-        : state.connection;
+    _initial =
+        widget.pairing?.config(setupBoardUrl) ??
+        widget.savedConfig ??
+        (widget.camera
+            ? state.cameraConnection ??
+                  const ConnectionConfig(
+                    demo: false,
+                    localEsp32: true,
+                    baseUrl: setupBoardUrl,
+                    deviceId: cameraDeviceId,
+                  )
+            : state.connection);
     _initializing = _initialize();
   }
 
@@ -71,7 +79,13 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
     await _app.pauseForWifiSetup();
     if (!mounted) return;
     try {
-      if (_initial.localEsp32) {
+      if (widget.pairing != null) {
+        if (widget.pairing!.identity.kind !=
+            (widget.camera ? 'camera' : 's3')) {
+          throw StateError('QR ไม่ตรงกับชนิดอุปกรณ์');
+        }
+        _savedToken = widget.pairing!.token;
+      } else if (_initial.localEsp32) {
         _savedToken = await ref.read(credentialStoreProvider).read(_initial);
       }
     } catch (_) {
@@ -100,6 +114,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
   }
 
   ConnectionConfig _config(String url) => ConnectionConfig(
+    identity: _initial.identity,
     demo: false,
     localEsp32: true,
     baseUrl: url,
@@ -124,6 +139,9 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
     final text = error.toString();
     if (text.contains('CERTIFICATE_VERIFY_FAILED')) {
       final device = widget.camera ? 'กล้อง' : 'บอร์ด';
+      if (_initial.identity != null) {
+        return 'ใบรับรองไม่ตรงกับ QR ของ$deviceนี้ ตรวจว่าเชื่อม Wi-Fi ถูกตัว หากล้างข้อมูลบอร์ด ให้รับ QR ใหม่ผ่าน USB แล้วสแกนอีกครั้ง';
+      }
       return 'ยืนยันใบรับรอง$deviceไม่ได้ ตรวจว่าเชื่อม Wi-Fi ของ$deviceถูกตัว และใช้แอปกับเฟิร์มแวร์ชุดเดียวกัน หากใช้ iPhone เฟิร์มแวร์ต้องมีใบรับรองที่รองรับ iOS';
     }
     if (text.contains('TimeoutException') ||
@@ -173,14 +191,13 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
   String get _wifiSettingsLabel => widget.platform.requiresManualWifiSelection
       ? 'วิธีเปลี่ยน Wi-Fi บน iPhone'
       : 'เปิดหน้าตั้งค่า Wi-Fi';
+  String get _setupSsid =>
+      _initial.identity?.setupSsid ??
+      (widget.camera ? cameraSetupNetworkName : setupNetworkName);
 
   Future<void> _openSettings() async {
     if (widget.platform.requiresManualWifiSelection) {
-      final network = _stage == 4 && _target.isNotEmpty
-          ? _target
-          : widget.camera
-          ? cameraSetupNetworkName
-          : setupNetworkName;
+      final network = _stage == 4 && _target.isNotEmpty ? _target : _setupSsid;
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
@@ -484,11 +501,18 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
           const SizedBox(height: 18),
           _instruction('1', 'จ่ายไฟให้$_deviceName แล้ววางใกล้เราเตอร์'),
           _instruction('2', 'เตรียมชื่อและรหัส Wi-Fi บ้าน 2.4 GHz'),
-          _instruction('3', 'เตรียมรหัสจับคู่จากบัตรประจำเครื่อง'),
+          _instruction(
+            '3',
+            widget.pairing != null
+                ? 'สแกน QR ของอุปกรณ์นี้แล้ว รหัสพร้อมใช้'
+                : 'เตรียมรหัสจับคู่จากบัตรประจำเครื่อง',
+          ),
           if (_savedToken.isNotEmpty) ...[
             const SizedBox(height: 8),
-            const ConnectionHint(
-              'มีรหัสจับคู่ที่บันทึกไว้แล้ว ไม่ต้องกรอกใหม่',
+            ConnectionHint(
+              widget.pairing != null
+                  ? 'อ่านรหัสจาก QR แล้ว ไม่ต้องกรอกซ้ำ'
+                  : 'มีรหัสจับคู่ที่บันทึกไว้แล้ว ไม่ต้องกรอกใหม่',
               icon: Icons.verified_user_outlined,
             ),
             TextButton(
@@ -538,7 +562,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
                 ),
                 const SizedBox(height: 6),
                 SelectableText(
-                  widget.camera ? cameraSetupNetworkName : setupNetworkName,
+                  _setupSsid,
                   style: const TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w700,

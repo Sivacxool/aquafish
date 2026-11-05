@@ -5,8 +5,9 @@ import 'models.dart';
 class CredentialStore {
   final FlutterSecureStorage storage;
   const CredentialStore({this.storage = const FlutterSecureStorage()});
-  String key(ConnectionConfig config) =>
-      '${config.localEsp32 ? 'esp32' : 'gateway'}:${config.baseUrl.replaceAll(RegExp(r'/+$'), '')}:${config.deviceId}';
+  String key(ConnectionConfig config) => config.identity != null
+      ? 'paired-v1:${config.identity!.stableKey}'
+      : '${config.localEsp32 ? 'esp32' : 'gateway'}:${config.baseUrl.replaceAll(RegExp(r'/+$'), '')}:${config.deviceId}';
   Future<String> read(ConnectionConfig config) async =>
       kIsWeb ? '' : await storage.read(key: key(config)) ?? '';
   Future<void> save(ConnectionConfig config, String token) async {
