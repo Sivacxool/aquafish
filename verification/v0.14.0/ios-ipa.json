@@ -1,0 +1,20 @@
+{
+  "version": "0.14.0",
+  "build": "2015",
+  "bundle_id": "th.ac.aquahatch.aquaHatch",
+  "minimum_ios": "13.0",
+  "architecture": "arm64",
+  "supported_platforms": [
+    "iPhoneOS"
+  ],
+  "local_network_description_present": true,
+  "arbitrary_transport_loads_allowed": false,
+  "device_and_camera_ca_included": true,
+  "archive_files": 93,
+  "signing_status": "Unsigned build; must be signed with the owner Apple account before installation.",
+  "bytes": 8508446,
+  "sha256": "b13cb41fbb540db66b7d560e6e6ea9b1d5183ef8b10b8660109a32a54a910d13",
+  "camera_usage_description_present": true,
+  "private_owner_tokens_absent": true,
+  "physical_iphone_install_tested": false
+}

@@ -22,3 +22,10 @@ first boot สร้างตัวตนใหม่, อีกบอร์ด�
 ผลแพ็กเกจและ native iOS อ้างอิงรายงาน release หลัง CI ผ่าน ไม่ใช้ compile หรือ Simulator แทนผลเชื่อมฮาร์ดแวร์จริง
 
 ผลฮาร์ดแวร์ OV3660 เดิมและรายงาน 0.12.0/0.13.0 เก็บไว้ใน verification ตามรุ่น ไม่ใช่ผลทดสอบ generic firmware รุ่นนี้
+
+## ชุดติดตั้งที่ตรวจแล้ว
+
+Native iOS arm64 / iPhoneOS 0.14.0+2015 และการเปิด Simulator ผ่าน [CI](https://github.com/Sivacxool/aquafish/actions/runs/42090614131) จาก source แอป `0838ba8ee890313cb3a42120be95931015aa7967`
+เฟิร์มแวร์คอมไพล์จาก `160961e331ead7d73a594642465c07fb0b505535` ซึ่งเพิ่มการหยุดเมื่อ Wi-Fi เปิดไม่สำเร็จก่อนสร้างกุญแจ โดย source แอปและไลบรารีตัวตนตรงกับชุดที่ CI ตรวจแล้ว
+Flutterผ่าน100รายการ ข้าม6 hardware tests ตรวจ Android ครบ3ABI และลายเซ็นเดิมผ่าน
+[รายงานรุ่นนี้](verification/v0.14.0/release.json) · [FirstBoot](verification/v0.14.0/firstboot-verification.json) · [iOS](verification/v0.14.0/ios-ipa.json) · [Android](verification/v0.14.0/android-apk.json)

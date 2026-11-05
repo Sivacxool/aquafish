@@ -1,0 +1,18 @@
+{
+  "file": "AquaHatch-v0.14.0-FirstBoot.zip",
+  "bytes": 1701287,
+  "sha256": "f4b25f35b1b83fed3cdc28d36879aedd7ff50d9663f3dd4ed8b701a9d9fa23d8",
+  "source": "160961e331ead7d73a594642465c07fb0b505535",
+  "firmware_sha256": {
+    "s3/local_server.ino.bin": "60274052f1dbe4b13aae367678d18c0eea32b1dd01e446428c74971ab91ff8d8",
+    "s3/local_server.ino.bootloader.bin": "84bb365666003b051f564d04380d0cf5d9d85c420ddafe9fc863071b49e49bfc",
+    "s3/local_server.ino.partitions.bin": "ace02503447d0f470692e65fa76002f2d77a92dc81cd3813d8aa66718d716da9",
+    "camera/camera_server.ino.bin": "c3f0bb8fcf1cbbeda2e10d1d24ce06f3282c092518e27977e3f62ff06c4e3730",
+    "camera/camera_server.ino.bootloader.bin": "47bbbfca119fe87190f63a67af9d85adff6433bcf3812ec92a9b9c9416a53ad1",
+    "camera/camera_server.ino.partitions.bin": "aaae2888c5a6a348004b5b436f47abb25ae32e72d9003902955a998eda723edd"
+  },
+  "owner_tokens_absent": true,
+  "embedded_private_keys_absent": true,
+  "nvs_not_included": true,
+  "physical_upload_not_executed": true
+}

@@ -1,0 +1,6 @@
+S3:
+Sketch uses 1182451 bytes (37%) of program storage space. Maximum is 3145728 bytes.
+Global variables use 52244 bytes (15%) of dynamic memory, leaving 275436 bytes for local variables. Maximum is 327680 bytes.
+CAMERA:
+Sketch uses 1254434 bytes (39%) of program storage space. Maximum is 3145728 bytes.
+Global variables use 63676 bytes (19%) of dynamic memory, leaving 264004 bytes for local variables. Maximum is 327680 bytes.

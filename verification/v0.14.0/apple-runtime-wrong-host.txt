@@ -1,0 +1,25 @@
+APPLE_DEVICE_CERTIFICATE_VERIFIED=false
+APPLE_TRUST_ERROR=Error Domain=NSOSStatusErrorDomain Code=-67602 "“aquahatch-s3-aabbccddee01.local” certificate name does not match input" UserInfo={NSLocalizedDescription=“aquahatch-s3-aabbccddee01.local” certificate name does not match input, NSUnderlyingError=0x600000804930 {Error Domain=NSOSStatusErrorDomain Code=-67602 "Certificate 0 “aquahatch-s3-aabbccddee01.local” has errors: SSL hostname does not match name(s) in certificate;" UserInfo={NSLocalizedDescription=Certificate 0 “aquahatch-s3-aabbccddee01.local” has errors: SSL hostname does not match name(s) in certificate;}}}
+APPLE_TRUST_RESULT={
+    TrustEvaluationDate = "2026-11-05 19:06:43 +0000";
+    TrustResultDetails =     (
+                {
+            SSLHostname = 0;
+            StatusCodes =             (
+                "-2147408896"
+            );
+        },
+                {
+        }
+    );
+    TrustResultValue = 5;
+}
+APPLE_TRUST_PROPERTIES=(
+        {
+        error = "Host name mismatch";
+        title = "aquahatch-s3-aabbccddee01.local";
+    },
+        {
+        title = "AquaHatch CA s3-aabbccddee01";
+    }
+)

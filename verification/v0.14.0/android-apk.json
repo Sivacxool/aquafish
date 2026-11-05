@@ -1,0 +1,16 @@
+{
+  "version": "0.14.0",
+  "build": 2015,
+  "sha256": "87190881c9ba54bb670d5fdd19134636e97cd30efe7bb8592f25ae4bcf1edcd6",
+  "abis": [
+    "armeabi-v7a",
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "all_flutter_runtimes_present": true,
+  "signature_verified": true,
+  "signer_sha256": "f6df9948344bc96c8db247aeb7f8fc6ffefdf1f172e25fc67bd23736eac39fbd",
+  "camera_optional_manifest": true,
+  "private_owner_tokens_absent": true,
+  "physical_install_tested": false
+}

@@ -1,0 +1,20 @@
+APPLE_DEVICE_CERTIFICATE_VERIFIED=true
+APPLE_TRUST_RESULT={
+    TrustEvaluationDate = "2026-11-05 19:06:21 +0000";
+    TrustResultDetails =     (
+                {
+        },
+                {
+        }
+    );
+    TrustResultValue = 4;
+}
+APPLE_TRUST_PROPERTIES=(
+        {
+        error = "No error.";
+        title = "aquahatch-117c.local";
+    },
+        {
+        title = "AquaHatch device 117C private CA";
+    }
+)

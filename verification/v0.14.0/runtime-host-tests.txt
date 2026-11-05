@@ -1,0 +1,2 @@
+PASS runtime crypto: independent keys/roots, valid chain/SAN, wrong host/root/key rejected
+PASS actual identity source with simulated NVS/hardware: first boot, distinct boards, restart persistence, atomic failure, corruption, renewal

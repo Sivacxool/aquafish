@@ -1,0 +1,11 @@
+{
+  "usb_adapter_simulated": true,
+  "fragmented_serial_payload_parsed": true,
+  "reset_lines_disabled_before_open": true,
+  "utc_time_sent_for_offline_certificate_bootstrap": true,
+  "port_closed_after_read": true,
+  "checksum_checked_before_upload": true,
+  "real_serial_ports_opened": false,
+  "real_upload_executed": false,
+  "upload_command_has_no_erase_or_force": true
+}
