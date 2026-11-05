@@ -1,0 +1,81 @@
+name: iOS personal install
+
+on:
+  push:
+    branches: [main, codex/ios-personal-install]
+    paths:
+      - aqua_hatch/**
+      - .github/workflows/ios.yml
+      - IOS_INSTALL_TH.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: aqua_hatch
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install pinned Flutter SDK
+        run: |
+          git clone --depth 1 --branch 3.44.6 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          test "$(git -C "$RUNNER_TEMP/flutter" rev-parse HEAD)" = ee80f08bbf97172ec030b8751ceab557177a34a6
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/flutter/bin/flutter" --version
+          xcodebuild -version
+      - name: Resolve locked dependencies
+        run: |
+          flutter config --enable-swift-package-manager
+          flutter pub get --enforce-lockfile
+      - name: Analyze and test
+        run: |
+          flutter analyze
+          flutter test --reporter expanded --concurrency=2
+      - name: Build unsigned device application
+        run: |
+          mkdir -p build/ios-delivery
+          set -o pipefail
+          flutter build ios --release --no-codesign 2>&1 | tee build/ios-delivery/device-build.log
+      - name: Package and verify unsigned IPA
+        run: |
+          mkdir -p build/ios-delivery/stage/Payload
+          ditto build/ios/iphoneos/Runner.app build/ios-delivery/stage/Payload/Runner.app
+          ditto -c -k --keepParent build/ios-delivery/stage/Payload build/ios-delivery/AquaHatch-v0.11.0-iOS-unsigned.ipa
+          python3 tools/verify_ios_ipa.py build/ios-delivery/AquaHatch-v0.11.0-iOS-unsigned.ipa
+          cp ../IOS_INSTALL_TH.md build/ios-delivery/
+      - name: Upload install package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: AquaHatch-iOS-unsigned-${{ github.sha }}
+          path: |
+            aqua_hatch/build/ios-delivery/*.ipa
+            aqua_hatch/build/ios-delivery/*verification.json
+            aqua_hatch/build/ios-delivery/IOS_INSTALL_TH.md
+          if-no-files-found: error
+          retention-days: 30
+      - name: Build and launch iPhone Simulator
+        run: bash tools/smoke_ios_simulator.sh
+      - name: Upload verification logs and simulator image
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: AquaHatch-iOS-verification-${{ github.sha }}
+          path: |
+            aqua_hatch/build/ios-delivery/*.log
+            aqua_hatch/build/ios-delivery/*.png
+            aqua_hatch/build/ios-delivery/*verification.json
+          if-no-files-found: ignore
+          retention-days: 30

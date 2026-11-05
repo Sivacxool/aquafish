@@ -128,6 +128,9 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
     if (text.contains('TimeoutException') ||
         text.contains('SocketException') ||
         text.contains('ClientException')) {
+      if (widget.platform.requiresManualWifiSelection) {
+        return 'ยังติดต่ออุปกรณ์ไม่ได้ ตรวจ Wi-Fi และอนุญาต “เครือข่ายเฉพาะที่” ให้ AquaHatch ในการตั้งค่า iPhone แล้วลองอีกครั้ง';
+      }
       return 'ยังติดต่อบอร์ดไม่ได้ ตรวจ Wi-Fi ที่เชื่อมอยู่ แล้วลองอีกครั้ง';
     }
     if (error is MissingPluginException) {
@@ -166,7 +169,39 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
     }
   }
 
+  String get _wifiSettingsLabel => widget.platform.requiresManualWifiSelection
+      ? 'วิธีเปลี่ยน Wi-Fi บน iPhone'
+      : 'เปิดหน้าตั้งค่า Wi-Fi';
+
   Future<void> _openSettings() async {
+    if (widget.platform.requiresManualWifiSelection) {
+      final network = _stage == 4 && _target.isNotEmpty
+          ? _target
+          : widget.camera
+          ? cameraSetupNetworkName
+          : setupNetworkName;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('เปลี่ยน Wi-Fi บน iPhone'),
+          content: SingleChildScrollView(
+            child: Text(
+              '1. เปิด การตั้งค่า > Wi-Fi ของ iPhone\n\n'
+              '2. เลือก “$network” แล้วใส่รหัส Wi-Fi\n\n'
+              '3. กลับมาที่ AquaHatch และกดตรวจการเชื่อมต่อ\n\n'
+              'เมื่อ iPhone ขอสิทธิ์เข้าถึงเครือข่ายเฉพาะที่ ให้เลือกอนุญาต เพื่อให้แอปติดต่อบอร์ดและกล้องได้',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('เข้าใจแล้ว'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
     try {
       await widget.platform.openSettings();
     } catch (error) {
@@ -562,7 +597,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
           ),
           const SizedBox(height: 16),
           _button(
-            'เปิดหน้าตั้งค่า Wi-Fi',
+            _wifiSettingsLabel,
             _busy ? null : _openSettings,
             icon: Icons.open_in_new_rounded,
           ),
@@ -740,7 +775,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
             const SizedBox(height: 16),
             OutlinedButton(
               onPressed: _openSettings,
-              child: const Text('เปิดหน้าตั้งค่า Wi-Fi'),
+              child: Text(_wifiSettingsLabel),
             ),
             const SizedBox(height: 10),
             _button('ตรวจผลการเชื่อมต่อ', () => _run(_watchJob)),
