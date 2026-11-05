@@ -1,0 +1,50 @@
+{
+  "camera_id": "camera-7c60",
+  "sensor": "OV3660",
+  "paired_tls_verified": true,
+  "original_pairing_preserved": true,
+  "captures": [
+    {
+      "requested_resolution": "3mp",
+      "width": 2048,
+      "height": 1536,
+      "flash_used": true,
+      "focus_status": "not_supported_sensor",
+      "jpeg_bytes": 104231,
+      "sha256": "ac2135a3c2c8cb959885d9807d67dbb34277dfaaf06e3a688cacca18e47662c4",
+      "elapsed_seconds": 8.88,
+      "full_jpeg_decode_passed": true
+    },
+    {
+      "requested_resolution": "3mp",
+      "width": 2048,
+      "height": 1536,
+      "flash_used": true,
+      "focus_status": "not_supported_sensor",
+      "jpeg_bytes": 101777,
+      "sha256": "f907c32c3cebcbc502d9172b0864e9c80053e33e45dc99e564c59b5912bf8102",
+      "elapsed_seconds": 8.58,
+      "full_jpeg_decode_passed": true
+    },
+    {
+      "requested_resolution": "5mp",
+      "width": 2048,
+      "height": 1536,
+      "flash_used": true,
+      "focus_status": "not_supported_sensor",
+      "jpeg_bytes": 102857,
+      "sha256": "42d2e6adb9fb97b35cbc16bad556356701a1b698a841a4c5581e492407e8f71a",
+      "elapsed_seconds": 8.22,
+      "full_jpeg_decode_passed": true
+    }
+  ],
+  "ai_model_installed": false,
+  "firmware": "0.12.0-camera.1",
+  "authenticated_wifi_status_passed": true,
+  "camera_and_flash_off_between_captures": true,
+  "legacy_5mp_request_clamped_to_native_3mp": true,
+  "actual_app_dart_two_fresh_captures_passed": true,
+  "owner_reported_mobile_capture_passed": true,
+  "owner_reported_mobile_capture_context": "Previously paired app after switching camera hardware and installing firmware 0.12.0-camera.1; not a separate confirmation of new 0.12.0 iOS/Android installers.",
+  "optical_sharpness_comparison_verified": false
+}

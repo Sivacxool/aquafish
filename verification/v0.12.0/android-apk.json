@@ -1,0 +1,19 @@
+{
+  "version": "0.12.0",
+  "build": 2013,
+  "package": "th.ac.aquahatch.aqua_hatch",
+  "minimum_android_api": 24,
+  "abis": [
+    "armeabi-v7a",
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "signature_verified": true,
+  "same_signer_as_previous_installer": true,
+  "signer_sha256": "f6df9948344bc96c8db247aeb7f8fc6ffefdf1f172e25fc67bd23736eac39fbd",
+  "bytes": 58008080,
+  "sha256": "e7a98f341d22ba45cb7e1e135ef2d903641fe46cf06e5af576a2d933e461bb55",
+  "native_runtime_install_retested": false,
+  "adb_devices_available": false,
+  "ov3660_manual_count_widget_test_passed_android_and_ios": true
+}

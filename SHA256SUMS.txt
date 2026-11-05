@@ -1,3 +1,3 @@
-4aaaa02b2d05a6e9cc1665cd350605928c22fc37a677f8bfcb7ba16c52936247  IOS/AquaHatch-v0.11.1-iOS-unsigned.ipa
-4e09f6d8d0ebf6bbed1c92b060deacc1621f74bb6731175f20539deecc875181  ANDROID/AquaHatch-v0.11.1-Android-universal.apk
-aae0ac9e306d864b8136c0bf4924292f554b61e4e1691161a74c22d183e4e3ec  AquaHatch-v0.11.1-source.zip
+7f86057a0cd6983202a9958b33246de90330ee4e6b9f4b75ac47fefdc4807e5f  IOS/AquaHatch-v0.12.0-iOS-unsigned.ipa
+e7a98f341d22ba45cb7e1e135ef2d903641fe46cf06e5af576a2d933e461bb55  ANDROID/AquaHatch-v0.12.0-Android-universal.apk
+9781e44d86b0ba6cf0d9eef068d85e9b059d6994283de02b1f89c717dccda1cc  AquaHatch-v0.12.0-source.zip

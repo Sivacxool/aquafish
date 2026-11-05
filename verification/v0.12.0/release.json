@@ -1,0 +1,39 @@
+{
+  "version": "0.12.0",
+  "build": 2013,
+  "date": "2026-11-05",
+  "app_source_commit": "558f9a195d5437fa6a2eb35599284efe1b0a659f",
+  "firmware": "0.12.0-camera.1",
+  "sensor": "OV3660",
+  "native_capture_size": [
+    2048,
+    1536
+  ],
+  "ci_url": "https://github.com/Sivacxool/aquafish/actions/runs/41995568480",
+  "ci_conclusion": "success",
+  "analyzer": "passed",
+  "flutter_tests_passed": 77,
+  "optional_tests_skipped": 6,
+  "focused_tests_passed": 12,
+  "physical_dart_camera_test": "passed; two fresh captures with flash",
+  "paired_https_api_captures_passed": 3,
+  "legacy_5mp_request_clamped_to_3mp": true,
+  "native_apple_certificate_policy": "passed; expected camera accepted, wrong host rejected",
+  "ios_native_arm64_package_verified": true,
+  "ios_simulator_launch_verified": true,
+  "android_abis_verified": [
+    "armeabi-v7a",
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "owner_reported_mobile_capture_passed": true,
+  "owner_reported_mobile_capture_on_previously_installed_app": true,
+  "new_v0_12_0_physical_ios_install_verified": false,
+  "new_v0_12_0_android_runtime_install_verified": false,
+  "manual_count_widget_test_on_ios_and_android": true,
+  "trained_ai_model_included": false,
+  "live_fish_count_accuracy_verified": false,
+  "controlled_optical_comparison_verified": false,
+  "private_pairing_and_wifi_preserved": true,
+  "main_s3_certificate_renewed": false
+}
