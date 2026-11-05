@@ -21,3 +21,9 @@
 
 ผล OV3660 ที่รับภาพ 2048×1536 พร้อมแฟลชจริงในรุ่น 0.12.0 เก็บไว้ใน [รายงานเดิม](verification/v0.12.0/)
 กล้องยังใช้เฟิร์มแวร์ 0.12.0-camera.1 ผลดังกล่าวไม่ใช่หลักฐานการอ่าน pH หรือการติดตั้งแอป 0.13.0 บนมือถือจริง
+
+## แพ็กเกจที่ตรวจแล้ว
+
+Native iOS และการเปิด Simulator ผ่าน [CI](https://github.com/Sivacxool/aquafish/actions/runs/42006240674) จากซอร์ส `cc7c008a3dd10af679a1eecb81943fbe2a097a56`
+ตรวจ IPA 0.13.0+2014 arm64 / iPhoneOS และ APK Universal สามสถาปัตยกรรม ลายเซ็น Android เดิมผ่าน Public CA ของทั้งสองแพ็กเกจตรงกับซอร์ส ไม่พบ token ส่วนตัวในไฟล์แอป
+[รายงานรุ่นนี้](verification/v0.13.0/release.json) · [iOS](verification/v0.13.0/ios-ipa.json) · [Android](verification/v0.13.0/android-apk.json) · [ภาพหน้าจอจำลอง](screens/v0.13.0/)

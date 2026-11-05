@@ -1,0 +1,17 @@
+{
+  "version": "0.13.0",
+  "build": 2014,
+  "abis": [
+    "armeabi-v7a",
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "minimum_api": 24,
+  "signature_verified": true,
+  "signer_sha256": "f6df9948344bc96c8db247aeb7f8fc6ffefdf1f172e25fc67bd23736eac39fbd",
+  "same_signer_as_previous": true,
+  "ca_assets_match": true,
+  "private_tokens_absent": true,
+  "physical_install_tested_this_release": false,
+  "sha256": "67ada643703de808477232fa50c8ce06beaf262021986ddd522246bfc3fd55d0"
+}
