@@ -29,6 +29,11 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+      - name: Verify camera certificate with Apple trust policy
+        run: |
+          mkdir -p build/ios-delivery
+          set -o pipefail
+          swift tools/verify_apple_device_certificates.swift assets/device/camera_ca.pem test/fixtures/camera_server_public.pem aquahatch-camera-7c60.local 2>&1 | tee build/ios-delivery/apple-camera-trust.log
       - name: Install pinned Flutter SDK
         run: |
           git clone --depth 1 --branch 3.44.6 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
