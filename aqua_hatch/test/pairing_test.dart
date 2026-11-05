@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:aqua_hatch/core/controller.dart';
 import 'package:aqua_hatch/core/pairing.dart';
 import 'package:aqua_hatch/core/models.dart';
 import 'package:aqua_hatch/core/local_store.dart';
@@ -8,6 +10,31 @@ import 'package:aqua_hatch/core/credentials.dart';
 import 'pairing_fixture.dart';
 
 void main() {
+  test(
+    'controller refuses to save a camera as the main board or the reverse',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final store = LocalStore(await SharedPreferences.getInstance());
+      final container = ProviderContainer(
+        overrides: [localStoreProvider.overrideWithValue(store)],
+      );
+      addTearDown(container.dispose);
+      final app = container.read(appControllerProvider.notifier);
+      final s3 = PairingBundle.parse(jsonEncode(pairingFixture()));
+      final camera = PairingBundle.parse(
+        jsonEncode(pairingFixture(kind: 'camera')),
+      );
+      expect(
+        await app.configure(camera.config('https://192.168.4.1'), camera.token),
+        contains('กล้อง'),
+      );
+      expect(
+        await app.configureCamera(s3.config('https://192.168.4.1'), s3.token),
+        contains('บอร์ดหลัก'),
+      );
+      expect(store.pairedDevices, isEmpty);
+    },
+  );
   test(
     'different boards have separate public identities and secure credential keys',
     () {

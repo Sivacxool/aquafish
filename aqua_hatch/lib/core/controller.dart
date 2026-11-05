@@ -407,6 +407,8 @@ class AppController extends Notifier<AppState> {
   String _message(Object e) =>
       e.toString().replaceFirst(RegExp(r'^(Bad state: |Exception: )'), '');
   Future<String?> configure(ConnectionConfig config, String token) async {
+    if (config.identity != null && config.identity!.kind != 's3')
+      return 'นี่คือ QR กล้อง ให้เพิ่มในส่วนกล้องแทนบอร์ดหลัก';
     final invalid = config.validate();
     if (invalid != null) return invalid;
     var accessToken = token.trim();
@@ -691,6 +693,8 @@ class AppController extends Notifier<AppState> {
   }
 
   Future<String?> configureCamera(ConnectionConfig config, String token) async {
+    if (config.identity != null && config.identity!.kind != 'camera')
+      return 'นี่คือ QR บอร์ดหลัก ให้เพิ่มในส่วนบอร์ดหลักแทนกล้อง';
     final invalid = config.validate();
     if (invalid != null || config.demo || !config.localEsp32) {
       return invalid ?? 'ตรวจที่อยู่กล้อง';
