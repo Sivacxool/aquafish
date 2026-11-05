@@ -1,0 +1,20 @@
+{
+  "version": "0.11.1",
+  "build": 2012,
+  "package": "th.ac.aquahatch.aqua_hatch",
+  "minimum_android_api": 24,
+  "abis": [
+    "armeabi-v7a",
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "complete_flutter_libraries": true,
+  "signature_verified": true,
+  "signer_sha256": "f6df9948344bc96c8db247aeb7f8fc6ffefdf1f172e25fc67bd23736eac39fbd",
+  "same_signer_as_v0_10_0": true,
+  "camera_ca_matches_ios_and_updated_camera": true,
+  "private_pairing_token_absent": true,
+  "bytes": 57991696,
+  "sha256": "4e09f6d8d0ebf6bbed1c92b060deacc1621f74bb6731175f20539deecc875181",
+  "v0_11_1_runtime_install_retested": false
+}

@@ -1,0 +1,23 @@
+{
+  "version": "0.11.1",
+  "build": 2012,
+  "published_date": "2026-11-05",
+  "app_source_commit": "1c5006c9d8fd5da3f380e5bfa83345dcf4a6e3e8",
+  "ios_native_ci": "https://github.com/Sivacxool/aquafish/actions/runs/41986625089",
+  "flutter_analyze": "passed",
+  "flutter_tests_passed": 74,
+  "optional_tests_skipped": 6,
+  "certificate_issuer_tests_passed": 4,
+  "actual_camera_dart_tls_test": "passed; two fresh 2560x1920 images with flash",
+  "ios_physical_pairing": {
+    "passed": true,
+    "evidence": "user_report",
+    "date": "2026-11-05"
+  },
+  "ios_physical_capture_verified": false,
+  "installers": {
+    "ios": "IOS/AquaHatch-v0.11.1-iOS-unsigned.ipa",
+    "android": "ANDROID/AquaHatch-v0.11.1-Android-universal.apk"
+  },
+  "main_s3_certificate_renewed": false
+}

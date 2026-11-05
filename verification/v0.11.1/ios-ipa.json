@@ -1,0 +1,17 @@
+{
+  "version": "0.11.1",
+  "build": "2012",
+  "bundle_id": "th.ac.aquahatch.aquaHatch",
+  "minimum_ios": "13.0",
+  "architecture": "arm64",
+  "supported_platforms": [
+    "iPhoneOS"
+  ],
+  "local_network_description_present": true,
+  "arbitrary_transport_loads_allowed": false,
+  "device_and_camera_ca_included": true,
+  "archive_files": 90,
+  "signing_status": "Unsigned build; must be signed with the owner Apple account before installation.",
+  "bytes": 8327831,
+  "sha256": "4aaaa02b2d05a6e9cc1665cd350605928c22fc37a677f8bfcb7ba16c52936247"
+}

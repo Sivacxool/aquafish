@@ -1,0 +1,23 @@
+{
+  "camera_id": "camera-7c60",
+  "verified_tls": true,
+  "live_certificate_matches_new_app": true,
+  "server_certificate_validity_days": 730,
+  "server_certificate_expires": "2028-11-03T07:17:13+00:00",
+  "pairing_token_preserved": true,
+  "authenticated_camera_status": true,
+  "authenticated_wifi_status": true,
+  "home_wifi_preserved": true,
+  "firmware": "0.9.0-camera.2",
+  "sensor": "OV5640",
+  "capture_verified": true,
+  "jpeg_bytes": 396306,
+  "width": 2560,
+  "height": 1920,
+  "flash_used": true,
+  "actual_app_dart_tls_two_fresh_captures_passed": true,
+  "native_apple_trust_policy_passed": true,
+  "physical_iphone_pairing_verified": true,
+  "physical_iphone_pairing_evidence": "User reported successful camera addition after installing AquaHatch 0.11.1 on 2026-11-05.",
+  "physical_iphone_capture_verified": false
+}
