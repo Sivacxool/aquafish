@@ -4,6 +4,7 @@ import 'package:aqua_hatch/core/direct_camera.dart';
 import 'package:aqua_hatch/core/esp32_repository.dart';
 import 'package:aqua_hatch/core/pairing.dart';
 import 'package:aqua_hatch/core/relay_origin.dart';
+import 'package:aqua_hatch/core/remote_relay.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -27,6 +28,80 @@ void main() {
     ]) {
       expect(parseRelayOrigin(invalid), isNull);
     }
+  });
+
+  for (final role in ['s3', 'camera']) {
+    test(
+      'turn off $role through Cloudflare without opening a LAN client',
+      () async {
+        final pairing = PairingBundle.parse(
+          jsonEncode(pairingFixture(kind: role)),
+        );
+        final config = pairing
+            .config('https://192.168.1.50')
+            .withRelayOrigin(origin);
+        final writer = sha256.convert(
+          utf8.encode('aquahatch relay write v1:${pairing.token}'),
+        );
+        var requests = 0;
+        await configureDeviceRelay(
+          config,
+          pairing.token,
+          null,
+          relayClient: MockClient((request) async {
+            requests++;
+            expect(request.method, 'POST');
+            expect(request.url.host, Uri.parse(origin).host);
+            expect(request.url.path, endsWith('/access'));
+            expect(request.followRedirects, isFalse);
+            expect(request.headers['Authorization'], 'Bearer $writer');
+            expect(jsonDecode(request.body), {'enabled': false});
+            return jsonResponse({'enabled': false});
+          }),
+          localClientFactory: (_) async => throw StateError('no LAN'),
+        );
+        expect(requests, 1);
+      },
+    );
+  }
+
+  test(
+    'enabling remote access checks the device on LAN before unblocking it',
+    () async {
+      final pairing = PairingBundle.parse(jsonEncode(pairingFixture()));
+      final config = pairing.config('https://192.168.1.50');
+      var remoteWrites = 0;
+      await expectLater(
+        configureDeviceRelay(
+          config,
+          pairing.token,
+          origin,
+          relayClient: MockClient((request) async {
+            if (request.method == 'POST') remoteWrites++;
+            return jsonResponse({'enabled': false});
+          }),
+          localClientFactory: (_) async => throw http.ClientException('no LAN'),
+        ),
+        throwsA(isA<http.ClientException>()),
+      );
+      expect(remoteWrites, 0);
+    },
+  );
+
+  test('off requires acknowledgement from the relay', () async {
+    final pairing = PairingBundle.parse(jsonEncode(pairingFixture()));
+    final config = pairing
+        .config('https://192.168.1.50')
+        .withRelayOrigin(origin);
+    await expectLater(
+      configureDeviceRelay(
+        config,
+        pairing.token,
+        null,
+        relayClient: MockClient((_) async => jsonResponse({'enabled': true})),
+      ),
+      throwsStateError,
+    );
   });
 
   test(

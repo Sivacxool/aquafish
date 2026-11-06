@@ -1,6 +1,6 @@
-# AquaHatch 0.16.0 — ติดตั้งทดสอบบน iPhone จาก Windows
+# AquaHatch 0.16.1 — ติดตั้งทดสอบบน iPhone จาก Windows
 
-ไฟล์ **AquaHatch-v0.16.0-iOS-unsigned.ipa** เป็นแอป iOS สำหรับเครื่องจริงที่ยังไม่เซ็น ต้องเซ็นด้วย Apple ID ของเจ้าของก่อนติดตั้ง เปิดไฟล์จาก Safari เพื่อติดตั้งตรง ๆ ไม่ได้
+ไฟล์ **AquaHatch-v0.16.1-iOS-unsigned.ipa** เป็นแอป iOS สำหรับเครื่องจริงที่ยังไม่เซ็น ต้องเซ็นด้วย Apple ID ของเจ้าของก่อนติดตั้ง เปิดไฟล์จาก Safari เพื่อติดตั้งตรง ๆ ไม่ได้
 
 ดาวน์โหลดชุดล่าสุดจาก [โฟลเดอร์ IOS](IOS/) · [Android / LDPlayer](ANDROID/)
 

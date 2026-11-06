@@ -106,44 +106,71 @@ class AppShell extends ConsumerWidget {
     Icons.center_focus_strong_rounded,
     Icons.settings_outlined,
   ];
-  void _notifications(BuildContext context, AppState state) =>
-      showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
-        isScrollControlled: true,
-        builder: (context) => SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionHeading('กิจกรรมและการแจ้งเตือน'),
-                  if (state.events.isEmpty) const Text('ยังไม่มีกิจกรรม'),
-                  ...state.events
-                      .take(200)
-                      .map(
-                        (e) => ListTile(
+  void _notifications(BuildContext context, AppState state) {
+    final events = state.events.take(200).toList();
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .82,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: SectionHeading('กิจกรรมและการแจ้งเตือน'),
+                    ),
+                    IconButton(
+                      tooltip: 'ปิดการแจ้งเตือน',
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                if (events.isEmpty)
+                  const Text('ยังไม่มีกิจกรรม')
+                else
+                  Flexible(
+                    child: ListView.builder(
+                      key: const ValueKey('notification-events'),
+                      shrinkWrap: true,
+                      itemCount: events.length,
+                      itemBuilder: (context, index) {
+                        final event = events[index];
+                        return ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: Icon(
-                            e.warning
+                            event.warning
                                 ? Icons.warning_amber_rounded
                                 : Icons.check_circle_outline_rounded,
-                            color: e.warning
+                            color: event.warning
                                 ? AquaColors.orange
                                 : AquaColors.teal,
                           ),
-                          title: Text(e.message),
-                          subtitle: Text(shortTime(e.at)),
-                        ),
-                      ),
-                ],
-              ),
+                          title: Text(event.message),
+                          subtitle: Text(shortTime(event.at)),
+                        );
+                      },
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(appControllerProvider);
@@ -271,7 +298,7 @@ class AppShell extends ConsumerWidget {
                                   ),
                                   SizedBox(height: 10),
                                   Text(
-                                    'Aqua Hatch · v0.16.0',
+                                    'Aqua Hatch · v0.16.1',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: AquaColors.muted,

@@ -57,7 +57,7 @@ class _RemoteSettingsState extends ConsumerState<RemoteSettings> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('ตั้งครั้งเดียวบน Wi-Fi ของอุปกรณ์'),
+        const Text('เปิดบน Wi-Fi ของอุปกรณ์ · ปิดได้จากทุกเครือข่าย'),
         const SizedBox(height: 12),
         TextField(
           controller: _url,

@@ -36,10 +36,11 @@ export default {
     const [, kind, room, suffix = ''] = match;
     const agent = /^\/agent(?:\/(?:photo|error)\/[a-zA-Z0-9_-]{1,64})?$/.test(suffix);
     const camera = /^\/camera(?:\/captures(?:\/[a-zA-Z0-9_-]{1,64}(?:\/image)?)?)?$/.test(suffix);
-    const valid = kind === 'readings'
+    const access = suffix === '/access' && ['GET', 'POST'].includes(method);
+    const valid = access || (kind === 'readings'
       ? !suffix && ['GET', 'POST'].includes(method)
       : (agent && method === 'POST') ||
-        (camera && (method === 'GET' || (method === 'POST' && suffix === '/camera/captures')));
+        (camera && (method === 'GET' || (method === 'POST' && suffix === '/camera/captures'))));
     if (!valid) return json({ error: 'not_found' }, 404);
 
     const authorization = request.headers.get('Authorization') ?? '';
@@ -49,7 +50,7 @@ export default {
         !env.RELAY_ROOMS?.split(/[\s,]+/).includes(namespace)) {
       return json({ error: 'unauthorized' }, 401);
     }
-    const writing = kind === 'readings' ? method === 'POST' : agent;
+    const writing = access || (kind === 'readings' ? method === 'POST' : agent);
     const reader = writing ? await hash('aquahatch relay read v1:', key) : key;
     if (!equal(room, await hash('aquahatch relay room v1:', reader))) {
       return json({ error: 'unauthorized' }, 401);
@@ -135,16 +136,52 @@ function active(value, now = Date.now()) {
   return value && value.expires > now ? value : null;
 }
 
+function remoteDisabled() {
+  return json({ error: 'remote_disabled', detail: 'ปิดการดูจากนอกบ้านไว้' }, 423);
+}
+
 export class ReadingRoom extends DurableObject {
   async fetch(request) {
     const path = new URL(request.url).pathname;
-    if (path === '/readings') return this.readings(request);
-    if (path === '/agent') return this.heartbeat(request);
-    if (path.startsWith('/agent/')) return this.finishCapture(request, path);
-    return this.camera(request, path);
+    if (path === '/access') return this.access(request);
+    const access = await this.ctx.storage.get('access');
+    if (access?.enabled === false) return remoteDisabled();
+    const revision = access?.revision ?? 0;
+    if (path === '/readings') return this.readings(request, revision);
+    if (path === '/agent') return this.heartbeat(request, revision);
+    if (path.startsWith('/agent/')) return this.finishCapture(request, path, revision);
+    return this.camera(request, path, revision);
   }
 
-  async readings(request) {
+  async access(request) {
+    const storage = this.ctx.storage;
+    if (request.method === 'GET') {
+      return json({ enabled: (await storage.get('access'))?.enabled !== false });
+    }
+    const input = await object(request);
+    if (typeof input?.enabled !== 'boolean') {
+      return json({ error: 'invalid_access_state' }, 422);
+    }
+    return storage.transaction(async txn => {
+      const previous = await txn.get('access');
+      if (input.enabled !== (previous?.enabled !== false)) {
+        await txn.put('access', { enabled: input.enabled, revision: (previous?.revision ?? 0) + 1 });
+        if (!input.enabled) {
+          await txn.delete(['latest', 'camera', 'job', 'photo']);
+        }
+      }
+      return json({ enabled: input.enabled });
+    });
+  }
+
+  async stillOpen(revision) {
+    // Recheck after network body reads/digests. A request in flight during
+    // disable and re-enable cannot recreate an old reading or capture.
+    const access = await this.ctx.storage.get('access');
+    return access?.enabled !== false && (access?.revision ?? 0) === revision;
+  }
+
+  async readings(request, revision) {
     const storage = this.ctx.storage;
     if (request.method === 'POST') {
       const data = await object(request);
@@ -154,6 +191,7 @@ export class ReadingRoom extends DurableObject {
           !Number.isFinite(Date.parse(data.telemetry.timestamp))) {
         return json({ error: 'invalid_snapshot' }, 422);
       }
+      if (!await this.stillOpen(revision)) return remoteDisabled();
       const now = Date.now();
       const previous = await storage.get('latest');
       if (previous && now - previous.at < 3000) return json({ error: 'try_later' }, 429);
@@ -166,9 +204,10 @@ export class ReadingRoom extends DurableObject {
     return json({ age_ms: Math.max(0, Date.now() - latest.at), snapshot: latest.data });
   }
 
-  async heartbeat(request) {
+  async heartbeat(request, revision) {
     const camera = await object(request);
     if (!validCamera(camera)) return json({ error: 'invalid_camera' }, 422);
+    if (!await this.stillOpen(revision)) return remoteDisabled();
     const storage = this.ctx.storage;
     const now = Date.now();
     const status = { expires: now + 24_000, data: camera };
@@ -182,7 +221,13 @@ export class ReadingRoom extends DurableObject {
     return json({ job: job.options });
   }
 
-  async camera(request, path) {
+  async camera(request, path, revision) {
+    let options;
+    if (request.method === 'POST') {
+      options = await object(request);
+      if (!validOptions(options)) return json({ detail: 'ตรวจค่าการถ่ายภาพ' }, 422);
+      if (!await this.stillOpen(revision)) return remoteDisabled();
+    }
     const storage = this.ctx.storage;
     const camera = active(await storage.get('camera'));
     const job = active(await storage.get('job'));
@@ -190,10 +235,8 @@ export class ReadingRoom extends DurableObject {
       if (!camera) return json({ error: 'camera_unavailable' }, 404);
       return json({ ...camera.data, ...cameraIdentity(camera.data) });
     }
-    if (request.method === 'POST') {
-      const options = await object(request);
-      if (!validOptions(options)) return json({ detail: 'ตรวจค่าการถ่ายภาพ' }, 422);
-      const current = active(await storage.get('job'));
+    if (options) {
+      const current = job;
       if (current?.options.capture_id === options.capture_id) {
         return json(current.result ?? { ...current.identity, capture_id: options.capture_id, status: current.status }, 202);
       }
@@ -228,7 +271,7 @@ export class ReadingRoom extends DurableObject {
     return json(job.result ?? { ...job.identity, capture_id: id, status: job.status });
   }
 
-  async finishCapture(request, path) {
+  async finishCapture(request, path, revision) {
     const [, , action, id] = path.split('/');
     const storage = this.ctx.storage;
     if (action === 'error') {
@@ -254,6 +297,7 @@ export class ReadingRoom extends DurableObject {
         !keyFormat.test(metadata.sha256) || metadata.sha256 !== await digest(bytes)) {
       return json({ error: 'invalid_photo' }, 422);
     }
+    if (!await this.stillOpen(revision)) return remoteDisabled();
     const job = active(await storage.get('job'));
     if (!job || job.options.capture_id !== id || job.status !== 'capturing' ||
         metadata.device_id !== job.identity.device_id || !validCamera(metadata)) {

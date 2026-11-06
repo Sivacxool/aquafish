@@ -80,4 +80,31 @@ const photo = await send('GET', captured + '/image', camera.reader, undefined, 2
 assert.equal(photo.headers.get('content-type'), 'image/jpeg');
 assert.equal(photo.headers.get('cache-control'), 'no-store');
 assert.deepEqual(new Uint8Array(await photo.arrayBuffer()), image);
-console.log('PASS: scoped credentials, live reading, one capture claim, JPEG integrity and download');
+await send('POST', readingPath + '/access', board.reader, { enabled: false }, 401);
+await send('POST', readingPath + '/access', board.writer, { enabled: 'false' }, 422);
+const disabled = await send('POST', readingPath + '/access', board.writer, { enabled: false }, 200);
+assert.deepEqual(await disabled.json(), { enabled: false });
+await send('POST', readingPath + '/access', board.writer, { enabled: false }, 200);
+await send('GET', readingPath, board.reader, undefined, 423);
+await send('POST', readingPath, board.writer, snapshot, 423);
+await send('GET', captured + '/image', camera.reader, undefined, 200);
+await send('POST', readingPath + '/access', board.writer, { enabled: true }, 200);
+await send('GET', readingPath, board.reader, undefined, 404);
+await send('POST', readingPath, board.writer, snapshot, 200);
+
+await send('POST', camPath + '/access', camera.writer, { enabled: false }, 200);
+await send('GET', captured + '/image', camera.reader, undefined, 423);
+await send('POST', camPath + '/agent', camera.writer, cameraState, 423);
+await send('POST', camPath + '/camera/captures', camera.reader, options, 423);
+await send('GET', readingPath, board.reader, undefined, 200);
+await send('POST', camPath + '/access', camera.writer, { enabled: true }, 200);
+await send('GET', captured + '/image', camera.reader, undefined, 410);
+
+const pending = { ...options, capture_id: randomUUID() };
+await send('POST', camPath + '/agent', camera.writer, cameraState, 200);
+await send('POST', camPath + '/camera/captures', camera.reader, pending, 202);
+await send('POST', camPath + '/access', camera.writer, { enabled: false }, 200);
+await send('POST', camPath + '/access', camera.writer, { enabled: true }, 200);
+const afterEnable = await send('POST', camPath + '/agent', camera.writer, cameraState, 200);
+assert.equal((await afterEnable.json()).job, null);
+console.log('PASS: relay off/on, writer-only settings, room isolation, and discarded data and capture jobs');

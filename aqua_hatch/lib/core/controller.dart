@@ -736,7 +736,9 @@ class AppController extends Notifier<AppState> {
       if (text.contains('TimeoutException') ||
           text.contains('SocketException') ||
           text.contains('ClientException')) {
-        return 'ตรวจอินเทอร์เน็ตและ Wi-Fi ของอุปกรณ์';
+        return url == null
+            ? 'ยังปิดไม่ได้ เชื่อมอินเทอร์เน็ตแล้วลองใหม่'
+            : 'ตรวจอินเทอร์เน็ตและ Wi-Fi ของอุปกรณ์';
       }
       return text;
     } finally {
