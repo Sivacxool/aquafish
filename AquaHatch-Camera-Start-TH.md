@@ -1,7 +1,7 @@
 # กล้อง AquaHatch — OV3660 / Wi-Fi / แฟลช
 
 ชุดล่าสุด: AI Thinker ESP32-CAM (ESP32-S บนฐาน USB ESP32-CAM-MB) + OV3660
-เฟิร์มแวร์ [camera_server](aqua_hatch/firmware/camera_server/camera_server.ino) รุ่น **0.14.0-camera.1** · แอป iOS/Android **0.15.0+2016**
+เฟิร์มแวร์ [camera_server](aqua_hatch/firmware/camera_server/camera_server.ino) รุ่น **0.16.0-camera.1** · แอป iOS/Android **0.16.0+2017**
 
 ## เชื่อมกล้องเข้ากับแอป
 
@@ -36,3 +36,5 @@ CameraWebServer ใช้หน้าเว็บ HTTP และไม่มี 
 การอัปชุดนี้เก็บใบรับรอง iOS-compatible 730 วันและ token เดิมไว้ ต้องใช้แอปกับเอกลักษณ์เฟิร์มแวร์ชุดเดียวกัน
 
 [ผลตรวจ](VERIFICATION.md) · [iOS](IOS/) · [Android](ANDROID/) · [สร้างชุดสำหรับบอร์ดใหม่](REBUILD.md)
+
+[ตั้งค่าดูเซนเซอร์และถ่ายภาพจากนอกบ้าน](REMOTE_SETUP_TH.md)

@@ -1,6 +1,6 @@
 # คู่มือ ESP32 ชุดปัจจุบัน
 
-แอปรุ่นปัจจุบันคือ 0.15.0 ดู [เริ่มเชื่อมทีละขั้น](START_HERE_TH.md)
+แอปรุ่นปัจจุบันคือ 0.16.0 ดู [เริ่มเชื่อมทีละขั้น](START_HERE_TH.md)
 
 - [ESP32-WROOM-DA และผังขาเซนเซอร์](aqua_hatch/SENSORS_SETUP_TH.md)
 - [กล้อง AI Thinker ESP32-CAM + OV3660](AquaHatch-Camera-Start-TH.md)

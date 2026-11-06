@@ -1,4 +1,4 @@
-# Direct mobile Wi-Fi provisioning, WROOM-DA firmware 0.15.0-wroom-da.1
+# Direct mobile Wi-Fi provisioning, WROOM-DA firmware 0.16.0-wroom-da.1
 
 The ESP32 serves its existing HTTPS identity on STA and SoftAP interfaces. No PC provisioning service or cloud account is required after firmware installation. All provisioning endpoints require the existing Bearer token and are under `/api/v1/devices/{device_id}`.
 

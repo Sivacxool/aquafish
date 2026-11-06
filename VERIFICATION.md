@@ -1,3 +1,16 @@
+# การตรวจ AquaHatch 0.16.0
+
+- WROOM-DA ส่งอุณหภูมิและ DO จริงไป Workers อ่านกลับผ่าน HTTPS ได้
+- ESP32-CAM ส่งภาพ OV3660 ขนาด 2048 × 1536 ผ่านอินเทอร์เน็ต เปิดแฟลชและตรวจ SHA-256 ผ่าน
+- โค้ดแอป Flutter รับและถอดรหัส JPEG จริงผ่านบริการกลาง เมื่อจำลองว่าทาง LAN เข้าไม่ถึง
+- Flutter analyzer ผ่าน ทดสอบ 103 รายการ ข้าม 6 รายการในชุดทดสอบทั่วไป
+- APK Universal ตรวจลายเซ็นเดิมและสาม ABI ผ่าน ส่วน IPA arm64 ตรวจผ่าน และ Simulator กำลังตรวจใน CI [GitHub Actions](https://github.com/Sivacxool/aquafish/actions/runs/42226409380)
+- ทดสอบบอร์ดทีละตัวผ่านสาย USB เส้นเดียว การติดตั้งและสลับเป็นเน็ตมือถือบน iPhone จริงรอตรวจ
+
+[รายงานรุ่นนี้](verification/v0.16.0/relay-release.json) · [คู่มือใช้งาน](REMOTE_SETUP_TH.md)
+
+## ผลของรุ่นก่อนหน้า
+
 # การตรวจ AquaHatch 0.15.0
 
 - คอมไพล์โปรไฟล์ ESP32-WROOM-DA ขนาด Flash 4 MB ผ่าน เฟิร์มแวร์ใช้พื้นที่โปรแกรม 60%

@@ -1,0 +1,38 @@
+{
+  "version": "0.16.0+2017",
+  "source": "1f2ef8ceaeba02d97993d77af7370f58bb1c6e25",
+  "native_ios_ci": "https://github.com/Sivacxool/aquafish/actions/runs/42226409380",
+  "ios_device_build_verified": true,
+  "ios_simulator_passed_at_packaging": false,
+  "flutter_tests_passed": 103,
+  "hardware_or_integration_tests_skipped_in_standard_suite": 6,
+  "actual_flutter_remote_photo_decoded": true,
+  "physical_iphone_cellular_tested": false,
+  "boards_tested_separately": true,
+  "wroom": {
+    "port": "COM5",
+    "public_https_verified": true,
+    "wrong_key_rejected": true,
+    "version": "0.16.0-wroom-da.1",
+    "real_snapshot_received": true,
+    "age_ms": 1105,
+    "temperature": 31.6875,
+    "dissolved_oxygen": 6.988875,
+    "ph_status": "adc_not_found"
+  },
+  "camera": {
+    "port": "COM5",
+    "public_https_verified": true,
+    "wrong_key_rejected": true,
+    "version": "0.16.0-camera.1",
+    "camera_heartbeat_received": true,
+    "camera_ready": true,
+    "sensor": "OV3660",
+    "real_jpeg_verified": true,
+    "jpeg_bytes": 124131,
+    "width": 2048,
+    "height": 1536,
+    "flash_used": true
+  },
+  "android_signer_sha256": "f6df9948344bc96c8db247aeb7f8fc6ffefdf1f172e25fc67bd23736eac39fbd"
+}

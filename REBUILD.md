@@ -1,4 +1,4 @@
-# สร้าง AquaHatch 0.15.0 และ generic firmware
+# สร้าง AquaHatch 0.16.0 และ generic firmware
 
 รุ่นนี้ WROOM-DA/CAM สร้างตัวตนและ private keys ในบอร์ดตอนเปิดครั้งแรก ไม่ต้องสร้าง device_private.h หรือบิลด์แอปประจำบอร์ด
 อ่าน [คู่มือติดตั้งและจับคู่ด้วย QR](FIRST_BOOT_PAIRING_TH.md) ก่อนใช้งาน
