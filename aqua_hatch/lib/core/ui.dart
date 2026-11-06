@@ -594,6 +594,37 @@ class PageBody extends StatelessWidget {
   );
 }
 
+Future<void> showDeleteBatchDialog(
+  BuildContext context,
+  AppController controller,
+  HatchBatch batch,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('ลบรอบฟักนี้?'),
+      content: Text('“${batch.name}”\nผลนับที่บันทึกไว้ยังอยู่ในประวัติ'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('ยกเลิก'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+          ),
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('ลบรอบฟัก'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  final error = await controller.deleteBatch(batch.id);
+  if (context.mounted) showFeedback(context, error, success: 'ลบรอบฟักแล้ว');
+}
+
 Future<void> showBatchDialog(
   BuildContext context,
   AppController controller,

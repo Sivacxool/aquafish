@@ -52,8 +52,10 @@ class LocalStore {
     }
   }
 
-  HatchBatch? get batch =>
-      _read('batch_v2:${scope(connection)}', HatchBatch.fromJson);
+  HatchBatch? get batch => _read(_batchKey(connection), HatchBatch.fromJson);
+  bool get batchCleared =>
+      preferences.getString(_batchKey(connection)) == 'null';
+  String _batchKey(ConnectionConfig config) => 'batch_v2:${scope(config)}';
   List<CountRecord> get counts {
     try {
       return (jsonDecode(preferences.getString('counts') ?? '[]') as List)
@@ -91,7 +93,7 @@ class LocalStore {
         items.take(200).map((e) => e.toJson()).toList(),
       );
 
-  Future<void> _write(String key, Object data) async {
+  Future<void> _write(String key, Object? data) async {
     if (!await preferences.setString(key, jsonEncode(data))) {
       throw StateError('บันทึกข้อมูลในเครื่องไม่สำเร็จ');
     }
@@ -101,8 +103,8 @@ class LocalStore {
       _write('connection', config.toJson());
   Future<void> saveSettings(DeviceSettings settings) =>
       _write('settings', settings.toJson());
-  Future<void> saveBatch(HatchBatch batch) =>
-      _write('batch_v2:${scope(connection)}', batch.toJson());
+  Future<void> saveBatch(HatchBatch? batch, ConnectionConfig config) =>
+      _write(_batchKey(config), batch?.toJson());
   Future<void> saveCounts(List<CountRecord> counts) =>
       _write('counts', counts.take(100).map((e) => e.toJson()).toList());
 }

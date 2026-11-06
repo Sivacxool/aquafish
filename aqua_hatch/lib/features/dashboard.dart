@@ -149,7 +149,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         const SizedBox(height: 18),
         _BatchCard(
           state: state,
-          onNew: () => showBatchDialog(context, controls),
+          onNew: state.busy ? null : () => showBatchDialog(context, controls),
+          onDelete: state.busy || state.batch == null
+              ? null
+              : () => showDeleteBatchDialog(context, controls, state.batch!),
         ),
         const SizedBox(height: 18),
         Surface(
@@ -364,8 +367,12 @@ class _ConnectionCard extends StatelessWidget {
 
 class _BatchCard extends StatelessWidget {
   final AppState state;
-  final VoidCallback onNew;
-  const _BatchCard({required this.state, required this.onNew});
+  final VoidCallback? onNew, onDelete;
+  const _BatchCard({
+    required this.state,
+    required this.onNew,
+    required this.onDelete,
+  });
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
@@ -389,6 +396,12 @@ class _BatchCard extends StatelessWidget {
                 style: TextStyle(color: Color(0xFFD9EEF2)),
               ),
             ),
+            if (state.batch != null)
+              IconButton(
+                tooltip: 'ลบรอบฟัก',
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline, color: Colors.white),
+              ),
             IconButton(
               tooltip: 'เริ่มรอบฟักใหม่',
               onPressed: onNew,

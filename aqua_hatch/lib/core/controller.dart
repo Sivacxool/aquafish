@@ -227,7 +227,7 @@ class AppController extends Notifier<AppState> {
       counts: store.counts,
       batch:
           store.batch ??
-          (config.demo
+          (config.demo && !store.batchCleared
               ? HatchBatch(
                   id: 'demo-batch',
                   name: 'รอบฟักตัวอย่าง 01',
@@ -549,6 +549,7 @@ class AppController extends Notifier<AppState> {
   }
 
   Future<String?> startBatch(String name, int? eggs) async {
+    if (state.busy) return 'รอคำสั่งปัจจุบันเสร็จก่อน';
     if (name.trim().isEmpty) return 'กรุณาตั้งชื่อรอบฟัก';
     if (eggs != null && eggs <= 0) return 'จำนวนไข่ต้องมากกว่า 0';
     final batch = HatchBatch(
@@ -557,13 +558,31 @@ class AppController extends Notifier<AppState> {
       startedAt: DateTime.now(),
       eggs: eggs,
     );
+    return _updateBatch(batch, 'เริ่มรอบฟัก ${batch.name}');
+  }
+
+  Future<String?> deleteBatch(String id) async {
+    if (state.busy) return 'รอคำสั่งปัจจุบันเสร็จก่อน';
+    final batch = state.batch;
+    if (batch == null || batch.id != id) return 'รอบฟักปัจจุบันเปลี่ยนแล้ว';
+    return _updateBatch(null, 'ลบรอบฟัก ${batch.name}');
+  }
+
+  Future<String?> _updateBatch(HatchBatch? batch, String event) async {
+    final config = state.connection;
+    state = state.copyWith(busy: true);
     try {
-      await _store.saveBatch(batch);
-      state = state.copyWith(batch: batch);
-      _event('เริ่มรอบฟัก ${batch.name}');
+      await _store.saveBatch(batch, config);
+      if (!_disposed &&
+          _store.scope(state.connection) == _store.scope(config)) {
+        state = state.copyWith(batch: batch, clearBatch: batch == null);
+        _event(event);
+      }
       return null;
     } catch (e) {
       return _message(e);
+    } finally {
+      if (!_disposed) state = state.copyWith(busy: false);
     }
   }
 

@@ -6,18 +6,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:aqua_hatch/app/app.dart';
 import 'package:aqua_hatch/core/controller.dart';
 import 'package:aqua_hatch/core/local_store.dart';
+import 'package:aqua_hatch/core/models.dart';
 
 Future<void> mountApp(
   WidgetTester tester, {
   Size size = const Size(390, 844),
   double textScale = 1,
+  SharedPreferences? preferences,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-  SharedPreferences.setMockInitialValues({});
-  final preferences = await SharedPreferences.getInstance();
+  if (preferences == null) {
+    SharedPreferences.setMockInitialValues({});
+    preferences = await SharedPreferences.getInstance();
+  }
   final font = FontLoader('NotoSansThai')
     ..addFont(rootBundle.load('assets/fonts/NotoSansThai.ttf'));
   await font.load();
@@ -64,6 +68,57 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('นับลูกปลา').first);
     await tester.pump(const Duration(milliseconds: 350));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+  testWidgets('delete confirms the round and preserves saved counts', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final store = LocalStore(preferences);
+    await store.saveCounts([
+      CountRecord(
+        id: 'sample-count',
+        batchId: 'demo-batch',
+        batchName: 'รอบฟักตัวอย่าง 01',
+        source: 'sample',
+        method: 'manual',
+        count: 12,
+        at: DateTime.now(),
+        demo: true,
+      ),
+    ]);
+    await mountApp(tester, preferences: preferences);
+    final delete = find.byTooltip('ลบรอบฟัก');
+    await tester.ensureVisible(delete);
+    await tester.tap(delete);
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('ผลนับที่บันทึกไว้ยังอยู่ในประวัติ'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('ยกเลิก'));
+    await tester.pumpAndSettle();
+    expect(delete, findsOneWidget);
+    expect(store.batchCleared, isFalse);
+
+    await tester.tap(delete);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'ลบรอบฟัก'));
+    await tester.pumpAndSettle();
+    expect(find.text('ยังไม่มีรอบฟัก'), findsOneWidget);
+    expect(delete, findsNothing);
+    expect(store.batchCleared, isTrue);
+    expect(store.counts.single.count, 12);
+    expect(store.counts.single.batchId, 'demo-batch');
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    await mountApp(tester, preferences: preferences);
+    expect(find.text('ยังไม่มีรอบฟัก'), findsOneWidget);
+    expect(delete, findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     await tester.pump();

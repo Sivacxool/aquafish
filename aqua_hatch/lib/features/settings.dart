@@ -577,10 +577,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               SectionHeading(
                 'รอบฟักปัจจุบัน',
                 trailing: OutlinedButton.icon(
-                  onPressed: () => showBatchDialog(
-                    context,
-                    ref.read(appControllerProvider.notifier),
-                  ),
+                  onPressed: state.busy
+                      ? null
+                      : () => showBatchDialog(
+                          context,
+                          ref.read(appControllerProvider.notifier),
+                        ),
                   icon: const Icon(Icons.add_rounded, size: 17),
                   label: const Text('เริ่มรอบใหม่'),
                 ),
@@ -601,6 +603,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Text(
                   'ไข่เริ่มต้น: ${state.batch!.eggs?.toString() ?? 'ยังไม่ระบุ'}',
                   style: Theme.of(context).textTheme.bodySmall,
+                ),
+                TextButton.icon(
+                  onPressed: state.busy
+                      ? null
+                      : () => showDeleteBatchDialog(
+                          context,
+                          ref.read(appControllerProvider.notifier),
+                          state.batch!,
+                        ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: const Text('ลบรอบฟัก'),
                 ),
               ],
               const SizedBox(height: 12),
