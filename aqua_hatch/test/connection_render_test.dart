@@ -121,7 +121,8 @@ void main() {
 
       await tester.pumpAndSettle();
       await capture('overview-mobile');
-      await tap('เริ่มเชื่อมต่อบอร์ดหลัก');
+      await tester.tap(find.byKey(const ValueKey('start-board-setup')));
+      await tester.pumpAndSettle();
       await capture('step-1-prepare');
       await tester.enterText(
         find.widgetWithText(TextField, 'รหัสจับคู่บอร์ด'),

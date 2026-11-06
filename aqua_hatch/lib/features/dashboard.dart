@@ -333,7 +333,7 @@ class _ConnectionCard extends StatelessWidget {
         : online
         ? (state.telemetry?.viaRelay == true
               ? 'ออนไลน์ · ผ่านอินเทอร์เน็ต'
-              : 'เชื่อมต่อแล้ว')
+              : state.connectionLabel)
         : state.error != null || state.telemetry != null
         ? 'ติดต่อบอร์ดไม่ได้'
         : 'กำลังเชื่อมต่อ';
