@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,10 +58,34 @@ final routerProvider = Provider<GoRouter>((ref) {
   return router;
 });
 
-class AquaHatchApp extends ConsumerWidget {
+class AquaHatchApp extends ConsumerStatefulWidget {
   const AquaHatchApp({super.key});
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
+  ConsumerState<AquaHatchApp> createState() => _AquaHatchAppState();
+}
+
+class _AquaHatchAppState extends ConsumerState<AquaHatchApp> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () => unawaited(
+        ref.read(appControllerProvider.notifier).refreshLocalConnection(),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp.router(
     title: 'Aqua Hatch · เครื่องฟักไข่ปลาดุก',
     debugShowCheckedModeBanner: false,
     theme: buildTheme(),
@@ -246,7 +271,7 @@ class AppShell extends ConsumerWidget {
                                   ),
                                   SizedBox(height: 10),
                                   Text(
-                                    'Aqua Hatch · v0.15.0',
+                                    'Aqua Hatch · v0.16.0',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: AquaColors.muted,

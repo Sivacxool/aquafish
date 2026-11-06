@@ -6,6 +6,7 @@ import 'camera.dart';
 import 'device_tls_client.dart';
 import 'models.dart';
 import 'paired_camera.dart';
+import 'remote_relay.dart';
 
 class DirectCameraClient {
   final ConnectionConfig config;
@@ -15,8 +16,17 @@ class DirectCameraClient {
   Future<void> _requests = Future<void>.value();
   bool _closed = false;
   int? _boardTime;
-  DirectCameraClient(this.config, this.token, {http.Client? client})
-    : _provided = client;
+  late final RemoteRelay? _relay;
+  DateTime? _retryLanAt;
+
+  DirectCameraClient(
+    this.config,
+    this.token, {
+    http.Client? client,
+    http.Client? relayClient,
+  }) : _provided = client {
+    _relay = RemoteRelay.maybe(config, token, client: relayClient);
+  }
 
   void _check(bool Function()? cancelled) {
     if (_closed || cancelled?.call() == true) {
@@ -29,11 +39,20 @@ class DirectCameraClient {
     String suffix, {
     Object? body,
     bool Function()? cancelled,
+    bool viaRelay = false,
+    bool lanProbe = false,
   }) {
     // The camera has limited TLS sockets and RAM. Finish reading one response
     // before polling status or starting the next capture request.
     final response = _requests.then(
-      (_) => _sendWithRetry(method, suffix, body: body, cancelled: cancelled),
+      (_) => _sendWithRetry(
+        method,
+        suffix,
+        body: body,
+        cancelled: cancelled,
+        viaRelay: viaRelay,
+        lanProbe: lanProbe,
+      ),
     );
     _requests = response.then<void>(
       (_) {},
@@ -47,18 +66,28 @@ class DirectCameraClient {
     String suffix, {
     Object? body,
     bool Function()? cancelled,
+    bool viaRelay = false,
+    bool lanProbe = false,
   }) async {
     for (var attempt = 0; ; attempt++) {
       try {
-        return await _sendNow(method, suffix, body: body, cancelled: cancelled);
+        return await _sendNow(
+          method,
+          suffix,
+          body: body,
+          cancelled: cancelled,
+          viaRelay: viaRelay,
+          lanProbe: lanProbe,
+        );
       } catch (error) {
-        if (method != 'GET' ||
+        if (lanProbe ||
+            method != 'GET' ||
             attempt != 0 ||
             (error is! TimeoutException && error is! http.ClientException)) {
           rethrow;
         }
         _check(cancelled);
-        if (_provided == null) {
+        if (!viaRelay && _provided == null) {
           _client?.close();
           _client = null;
         }
@@ -73,6 +102,8 @@ class DirectCameraClient {
     String suffix, {
     Object? body,
     bool Function()? cancelled,
+    bool viaRelay = false,
+    bool lanProbe = false,
   }) async {
     _check(cancelled);
     if (config.demo ||
@@ -81,35 +112,48 @@ class DirectCameraClient {
         token.isEmpty) {
       throw StateError('ตรวจที่อยู่และรหัสจับคู่กล้อง');
     }
-    final client = _client ??=
-        _provided ??
-        await createPairedClient(
-          config,
-          hostname: cameraTlsHostname,
-          caAsset: cameraCaAsset,
-          connectionTimeout: const Duration(seconds: 15),
-        );
-    _check(cancelled);
-    final request =
-        http.Request(
-            method,
-            Uri.https(
-              config.identity?.hostname ?? cameraTlsHostname,
-              '/api/v1/devices/${config.deviceId}/camera$suffix',
+    final http.StreamedResponse streamed;
+    if (viaRelay) {
+      streamed = await _relay!.send(method, '/camera$suffix', body: body);
+    } else {
+      final client = _client ??=
+          _provided ??
+          await createPairedClient(
+            config,
+            hostname: cameraTlsHostname,
+            caAsset: cameraCaAsset,
+            connectionTimeout: const Duration(seconds: 15),
+          );
+      _check(cancelled);
+      final request =
+          http.Request(
+              method,
+              Uri.https(
+                config.identity?.hostname ?? cameraTlsHostname,
+                '/api/v1/devices/${config.deviceId}/camera$suffix',
+              ),
+            )
+            ..followRedirects = false
+            ..persistentConnection = true;
+      request.headers.addAll({
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'X-AquaHatch-Time':
+            '${DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000}',
+      });
+      if (body != null) request.body = jsonEncode(body);
+      streamed = await client
+          .send(request)
+          .timeout(
+            Duration(
+              seconds: lanProbe
+                  ? 3
+                  : method == 'POST'
+                  ? 40
+                  : 20,
             ),
-          )
-          ..followRedirects = false
-          ..persistentConnection = true;
-    request.headers.addAll({
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-      'X-AquaHatch-Time':
-          '${DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000}',
-    });
-    if (body != null) request.body = jsonEncode(body);
-    final streamed = await client
-        .send(request)
-        .timeout(Duration(seconds: method == 'POST' ? 40 : 20));
+          );
+    }
     final limit = suffix.endsWith('/image') ? 4 * 1024 * 1024 : 32768;
     if ((streamed.contentLength ?? 0) > limit) {
       throw StateError('ข้อมูลจากกล้องใหญ่เกินกำหนด');
@@ -156,9 +200,35 @@ class DirectCameraClient {
     return data;
   }
 
-  Future<DeviceCameraStatus> status() async {
-    return DeviceCameraStatus.fromJson(_json(await _send('GET', '')));
+  Future<(DeviceCameraStatus, bool)> _selectCamera({
+    bool Function()? cancelled,
+  }) async {
+    final relay = _relay;
+    final retry = _retryLanAt;
+    if (relay == null || retry == null || !DateTime.now().isBefore(retry)) {
+      try {
+        final local = _json(
+          await _send('GET', '', cancelled: cancelled, lanProbe: relay != null),
+        );
+        _retryLanAt = null;
+        return (DeviceCameraStatus.fromJson(local), false);
+      } catch (_) {
+        _check(cancelled);
+        if (relay == null) rethrow;
+        if (_provided == null) {
+          _client?.close();
+          _client = null;
+        }
+        _retryLanAt = DateTime.now().add(const Duration(seconds: 30));
+      }
+    }
+    final online = _json(
+      await _send('GET', '', cancelled: cancelled, viaRelay: true),
+    );
+    return (DeviceCameraStatus.fromJson(online), true);
   }
+
+  Future<DeviceCameraStatus> status() async => (await _selectCamera()).$1;
 
   Future<DeviceCapture> capture(
     String id, {
@@ -170,7 +240,7 @@ class DirectCameraClient {
       throw StateError('รหัสถ่ายภาพไม่ถูกต้อง');
     }
     onProgress?.call('กำลังเปิดแฟลชและปรับแสงเพื่อถ่ายภาพความละเอียดสูง…');
-    final camera = await status();
+    final (camera, viaRelay) = await _selectCamera(cancelled: cancelled);
     _check(cancelled);
     if (_boardTime == null) throw StateError('นาฬิกากล้องยังไม่พร้อม');
     Map<String, dynamic> job;
@@ -190,13 +260,28 @@ class DirectCameraClient {
             'warmup_ms': 1800,
           },
           cancelled: cancelled,
+          viaRelay: viaRelay,
         ),
       );
     } on TimeoutException {
       // A lost acknowledgement must not trigger another exposure with a new ID.
-      job = _json(await _send('GET', '/captures/$id', cancelled: cancelled));
+      job = _json(
+        await _send(
+          'GET',
+          '/captures/$id',
+          cancelled: cancelled,
+          viaRelay: viaRelay,
+        ),
+      );
     } on http.ClientException {
-      job = _json(await _send('GET', '/captures/$id', cancelled: cancelled));
+      job = _json(
+        await _send(
+          'GET',
+          '/captures/$id',
+          cancelled: cancelled,
+          viaRelay: viaRelay,
+        ),
+      );
     }
     final deadline = DateTime.now().add(const Duration(seconds: 40));
     while (true) {
@@ -210,14 +295,22 @@ class DirectCameraClient {
           DateTime.now().isAfter(deadline)) {
         throw StateError(job['message']?.toString() ?? 'กล้องถ่ายภาพไม่สำเร็จ');
       }
-      await Future<void>.delayed(const Duration(milliseconds: 700));
-      job = _json(await _send('GET', '/captures/$id', cancelled: cancelled));
+      await Future<void>.delayed(Duration(milliseconds: viaRelay ? 1400 : 700));
+      job = _json(
+        await _send(
+          'GET',
+          '/captures/$id',
+          cancelled: cancelled,
+          viaRelay: viaRelay,
+        ),
+      );
     }
     onProgress?.call('กำลังรับภาพ JPEG จากบอร์ดกล้อง…');
     final image = await _send(
       'GET',
       '/captures/$id/image',
       cancelled: cancelled,
+      viaRelay: viaRelay,
     );
     final bytes = image.bodyBytes;
     if (image.headers['content-type']?.split(';').first != 'image/jpeg' ||
@@ -247,5 +340,6 @@ class DirectCameraClient {
   void close() {
     _closed = true;
     _client?.close();
+    _relay?.close();
   }
 }

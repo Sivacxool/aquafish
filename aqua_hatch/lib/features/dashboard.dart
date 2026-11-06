@@ -39,24 +39,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         const SizedBox(height: 12),
         _ConnectionCard(state: state, reconnect: controls.reconnect),
-        if (state.error != null || !state.fresh) ...[
-          const SizedBox(height: 12),
-          Notice(
-            state.error ?? 'กำลังรอข้อมูลล่าสุดจากเครื่อง',
-            warning: true,
-            action: TextButton(
-              onPressed: controls.reconnect,
-              child: const Text('ลองใหม่'),
-            ),
-          ),
-        ],
-        if (state.fresh && data?.hardwareReady == false) ...[
-          const SizedBox(height: 12),
-          Notice(
-            data?.hardwareMessage ??
-                'บอร์ดเชื่อมต่อแล้ว รอติดตั้งเซนเซอร์และวงจรควบคุม',
-          ),
-        ],
         if (state.fresh &&
             data?.hardwareReady != false &&
             state.alerts.isNotEmpty) ...[
@@ -66,10 +48,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         const SizedBox(height: 18),
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
-                'คุณภาพน้ำขณะนี้',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                state.fresh ? 'คุณภาพน้ำขณะนี้' : 'ค่าคุณภาพน้ำล่าสุด',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
               ),
             ),
             Text(
@@ -297,117 +282,81 @@ class _ConnectionCard extends StatelessWidget {
   final AppState state;
   final VoidCallback reconnect;
   const _ConnectionCard({required this.state, required this.reconnect});
-  @override
-  Widget build(BuildContext context) {
+
+  void _details(BuildContext context) {
     final data = state.telemetry;
-    final color = state.fresh
-        ? const Color(0xFF79E0D0)
-        : const Color(0xFFFFD49B);
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF123F50), Color(0xFF082A3B)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => showModalBottomSheet<void>(
-            context: context,
-            showDragHandle: true,
-            isScrollControlled: true,
-            builder: (context) => SafeArea(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SectionHeading('รายละเอียดการเชื่อมต่อ'),
-                      Text(state.connectionLabel),
-                      const SizedBox(height: 12),
-                      Text('เครื่อง ${state.connection.deviceId}'),
-                      Text(
-                        state.connection.demo
-                            ? 'แหล่งข้อมูล: เครื่องจำลองในแอป'
-                            : 'เซิร์ฟเวอร์: ${state.connected ? 'รับข้อมูลได้' : 'ยังไม่รับข้อมูล'}',
-                      ),
-                      Text(
-                        data == null
-                            ? 'ยังไม่มีข้อมูลจากเครื่อง'
-                            : 'ล่าสุด ${fullTime(data.at)}',
-                      ),
-                      if (data?.wifiRssi != null)
-                        Text('Wi-Fi ${data!.wifiRssi} dBm'),
-                      if (data?.firmwareVersion != null)
-                        Text('เฟิร์มแวร์ ${data!.firmwareVersion}'),
-                      const Divider(height: 24),
-                      Text(
-                        data?.phCalibrated == true
-                            ? 'pH: เครื่องรายงานว่าสอบเทียบแล้ว'
-                            : 'pH: ยังไม่ยืนยันการสอบเทียบ',
-                      ),
-                      if (data?.phCalibratedAt != null)
-                        Text(fullTime(data!.phCalibratedAt!)),
-                      if (!state.fresh)
-                        const Notice(
-                          'ค่าที่แสดงเป็นข้อมูลครั้งล่าสุด ปุ่มควบคุมถูกพักไว้',
-                          warning: true,
-                        ),
-                      const SizedBox(height: 16),
-                      OutlinedButton.icon(
-                        onPressed: state.busy ? null : reconnect,
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('เชื่อมต่อใหม่'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Icon(
-                  state.fresh ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-                  color: color,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        state.connectionLabel,
-                        style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        '${state.connection.deviceId} · ดูรายละเอียด',
-                        style: const TextStyle(
-                          color: Color(0xFFBED4DF),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFFBED4DF),
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionHeading('การเชื่อมต่อ'),
+              Text(state.connectionLabel),
+              if (!state.connection.demo)
+                Text('อุปกรณ์ ${state.connection.deviceId}'),
+              if (data != null) Text('อัปเดต ${fullTime(data.at)}'),
+              if (data?.firmwareVersion != null)
+                Text('เฟิร์มแวร์ ${data!.firmwareVersion}'),
+              if (data?.wifiRssi != null)
+                Text('สัญญาณ Wi-Fi ${data!.wifiRssi} dBm'),
+              if (!state.fresh && state.connection.localEsp32) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'กลับเข้า Wi-Fi ของเครื่อง หรือเปิดดูจากนอกบ้านในตั้งค่า',
                 ),
               ],
-            ),
+              if (state.error != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  state.error!,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final online = state.fresh;
+    final title = state.connection.demo
+        ? 'โหมดทดลอง'
+        : online
+        ? (state.telemetry?.viaRelay == true
+              ? 'ออนไลน์ · ผ่านอินเทอร์เน็ต'
+              : 'เชื่อมต่อแล้ว')
+        : state.error != null || state.telemetry != null
+        ? 'ติดต่อบอร์ดไม่ได้'
+        : 'กำลังเชื่อมต่อ';
+    final subtitle = !online && state.connection.localEsp32
+        ? 'ลองเชื่อมต่อใหม่อัตโนมัติ'
+        : null;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        onTap: () => _details(context),
+        leading: Icon(
+          online ? Icons.wifi_rounded : Icons.wifi_off_rounded,
+          color: online ? AquaColors.teal : AquaColors.muted,
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: subtitle == null ? null : Text(subtitle),
+        trailing: online
+            ? const Icon(Icons.chevron_right_rounded)
+            : IconButton(
+                onPressed: state.busy ? null : reconnect,
+                tooltip: 'เชื่อมต่อใหม่',
+                icon: const Icon(Icons.refresh_rounded),
+              ),
       ),
     );
   }

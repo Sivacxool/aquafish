@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'ph.dart';
 import 'device_identity.dart';
+import 'relay_origin.dart';
 
 enum RunMode { automatic, manual }
 
@@ -41,17 +42,24 @@ class DeviceSettings {
 
 class ConnectionConfig {
   final DeviceIdentity? identity;
+  final String? relayOrigin;
   final bool demo;
   final bool localEsp32;
   final String baseUrl, deviceId;
   const ConnectionConfig({
     this.identity,
+    this.relayOrigin,
     this.demo = true,
     this.localEsp32 = false,
     this.baseUrl = 'http://localhost:8000',
     this.deviceId = 'incubator-01',
   });
   String? validate() {
+    if (relayOrigin != null &&
+        (identity == null ||
+            parseRelayOrigin(relayOrigin!)?.toString() != relayOrigin)) {
+      return 'ตรวจลิงก์บริการของอุปกรณ์';
+    }
     if (identity != null) {
       final invalid = identity!.validate();
       if (invalid != null) return invalid;
@@ -93,7 +101,17 @@ class ConnectionConfig {
     return null;
   }
 
+  ConnectionConfig withRelayOrigin(String? origin) => ConnectionConfig(
+    identity: identity,
+    relayOrigin: origin,
+    demo: demo,
+    localEsp32: localEsp32,
+    baseUrl: baseUrl,
+    deviceId: deviceId,
+  );
+
   Map<String, dynamic> toJson() => {
+    if (relayOrigin != null) 'relay_origin': relayOrigin,
     if (identity != null) 'identity': identity!.toJson(),
     'demo': demo,
     'local_esp32': localEsp32,
@@ -105,6 +123,9 @@ class ConnectionConfig {
         ? DeviceIdentity.fromJson(
             Map<String, dynamic>.from(j['identity'] as Map),
           )
+        : null,
+    relayOrigin: j['relay_origin'] is String
+        ? j['relay_origin'] as String
         : null,
     demo: j['demo'] != false,
     localEsp32: j['local_esp32'] == true,
@@ -140,6 +161,7 @@ class Telemetry {
   final int? wifiRssi;
   final String? firmwareVersion;
   final bool simulated;
+  final bool viaRelay;
   final bool deviceOnline;
   final bool hardwareReady;
   final String? hardwareMessage;
@@ -162,6 +184,7 @@ class Telemetry {
     this.wifiRssi,
     this.firmwareVersion,
     this.simulated = false,
+    this.viaRelay = false,
     this.deviceOnline = true,
     this.hardwareReady = true,
     this.hardwareMessage,
@@ -171,7 +194,7 @@ class Telemetry {
   });
   bool isFresh(DateTime now) =>
       deviceOnline &&
-      now.difference(at).inSeconds <= 15 &&
+      now.difference(at).inSeconds <= (viaRelay ? 45 : 15) &&
       !at.isAfter(now.add(const Duration(seconds: 5)));
   bool output(String key) => outputs[key] ?? false;
   List<String> alerts(DeviceSettings settings) {
@@ -209,6 +232,7 @@ class Telemetry {
     'firmware_version': firmwareVersion,
     'water_level_ok': waterLevelOk,
     'simulated': simulated,
+    if (viaRelay) 'via_relay': true,
     'device_online': deviceOnline,
     'hardware_ready': hardwareReady,
     'hardware_message': hardwareMessage,
@@ -260,6 +284,7 @@ class Telemetry {
           ? j['water_level_ok'] as bool
           : null,
       simulated: j['simulated'] == true,
+      viaRelay: j['via_relay'] == true,
       deviceOnline: j['device_online'] != false,
       hardwareReady: j['hardware_ready'] != false,
       hardwareMessage: j['hardware_message'] as String?,

@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include "esp_camera.h"
 #include <AquaIdentity.h>
+#include <AquaRelay.h>
 AquaIdentity boardIdentity;
 #define DEVICE_ID boardIdentity.deviceId().c_str()
 #define DEVICE_HOSTNAME boardIdentity.hostname().c_str()
@@ -19,7 +20,7 @@ AquaIdentity boardIdentity;
 #include "camera_pins.h"
 #include "camera_quality.h"
 
-static const char VERSION[]="0.14.0-camera.1";
+static const char VERSION[]="0.16.0-camera.1";
 Preferences prefs;
 httpd_handle_t server=nullptr;
 bool tlsReady=false,wasConnected=false,cameraReady=false,cameraActive=false;
@@ -36,6 +37,16 @@ camera_fb_t *photo=nullptr;
 camera_fb_t storedPhoto={};
 String captureId,receivedAt,photoDigest;
 uint32_t capturedAt=0;
+SemaphoreHandle_t cameraMutex = nullptr;
+
+class CameraGuard {
+  bool locked;
+ public:
+  explicit CameraGuard(uint32_t timeoutMs = 250)
+    : locked(xSemaphoreTake(cameraMutex, pdMS_TO_TICKS(timeoutMs)) == pdTRUE) {}
+  ~CameraGuard() { if (locked) xSemaphoreGive(cameraMutex); }
+  explicit operator bool() const { return locked; }
+};
 String seenIds[8]; uint8_t seenIndex=0;
 AquaFocusResult lastFocus;
 uint32_t lastWarmupMs=0,lastCaptureMs=0;
@@ -116,6 +127,77 @@ bool readBody(httpd_req_t *req,String &body) {
   while(left>0) { char b[256]; int got=httpd_req_recv(req,b,min(left,(int)sizeof(b))); if(got<=0) return false; body.concat(b,got); left-=got; }
   return true;
 }
+// Caller holds cameraMutex throughout capture or image transfer.
+const char *performCapture(const JsonDocument &incoming, JsonDocument &result, String &message) {
+  auto fail = [&message](const char *code, const char *detail) {
+    message = detail;
+    return code;
+  };
+  const int warmup=incoming["warmup_ms"]|1800;
+  if(warmup<0||warmup>3000)return fail("422 Unprocessable Entity","เวลาเตรียมกล้องไม่ถูกต้อง");
+  const bool focus=incoming["autofocus"]|true;
+  const bool flash=incoming["flash"]|true;
+  const int duty=incoming["flash_duty"]|64;
+  const int quality=incoming["jpeg_quality"]|10;
+  if(duty<16||duty>96||quality<4||quality>16)return fail("422 Unprocessable Entity","ค่าคุณภาพหรือความสว่างแฟลชไม่ถูกต้อง");
+  const String resolution=incoming["resolution"]|"sensor_max";
+  framesize_t frameSize;
+  if(resolution=="sensor_max")frameSize=nativeFrameSize;
+  else if(resolution=="5mp")frameSize=FRAMESIZE_QSXGA;
+  else if(resolution=="3mp")frameSize=FRAMESIZE_QXGA;
+  else if(resolution=="uxga")frameSize=FRAMESIZE_UXGA;
+  else if(resolution=="svga")frameSize=FRAMESIZE_SVGA;
+  else return fail("422 Unprocessable Entity","ขนาดภาพไม่ถูกต้อง");
+  String id=incoming["capture_id"]|"";
+  if(!validId(id)) return fail("422 Unprocessable Entity","รหัสภาพไม่ถูกต้อง");
+  if(id==captureId) {
+    if(!photo) return fail("410 Gone","ภาพหมดอายุแล้ว ใช้รหัสคำขอใหม่");
+    job(result); return "202 Accepted";
+  }
+  for(const auto &seen:seenIds) if(seen==id) return fail("410 Gone","คำขอนี้สิ้นสุดแล้ว");
+  time_t now=time(nullptr); int64_t expires=incoming["expires_at_unix"]|(int64_t)0;
+  if(now<1735689600||expires<=now||expires>now+60) return fail("410 Gone","คำขอถ่ายภาพหมดอายุ");
+  seenIds[seenIndex]=id; seenIndex=(seenIndex+1)%8;
+  releasePhoto(); captureId=id;
+  const uint32_t captureStart=millis();lastFlashUsed=false;lastWarmupMs=warmup;lastCaptureMs=0;lastFlashDuty=0;lastJpegQuality=quality;
+  initCamera(frameSize,quality);
+  if(!cameraReady) {shutdownCamera();return fail("503 Service Unavailable",cameraError.c_str());}
+  sensor_t *sensor=esp_camera_sensor_get();lastFocus=aquaPrepareFocus(sensor,focus&&autofocusSupported);
+  if(!autofocusSupported)lastFocus.status="not_supported_sensor";
+  if(flash) {
+    lastFlashUsed=flashOn(duty);lastFlashDuty=lastFlashUsed?duty:0;
+    if(!lastFlashUsed) {shutdownCamera();return fail("503 Service Unavailable","เปิดแฟลชกล้องไม่สำเร็จ");}
+  }
+  // Let exposure and white balance converge after each on-demand startup.
+  const uint32_t warmStart=millis();
+  while(millis()-warmStart<(uint32_t)warmup) {
+    camera_fb_t *settle=esp_camera_fb_get();
+    if(!settle)break;
+    esp_camera_fb_return(settle);
+  }
+  aquaRunFocus(sensor,lastFocus);
+  // Flush the queued frame, then acquire a frame after this request.
+  camera_fb_t *old=esp_camera_fb_get(); if(old) esp_camera_fb_return(old);
+  camera_fb_t *frame=esp_camera_fb_get();
+  if(!frame||frame->format!=PIXFORMAT_JPEG||frame->len<4||frame->buf[0]!=0xff||frame->buf[1]!=0xd8||frame->buf[frame->len-2]!=0xff||frame->buf[frame->len-1]!=0xd9) {
+    if(frame)esp_camera_fb_return(frame);
+    cameraReady=false;cameraError="กล้องยังส่งภาพ JPEG ที่สมบูรณ์ไม่ได้ ตรวจสายแพและไฟเลี้ยง";
+    shutdownCamera();return fail("503 Service Unavailable",cameraError.c_str());
+  }
+  // Own a copy before deinitializing the driver: its frame buffer becomes
+  // invalid on deinit. Keep the sensor/DMA off during TLS and image transfer.
+  uint8_t *copy=(uint8_t*)heap_caps_malloc(frame->len,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+  if(!copy) {esp_camera_fb_return(frame);shutdownCamera();return fail("503 Service Unavailable","หน่วยความจำเก็บภาพไม่พอ");}
+  memcpy(copy,frame->buf,frame->len);storedPhoto=*frame;storedPhoto.buf=copy;photo=&storedPhoto;
+  esp_camera_fb_return(frame);shutdownCamera();
+  unsigned char digest[32]; mbedtls_sha256(photo->buf,photo->len,digest,0);
+  photoDigest=""; const char *hex="0123456789abcdef";
+  for(uint8_t value:digest) { photoDigest+=hex[value>>4]; photoDigest+=hex[value&15]; }
+  lastCaptureMs=millis()-captureStart;
+  receivedAt=nowIso(); capturedAt=millis(); job(result); return "202 Accepted";
+}
+#include "remote_camera.h"
+
 esp_err_t api(httpd_req_t *req) {
   if(req->content_len>2048) return error(req,"413 Payload Too Large","ข้อมูลใหญ่เกินกำหนด");
   char auth[128]={}; String expected=String("Bearer ")+API_TOKEN;
@@ -132,6 +214,21 @@ esp_err_t api(httpd_req_t *req) {
   String uri=req->uri; int query=uri.indexOf('?'); if(query>=0) uri=uri.substring(0,query);
   String base=String("/api/v1/devices/")+DEVICE_ID;
   bool handled=false; esp_err_t setupResult=provisioning::handle(req,base,uri,handled); if(handled) return setupResult;
+  if (uri == base + "/remote") {
+    if (req->method == HTTP_POST) {
+      String url;
+      if (!aqua_relay::readConfiguration(req, url))
+        return error(req, "422 Unprocessable Entity", "ตรวจ URL ของบริการ");
+      if (!aqua_relay::configure(prefs, url))
+        return error(req, "500 Internal Server Error", "บันทึกบริการไม่สำเร็จ");
+    }
+    JsonDocument result;
+    result["enabled"] = !aqua_relay::origin(prefs).isEmpty();
+    result["last_http"] = remote_camera::lastResult.load();
+    return sendJson(req, "200 OK", result);
+  }
+  CameraGuard guard;
+  if (!guard) return error(req, "503 Service Unavailable", "กล้องกำลังถ่ายภาพ");
   if(req->method==HTTP_GET&&uri==base+"/camera") {
     if(!cameraReady&&millis()-lastCameraProbeAt>15000) {initCamera();shutdownCamera();}
     JsonDocument doc; status(doc); return sendJson(req,"200 OK",doc);
@@ -141,68 +238,10 @@ esp_err_t api(httpd_req_t *req) {
   if(req->method==HTTP_POST&&uri==captures) {
     String body; JsonDocument incoming;
     if(!readBody(req,body)||deserializeJson(incoming,body)) return error(req,"400 Bad Request","ข้อมูลถ่ายภาพไม่ถูกต้อง");
-    const int warmup=incoming["warmup_ms"]|1800;
-    if(warmup<0||warmup>3000)return error(req,"422 Unprocessable Entity","เวลาเตรียมกล้องไม่ถูกต้อง");
-    const bool focus=incoming["autofocus"]|true;
-    const bool flash=incoming["flash"]|true;
-    const int duty=incoming["flash_duty"]|64;
-    const int quality=incoming["jpeg_quality"]|10;
-    if(duty<16||duty>96||quality<4||quality>16)return error(req,"422 Unprocessable Entity","ค่าคุณภาพหรือความสว่างแฟลชไม่ถูกต้อง");
-    const String resolution=incoming["resolution"]|"sensor_max";
-    framesize_t frameSize;
-    if(resolution=="sensor_max")frameSize=nativeFrameSize;
-    else if(resolution=="5mp")frameSize=FRAMESIZE_QSXGA;
-    else if(resolution=="3mp")frameSize=FRAMESIZE_QXGA;
-    else if(resolution=="uxga")frameSize=FRAMESIZE_UXGA;
-    else if(resolution=="svga")frameSize=FRAMESIZE_SVGA;
-    else return error(req,"422 Unprocessable Entity","ขนาดภาพไม่ถูกต้อง");
-    String id=incoming["capture_id"]|"";
-    if(!validId(id)) return error(req,"422 Unprocessable Entity","รหัสภาพไม่ถูกต้อง");
-    if(id==captureId) {
-      if(!photo) return error(req,"410 Gone","ภาพหมดอายุแล้ว ใช้รหัสคำขอใหม่");
-      JsonDocument doc; job(doc); return sendJson(req,"202 Accepted",doc);
-    }
-    for(const auto &seen:seenIds) if(seen==id) return error(req,"410 Gone","คำขอนี้สิ้นสุดแล้ว");
-    time_t now=time(nullptr); int64_t expires=incoming["expires_at_unix"]|(int64_t)0;
-    if(now<1735689600||expires<=now||expires>now+60) return error(req,"410 Gone","คำขอถ่ายภาพหมดอายุ");
-    seenIds[seenIndex]=id; seenIndex=(seenIndex+1)%8;
-    releasePhoto(); captureId=id;
-    const uint32_t captureStart=millis();lastFlashUsed=false;lastWarmupMs=warmup;lastCaptureMs=0;lastFlashDuty=0;lastJpegQuality=quality;
-    initCamera(frameSize,quality);
-    if(!cameraReady) {shutdownCamera();return error(req,"503 Service Unavailable",cameraError.c_str());}
-    sensor_t *sensor=esp_camera_sensor_get();lastFocus=aquaPrepareFocus(sensor,focus&&autofocusSupported);
-    if(!autofocusSupported)lastFocus.status="not_supported_sensor";
-    if(flash) {
-      lastFlashUsed=flashOn(duty);lastFlashDuty=lastFlashUsed?duty:0;
-      if(!lastFlashUsed) {shutdownCamera();return error(req,"503 Service Unavailable","เปิดแฟลชกล้องไม่สำเร็จ");}
-    }
-    // Let exposure and white balance converge after each on-demand startup.
-    const uint32_t warmStart=millis();
-    while(millis()-warmStart<(uint32_t)warmup) {
-      camera_fb_t *settle=esp_camera_fb_get();
-      if(!settle)break;
-      esp_camera_fb_return(settle);
-    }
-    aquaRunFocus(sensor,lastFocus);
-    // Flush the queued frame, then acquire a frame after this request.
-    camera_fb_t *old=esp_camera_fb_get(); if(old) esp_camera_fb_return(old);
-    camera_fb_t *frame=esp_camera_fb_get();
-    if(!frame||frame->format!=PIXFORMAT_JPEG||frame->len<4||frame->buf[0]!=0xff||frame->buf[1]!=0xd8||frame->buf[frame->len-2]!=0xff||frame->buf[frame->len-1]!=0xd9) {
-      if(frame)esp_camera_fb_return(frame);
-      cameraReady=false;cameraError="กล้องยังส่งภาพ JPEG ที่สมบูรณ์ไม่ได้ ตรวจสายแพและไฟเลี้ยง";
-      shutdownCamera();return error(req,"503 Service Unavailable",cameraError.c_str());
-    }
-    // Own a copy before deinitializing the driver: its frame buffer becomes
-    // invalid on deinit. Keep the sensor/DMA off during TLS and image transfer.
-    uint8_t *copy=(uint8_t*)heap_caps_malloc(frame->len,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
-    if(!copy) {esp_camera_fb_return(frame);shutdownCamera();return error(req,"503 Service Unavailable","หน่วยความจำเก็บภาพไม่พอ");}
-    memcpy(copy,frame->buf,frame->len);storedPhoto=*frame;storedPhoto.buf=copy;photo=&storedPhoto;
-    esp_camera_fb_return(frame);shutdownCamera();
-    unsigned char digest[32]; mbedtls_sha256(photo->buf,photo->len,digest,0);
-    photoDigest=""; const char *hex="0123456789abcdef";
-    for(uint8_t value:digest) { photoDigest+=hex[value>>4]; photoDigest+=hex[value&15]; }
-    lastCaptureMs=millis()-captureStart;
-    receivedAt=nowIso(); capturedAt=millis(); JsonDocument doc; job(doc); return sendJson(req,"202 Accepted",doc);
+    JsonDocument result;
+    String message;
+    const char *code = performCapture(incoming, result, message);
+    return message.isEmpty() ? sendJson(req, code, result) : error(req, code, message.c_str());
   }
   if(req->method==HTTP_GET&&uri.startsWith(captures+"/")) {
     String suffix=uri.substring(captures.length()+1); bool image=suffix.endsWith("/image");
@@ -267,8 +306,13 @@ void shutdownCamera() {
   cameraActive=false;pinMode(PWDN_GPIO_NUM,OUTPUT);digitalWrite(PWDN_GPIO_NUM,HIGH);
 }
 void serialStatus() {
+  CameraGuard guard;
+  if (!guard) return;
   JsonDocument doc; status(doc); doc["type"]="camera_status"; doc["connected"]=WiFi.status()==WL_CONNECTED;
-  doc["tls_ready"]=tlsReady; doc["ap_ssid"]=provisioning::apName; serializeJson(doc,Serial);Serial.println();
+  doc["tls_ready"]=tlsReady; doc["ap_ssid"]=provisioning::apName;
+  doc["relay_enabled"] = !aqua_relay::origin(prefs).isEmpty();
+  doc["relay_http"] = remote_camera::lastResult.load();
+  serializeJson(doc,Serial);Serial.println();
 }
 void serialCommand() {
   JsonDocument doc;if(deserializeJson(doc,serialLine)) return;
@@ -301,6 +345,8 @@ void setup() {
   WiFi.setSleep(false);
   if(!boardIdentity.begin("camera")){Serial.println("IDENTITY_ERROR:"+boardIdentity.error());while(true)delay(1000);}
   provisioning::apName=boardIdentity.setupSsid();
+  cameraMutex = xSemaphoreCreateMutex();
+  if (!cameraMutex) { Serial.println("CAMERA_MUTEX_FAILED"); while (true) delay(1000); }
   prefs.begin("aquacam",false);initCamera();shutdownCamera();
   WiFi.onEvent([](WiFiEvent_t,WiFiEventInfo_t info){lastDisconnectReason=info.wifi_sta_disconnected.reason;},ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   WiFi.persistent(false);WiFi.setHostname(boardIdentity.mdnsName().c_str());WiFi.mode(WIFI_AP_STA);WiFi.setAutoReconnect(true);WiFi.setSleep(false);
@@ -315,7 +361,15 @@ void loop() {
   if(connected&&!wasConnected){configTime(0,0,"pool.ntp.org","time.nist.gov");MDNS.begin(boardIdentity.mdnsName().c_str());MDNS.addService("https","tcp",443);serialStatus();}
   if(!connected&&!provisioning::busy()&&millis()-lastWifiAttempt>30000){String ssid,password;provisioning::loadSaved(ssid,password);if(!ssid.isEmpty())WiFi.begin(ssid.c_str(),password.c_str());lastWifiAttempt=millis();}
   static uint32_t lastCertificateCheck=0;
-  if(millis()-lastCertificateCheck>60000 && !photo && !provisioning::busy()){
+  bool cameraIdle = false;
+  {
+    CameraGuard guard(0);
+    if (guard) {
+      if (photo && millis() - capturedAt > 120000) releasePhoto();
+      cameraIdle = !photo;
+    }
+  }
+  if(millis()-lastCertificateCheck>60000 && cameraIdle && !provisioning::busy()){
     lastCertificateCheck=millis();
     if(boardIdentity.needsRenewal(time(nullptr))){
       if(tlsReady){httpd_ssl_stop(server);server=nullptr;tlsReady=false;}
@@ -323,5 +377,6 @@ void loop() {
       Serial.println(renewed?"CERTIFICATE_RENEWED":"CERTIFICATE_RENEWAL_FAILED");startTls();
     }
   }
+  remote_camera::tick();
   wasConnected=connected;delay(5);
 }

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models.dart';
+import 'relay_origin.dart';
+import 'remote_relay.dart';
 import 'local_store.dart';
 import 'repository.dart';
 import 'demo_repository.dart';
@@ -455,6 +457,12 @@ class AppController extends Notifier<AppState> {
     }
   }
 
+  Future<void> refreshLocalConnection() async {
+    if (_disposed || _wifiSetupPaused || state.busy) return;
+    final repo = _repository;
+    if (repo is Esp32Repository) await repo.pollNow(preferLan: true);
+  }
+
   Future<void> reconnect() async {
     if (_disposed) return;
     _wifiSetupPaused = false;
@@ -691,6 +699,49 @@ class AppController extends Notifier<AppState> {
       throw StateError('การเชื่อมต่อถูกเปลี่ยน');
     }
     return result;
+  }
+
+  Future<String?> setRelayOrigin(String input, {required bool camera}) async {
+    if (state.busy || _wifiSetupPaused) return 'รอการตั้งค่าปัจจุบันเสร็จก่อน';
+    final config = camera ? state.cameraConnection : state.connection;
+    if (config == null || config.identity == null) return 'จับคู่ด้วย QR ก่อน';
+    final url = input.trim().isEmpty ? null : parseRelayOrigin(input);
+    if (input.trim().isNotEmpty && url == null) {
+      return 'ใส่ลิงก์ HTTPS ของบริการ workers.dev';
+    }
+    final updated = config.withRelayOrigin(url?.toString());
+    state = state.copyWith(busy: true);
+    try {
+      final token = await ref.read(credentialStoreProvider).read(config);
+      if (token.isEmpty) return 'อ่านรหัสจับคู่ไม่ได้';
+      await configureDeviceRelay(config, token, updated.relayOrigin);
+      if (_disposed) return 'ปิดแอปแล้ว';
+      if (camera) {
+        await _store.saveCameraConnection(updated);
+        ++_cameraGeneration;
+        _cameraClient?.close();
+        _cameraClient = null;
+        state = state.copyWith(cameraConnection: updated);
+        ref.invalidate(cameraStatusProvider);
+      } else {
+        await _store.saveConnection(updated);
+        _token = token;
+        state = state.copyWith(connection: updated, busy: false);
+        await _start(updated);
+      }
+      await _store.rememberPairedDevice(updated);
+      return null;
+    } catch (error) {
+      final text = _message(error);
+      if (text.contains('TimeoutException') ||
+          text.contains('SocketException') ||
+          text.contains('ClientException')) {
+        return 'ตรวจอินเทอร์เน็ตและ Wi-Fi ของอุปกรณ์';
+      }
+      return text;
+    } finally {
+      if (!_disposed) state = state.copyWith(busy: false);
+    }
   }
 
   Future<String?> configureCamera(ConnectionConfig config, String token) async {

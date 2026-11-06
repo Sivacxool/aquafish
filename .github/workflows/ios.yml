@@ -2,7 +2,7 @@ name: iOS personal install
 
 on:
   push:
-    branches: [main, codex/ios-personal-install, codex/ov3660-camera, codex/ph-ads1115, codex/auto-pair, codex/wroom-da]
+    branches: [main, codex/ios-personal-install, codex/ov3660-camera, codex/ph-ads1115, codex/auto-pair, codex/wroom-da, codex/connection-recovery]
     paths:
       - aqua_hatch/**
       - .github/workflows/ios.yml
@@ -87,8 +87,8 @@ jobs:
         run: |
           mkdir -p build/ios-delivery/stage/Payload
           ditto build/ios/iphoneos/Runner.app build/ios-delivery/stage/Payload/Runner.app
-          ditto -c -k --keepParent build/ios-delivery/stage/Payload build/ios-delivery/AquaHatch-v0.15.0-iOS-unsigned.ipa
-          python3 tools/verify_ios_ipa.py build/ios-delivery/AquaHatch-v0.15.0-iOS-unsigned.ipa
+          ditto -c -k --keepParent build/ios-delivery/stage/Payload build/ios-delivery/AquaHatch-v0.16.0-iOS-unsigned.ipa
+          python3 tools/verify_ios_ipa.py build/ios-delivery/AquaHatch-v0.16.0-iOS-unsigned.ipa
           cp ../IOS_INSTALL_TH.md build/ios-delivery/
       - name: Upload install package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

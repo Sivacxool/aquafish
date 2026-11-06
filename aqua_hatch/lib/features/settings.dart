@@ -7,6 +7,7 @@ import '../core/models.dart';
 import '../core/ui.dart';
 import 'wifi_setup.dart';
 import 'connection_overview.dart';
+import 'remote_settings.dart';
 import '../core/paired_camera.dart';
 import 'ph_calibration.dart';
 import 'qr_pairing.dart';
@@ -221,15 +222,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
     return PageBody(
       children: [
-        const PageTitle(
-          'ตั้งค่า',
-          'จัดการการเชื่อมต่อ ค่าตั้งเครื่อง และรอบฟัก',
-        ),
+        const PageTitle('ตั้งค่า', 'อุปกรณ์และรอบฟัก'),
         FilledButton.icon(
           key: const ValueKey('add-device-by-qr'),
           onPressed: state.busy ? null : _openQrPairing,
           icon: const Icon(Icons.qr_code_scanner),
-          label: const Text('บอร์ดใหม่? สแกน QR เพื่อจับคู่'),
+          label: const Text('สแกน QR เพื่อเพิ่มอุปกรณ์'),
         ),
         const SizedBox(height: 16),
         ConnectionOverview(
@@ -243,7 +241,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _connect();
                 },
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 12),
+        _SettingsGroup(
+          title: 'ดูจากนอกบ้าน',
+          subtitle:
+              state.connection.relayOrigin != null ||
+                  state.cameraConnection?.relayOrigin != null
+              ? 'เปิดใช้งานแล้ว'
+              : 'เซนเซอร์และภาพผ่านอินเทอร์เน็ต',
+          icon: Icons.public_rounded,
+          child: const RemoteSettings(),
+        ),
+        const SizedBox(height: 12),
         _SettingsGroup(
           title: 'กล้อง: IP และ USB',
           subtitle: 'สำหรับกล้องที่ตั้ง Wi-Fi แล้ว หรือใช้ผ่านคอม',
@@ -251,16 +260,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'กล้องอยู่ใน Wi-Fi บ้านแล้ว',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'ถ้าทราบ IP ของกล้องแล้ว กรอกเพื่อเชื่อมตรงได้',
-                style: TextStyle(color: AquaColors.muted, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
               TextField(
                 controller: _cameraUrl,
                 keyboardType: TextInputType.url,
@@ -418,7 +417,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 14),
                 Notice(
                   _localEsp32
-                      ? 'มือถือและบอร์ดต้องอยู่ Wi-Fi บ้านเดียวกัน ใช้ URL และรหัสจับคู่จากบัตรประจำเครื่อง'
+                      ? 'ใช้ IP ของบอร์ดและรหัสจากบัตรจับคู่'
                       : kIsWeb
                       ? 'เว็บใช้รหัสเฉพาะครั้งนี้ การเชื่อมต่อภายนอกต้องใช้ HTTPS'
                       : 'มือถือเก็บรหัสแบบเข้ารหัสและเชื่อมต่อใหม่อัตโนมัติ การเชื่อมต่อภายนอกต้องใช้ HTTPS',

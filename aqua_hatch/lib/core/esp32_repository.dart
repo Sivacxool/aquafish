@@ -6,12 +6,15 @@ import 'camera.dart';
 import 'device_tls_client.dart';
 import 'models.dart';
 import 'repository.dart';
+import 'remote_relay.dart';
 
 class Esp32Repository implements DeviceRepository {
   final ConnectionConfig config;
   final String token;
   final http.Client? _providedClient;
   final Duration pollInterval;
+  late final RemoteRelay? _relay;
+  DateTime? _retryLanAt;
   final _stream = StreamController<Telemetry>.broadcast();
   Future<http.Client>? _creating;
   http.Client? _client;
@@ -23,8 +26,11 @@ class Esp32Repository implements DeviceRepository {
     this.config,
     this.token, {
     http.Client? client,
+    http.Client? relayClient,
     this.pollInterval = const Duration(seconds: 2),
-  }) : _providedClient = client;
+  }) : _providedClient = client {
+    _relay = RemoteRelay.maybe(config, token, client: relayClient);
+  }
   @override
   Stream<Telemetry> get telemetry => _stream.stream;
   @override
@@ -60,9 +66,28 @@ class Esp32Repository implements DeviceRepository {
     });
     if (body != null) request.body = jsonEncode(body);
     final client = await _ensureClient();
-    final response = await http.Response.fromStream(
-      await client.send(request).timeout(const Duration(seconds: 8)),
-    ).timeout(const Duration(seconds: 8));
+    final http.Response response;
+    try {
+      response = await client
+          .send(request)
+          .then(http.Response.fromStream)
+          .timeout(
+            Duration(
+              seconds: _relay != null && method == 'GET' && suffix.isEmpty
+                  ? 4
+                  : 8,
+            ),
+          );
+    } catch (_) {
+      // Drop sockets from the previous network. The next GET creates a new
+      // transport. A failed POST is surfaced to the caller and never replayed.
+      if (_providedClient == null && identical(_client, client)) {
+        _creating = null;
+        _client = null;
+        client.close();
+      }
+      rethrow;
+    }
     final Object? parsed;
     try {
       parsed = jsonDecode(utf8.decode(response.bodyBytes));
@@ -80,8 +105,32 @@ class Esp32Repository implements DeviceRepository {
     return parsed;
   }
 
-  Future<void> _refresh() async {
-    final data = await _request('GET', '');
+  Future<void> _refresh({bool allowRelay = true}) async {
+    final relay = allowRelay ? _relay : null;
+    final retry = _retryLanAt;
+    if (relay == null || retry == null || !DateTime.now().isBefore(retry)) {
+      try {
+        _accept(await _request('GET', ''));
+        _retryLanAt = null;
+        return;
+      } catch (_) {
+        if (_closed || relay == null) rethrow;
+        _retryLanAt = DateTime.now().add(const Duration(seconds: 30));
+      }
+    }
+    final remote = await relay.readJson('');
+    final age = remote['age_ms'];
+    final snapshot = remote['snapshot'];
+    if (age is! int ||
+        age < 0 ||
+        age >= 45000 ||
+        snapshot is! Map<String, dynamic>) {
+      throw StateError('ข้อมูลจากบอร์ดหมดอายุ');
+    }
+    _accept(snapshot, ageMs: age);
+  }
+
+  void _accept(Map<String, dynamic> data, {int? ageMs}) {
     if (_closed) return;
     if (data['backend'] != 'esp32-local' ||
         data['protocol_version'] != 1 ||
@@ -106,11 +155,16 @@ class Esp32Repository implements DeviceRepository {
     if (boardTime == null || boardTime.year < 2025) {
       throw StateError('นาฬิกาบอร์ดยังไม่พร้อม');
     }
-    _boardTime = boardTime.toUtc();
+    if (ageMs == null) _boardTime = boardTime.toUtc();
     // This authenticated, uncached GET reads the current device snapshot.
     // Use receipt time for polling freshness; phone and NTP clocks may differ.
     // Historical sensor samples must retain their own acquisition timestamps.
-    telemetry['timestamp'] = DateTime.now().toUtc().toIso8601String();
+    telemetry['timestamp'] = DateTime.now()
+        .toUtc()
+        .subtract(Duration(milliseconds: ageMs ?? 0))
+        .toIso8601String();
+    telemetry['via_relay'] = ageMs != null;
+    if (ageMs != null) telemetry['hardware_ready'] = false;
     final reading = Telemetry.fromJson(telemetry);
     if (!_stream.isClosed) _stream.add(reading);
   }
@@ -131,22 +185,21 @@ class Esp32Repository implements DeviceRepository {
       // retrying after it fails, just as after a later polling disconnect.
       if (!_closed) {
         _timer?.cancel();
-        _timer = Timer.periodic(pollInterval, (_) async {
-          if (_closed || _polling) return;
-          _polling = true;
-          try {
-            await _refresh();
-          } catch (_) {
-            if (!_closed && !_stream.isClosed) {
-              _stream.addError(
-                StateError('ติดต่อบอร์ดไม่ได้ กำลังลองเชื่อมต่อใหม่'),
-              );
-            }
-          } finally {
-            _polling = false;
-          }
-        });
+        _timer = Timer.periodic(pollInterval, (_) => unawaited(pollNow()));
       }
+    }
+  }
+
+  Future<void> pollNow({bool preferLan = false}) async {
+    if (preferLan) _retryLanAt = null;
+    if (_closed || _polling) return;
+    _polling = true;
+    try {
+      await _refresh();
+    } catch (error) {
+      if (!_closed && !_stream.isClosed) _stream.addError(error);
+    } finally {
+      _polling = false;
     }
   }
 
@@ -157,7 +210,7 @@ class Esp32Repository implements DeviceRepository {
   ) async {
     // Obtain the board clock immediately before issuing a short-lived command.
     // Do not extend the server's expiry window to hide clock differences.
-    await _refresh();
+    await _refresh(allowRelay: false);
     final id = createId();
     final data = await _request('POST', '/commands', {
       'command_id': id,
@@ -206,6 +259,7 @@ class Esp32Repository implements DeviceRepository {
     _closed = true;
     _timer?.cancel();
     _client?.close();
+    _relay?.close();
     await _stream.close();
   }
 }

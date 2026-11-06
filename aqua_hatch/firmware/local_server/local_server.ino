@@ -19,7 +19,7 @@ AquaIdentity boardIdentity;
 #include "sensor_do.h"
 #include "sensor_ph.h"
 
-static const char VERSION[] = "0.15.0-wroom-da.1";
+static const char VERSION[] = "0.16.0-wroom-da.1";
 Preferences prefs;
 httpd_handle_t httpsServer = nullptr;
 bool tlsReady = false, wasConnected = false;
@@ -36,7 +36,9 @@ uint8_t cacheIndex = 0;
 void startTls();
 esp_err_t sendJson(httpd_req_t *req, const char *status, const JsonDocument &doc);
 esp_err_t error(httpd_req_t *req, const char *status, const char *message);
+void snapshot(JsonDocument &doc);
 #include "wifi_setup.h"
+#include "remote_readings.h"
 
 String nowIso() {
   time_t now = time(nullptr);
@@ -83,6 +85,8 @@ void serialStatus(const char *type = "status") {
   doc["connected"] = WiFi.status() == WL_CONNECTED;
   doc["ssid"] = WiFi.SSID(); doc["ip"] = WiFi.localIP().toString();
   doc["tls_ready"] = tlsReady; doc["uptime_ms"] = millis();
+  doc["relay_enabled"] = !aqua_relay::origin(prefs).isEmpty();
+  doc["relay_http"] = remote_readings::lastResult.load();
   temperature_sensor::append(doc["telemetry"].to<JsonObject>());
   oxygen_sensor::append(doc["telemetry"].as<JsonObject>());
   ph_sensor::append(doc["telemetry"].as<JsonObject>());
@@ -176,6 +180,19 @@ esp_err_t api(httpd_req_t *req) {
   bool handled=false;
   esp_err_t setupResult=provisioning::handle(req,base,uri,handled);
   if (handled) return setupResult;
+  if (uri == base + "/remote") {
+    if (req->method == HTTP_POST) {
+      String url;
+      if (!aqua_relay::readConfiguration(req, url))
+        return error(req, "422 Unprocessable Entity", "ตรวจ URL ของบริการ");
+      if (!aqua_relay::configure(prefs, url))
+        return error(req, "500 Internal Server Error", "บันทึกบริการไม่สำเร็จ");
+    }
+    JsonDocument result;
+    result["enabled"] = !aqua_relay::origin(prefs).isEmpty();
+    result["last_http"] = remote_readings::lastResult.load();
+    return sendJson(req, "200 OK", result);
+  }
   if (req->method == HTTP_GET && uri == base) {
     if (nowIso().isEmpty()) return error(req,"503 Service Unavailable","บอร์ดกำลังตั้งเวลา กรุณาลองเชื่อมต่อใหม่");
     JsonDocument doc; snapshot(doc); return sendJson(req,"200 OK",doc);
@@ -365,5 +382,6 @@ void loop() {
       Serial.println(renewed?"CERTIFICATE_RENEWED":"CERTIFICATE_RENEWAL_FAILED");startTls();
     }
   }
+  remote_readings::tick();
   wasConnected=connected; delay(5);
 }

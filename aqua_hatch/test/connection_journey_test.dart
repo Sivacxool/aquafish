@@ -42,11 +42,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(
-        find.text('เริ่มที่บอร์ดหลัก\nแล้วค่อยเพิ่มกล้อง'),
-        findsOneWidget,
-      );
-      expect(find.text('บันทึกแล้ว · ยังไม่ออนไลน์'), findsOneWidget);
+      expect(find.byKey(const ValueKey('start-board-setup')), findsOneWidget);
+      expect(find.text('ติดต่อไม่ได้'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'URL บอร์ด'), findsNothing);
       expect(find.widgetWithText(TextField, 'URL บอร์ดกล้อง'), findsNothing);
       expect(find.byKey(const ValueKey('connect-usb-camera')), findsNothing);

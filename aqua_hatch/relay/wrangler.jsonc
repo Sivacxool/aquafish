@@ -1,0 +1,23 @@
+{
+  "name": "aquahatch-relay",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-11-06",
+  "workers_dev": true,
+  "preview_urls": false,
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "READINGS",
+        "class_name": "ReadingRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "ReadingRoom"
+      ]
+    }
+  ]
+}

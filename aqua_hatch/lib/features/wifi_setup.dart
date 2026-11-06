@@ -115,6 +115,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
 
   ConnectionConfig _config(String url) => ConnectionConfig(
     identity: _initial.identity,
+    relayOrigin: _initial.relayOrigin,
     demo: false,
     localEsp32: true,
     baseUrl: url,
