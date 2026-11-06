@@ -463,7 +463,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             showFeedback(
                               context,
                               error,
-                              success: 'ESP32-S3 ตอบรับคำสั่งจริงแล้ว',
+                              success: 'บอร์ดหลักตอบรับคำสั่งจริงแล้ว',
                             );
                           }
                         },
@@ -489,7 +489,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('SDA → GPIO8 · SCL → GPIO9 · อ่านแรงดันที่ A0'),
+              const Text('อ่านแรงดันที่ขา A0 ของ ADS1115'),
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).push(

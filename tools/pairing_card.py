@@ -7,7 +7,12 @@ from pathlib import Path
 import argparse,base64,hashlib,html,io,json,os,re,subprocess,time,webbrowser
 
 ROOT=Path(__file__).resolve().parent.parent
-FQBN={'s3':'esp32:esp32:esp32s3:FlashSize=16M,PSRAM=opi,FlashMode=qio,PartitionScheme=app3M_fat9M_16MB,CDCOnBoot=default,UploadSpeed=921600','camera':'esp32:esp32:esp32cam'}
+FQBN={
+    'wroom-da':'esp32:esp32:esp32da:FlashSize=4M,FlashMode=dio,FlashFreq=40,PartitionScheme=min_spiffs,UploadSpeed=115200',
+    'camera':'esp32:esp32:esp32cam',
+}
+# The controller's QR role predates WROOM-DA and is shared with 0.14 apps.
+PAIRING_KIND={'wroom-da':'s3','camera':'camera'}
 
 def validate(payload,expected_kind=None):
     if not isinstance(payload,dict) or set(payload)!={'format','version','kind','id','host','ssid','token','ca'}:
@@ -15,7 +20,7 @@ def validate(payload,expected_kind=None):
     if payload['format']!='aquahatch-pairing' or type(payload['version']) is not int or payload['version']!=1:
         raise ValueError('Unsupported pairing version')
     kind=payload['kind']
-    if kind not in FQBN or expected_kind is not None and kind!=expected_kind:raise ValueError('Board type does not match selected firmware')
+    if kind not in PAIRING_KIND.values() or expected_kind is not None and kind!=expected_kind:raise ValueError('Board type does not match selected firmware')
     prefix='s3' if kind=='s3' else 'cam'
     if not isinstance(payload['id'],str) or not re.fullmatch(prefix+r'-[0-9a-f]{12}',payload['id']):raise ValueError('Invalid board identity')
     if payload['host']!='aquahatch-'+payload['id']+'.local':raise ValueError('Unexpected TLS hostname')
@@ -40,7 +45,7 @@ def render_card(payload,directory):
     password=hashlib.sha256(('AquaHatch setup v1:'+payload['token']).encode()).hexdigest()[:16]
     ca=base64.urlsafe_b64decode(payload['ca']+'='*((-len(payload['ca']))%4))
     fingerprint=hashlib.sha256(ca).hexdigest()
-    title='บอร์ดหลัก ESP32-S3' if payload['kind']=='s3' else 'กล้อง ESP32-CAM'
+    title='บอร์ดหลัก ESP32' if payload['kind']=='s3' else 'กล้อง ESP32-CAM'
     text=f'''<!doctype html><html lang="th"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AquaHatch — บัตรส่วนตัว {html.escape(payload['id'])}</title>
 <style>body{{font:16px/1.7 system-ui,sans-serif;background:#f2f6f3;color:#163b2c;margin:0;padding:24px}}main{{max-width:760px;margin:auto;background:white;padding:32px;border-radius:24px}}h1{{margin:0;font-size:28px}}.qr{{max-width:560px;margin:24px auto}}.qr svg{{width:100%;height:auto;display:block}}code,textarea{{display:block;overflow-wrap:anywhere;background:#edf4ee;padding:12px;border-radius:8px}}textarea{{width:100%;box-sizing:border-box;min-height:96px}}button{{font:inherit;padding:12px 16px;min-height:44px;background:#345740;color:white;border:0;border-radius:12px;cursor:pointer}}.notice{{background:#fff5dc;padding:16px;border-radius:12px}}label{{display:block;margin:20px 0 8px;font-weight:600}}small{{color:#52695a}}@media print{{body{{background:white;padding:0}}main{{padding:16px}}button,.screen-only{{display:none}}.qr{{max-width:110mm}}}}</style>
 <main><h1>AquaHatch · {title}</h1><p>รหัสอุปกรณ์: <strong>{html.escape(payload['id'])}</strong></p>
@@ -78,7 +83,7 @@ def read_pairing(port,kind,timeout=60):
     finally:connection.close()
 
 def flash(port,kind,arduino_cli,images):
-    folder='local_server' if kind=='s3' else 'camera_server'
+    folder='local_server' if kind=='wroom-da' else 'camera_server'
     images=Path(images)
     required=[images/f'{folder}.ino{suffix}.bin' for suffix in ['', '.bootloader','.partitions']]
     if not all(path.is_file() for path in required):raise FileNotFoundError('Generic firmware files are missing. Use the complete FirstBoot package.')
@@ -103,7 +108,7 @@ def main():
             print('กำลังลงเฟิร์มแวร์ โดยไม่สั่งล้าง NVS…',flush=True)
             flash(args.port,args.kind,Path(args.arduino_cli),args.images or ROOT/'firmware-images'/args.kind)
         print('รอบอร์ดเตรียมรหัสเฉพาะตัว แล้วรับบัตรผ่าน USB…',flush=True)
-        payload=read_pairing(args.port,args.kind)
+        payload=read_pairing(args.port,PAIRING_KIND[args.kind])
         card=render_card(payload,args.output)
         print('บัตรจับคู่ส่วนตัวพร้อมแล้ว: '+str(card),flush=True)
         if not args.no_open:webbrowser.open(card.resolve().as_uri())

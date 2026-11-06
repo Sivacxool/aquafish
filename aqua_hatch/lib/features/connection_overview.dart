@@ -21,7 +21,7 @@ class ConnectionOverview extends StatelessWidget {
     final boardCard = _DeviceStep(
       number: '01',
       title: 'บอร์ดหลัก',
-      model: 'ESP32-S3',
+      model: 'ESP32-WROOM-DA',
       description: 'รับค่าอุณหภูมิและออกซิเจนในน้ำ',
       icon: Icons.memory_rounded,
       status: boardOnline

@@ -73,6 +73,6 @@
 	<key>NSAppTransportSecurity</key>
 	<dict><key>NSAllowsLocalNetworking</key><true/></dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>AquaHatch ใช้เครือข่ายในบ้านเพื่ออ่านค่าเซนเซอร์จาก ESP32-S3 ตั้งค่า Wi-Fi และรับภาพจาก ESP32-CAM ของคุณ</string>
+	<string>AquaHatch ใช้เครือข่ายในบ้านเพื่ออ่านค่าเซนเซอร์จากบอร์ดหลัก ESP32 ตั้งค่า Wi-Fi และรับภาพจาก ESP32-CAM ของคุณ</string>
 </dict>
 </plist>

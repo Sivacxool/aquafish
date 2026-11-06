@@ -75,7 +75,7 @@ class _PhCalibrationScreenState extends ConsumerState<PhCalibrationScreen> {
         children: [
           const PageTitle(
             'ตั้งค่า pH ครั้งแรก',
-            'E-201-C / PH-4502C / ADS1115 / ESP32-S3',
+            'E-201-C / PH-4502C / ADS1115',
           ),
           Surface(
             child: Column(
@@ -179,7 +179,7 @@ class _PhCalibrationScreenState extends ConsumerState<PhCalibrationScreen> {
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 Text(
-                  'ADS1115: VDD = 3.3V · GND ร่วม · SDA = GPIO8 · SCL = GPIO9 · ADDR = GND',
+                  'ADS1115: VDD = 3.3V · GND ร่วม · ADDR = GND · ต่อ SDA/SCL ตามผังของบอร์ดหลัก',
                 ),
                 SizedBox(height: 8),
                 Text(

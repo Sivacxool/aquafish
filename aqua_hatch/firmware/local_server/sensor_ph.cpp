@@ -119,7 +119,9 @@ void tick() {
 bool calibrate(float bufferPh,bool startNew,String &message) {
   Guard lock;
   if(!sample.detected || !isfinite(sample.voltage) || millis()-sample.atMs>STALE_MS) {
-    message="ยังอ่าน ADS1115 ไม่ได้ ตรวจสาย SDA GPIO8 / SCL GPIO9 และ A0";return false;
+    message = "ยังอ่าน ADS1115 ไม่ได้ ตรวจสาย SDA GPIO" + String(PH_SDA_PIN)
+      + " / SCL GPIO" + String(PH_SCL_PIN) + " และ A0";
+    return false;
   }
   if(!sample.stable){message="แรงดันยังไม่นิ่ง รอหัววัดในน้ำยามาตรฐานแล้วลองอีกครั้ง";return false;}
   ph_math::Calibration next=calibration;
@@ -132,7 +134,7 @@ bool calibrate(float bufferPh,bool startNew,String &message) {
     if(!next.valid()){message="แรงดันสองจุดใกล้กันเกินไป ตรวจน้ำยามาตรฐานและหัววัด";return false;}
   } else {message="เลือกน้ำยา 7.00 / 6.86 และ 4.00 / 4.01 ตามฉลาก";return false;}
   const time_t at=next.valid()?time(nullptr):0;
-  if(!save(next,at)){message="บันทึกการสอบเทียบบน S3 ไม่สำเร็จ";return false;}
+  if(!save(next,at)){message="บันทึกการสอบเทียบบนบอร์ดหลัก ไม่สำเร็จ";return false;}
   calibration=next;calibratedAt=at;
   message=next.valid()?"บันทึกสอบเทียบ pH สองจุดแล้ว":"บันทึกจุดแรกแล้ว ล้างหัววัดและย้ายไปน้ำยา pH 4";
   return true;

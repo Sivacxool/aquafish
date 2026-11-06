@@ -907,7 +907,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
                       subtitle: descriptions[_stage],
                       device: widget.camera
                           ? 'ESP32-CAM · กล้อง'
-                          : 'ESP32-S3 · บอร์ดหลัก',
+                          : 'ESP32 · บอร์ดหลัก',
                       busy: _busy,
                       complete: _completed,
                       icon: widget.camera

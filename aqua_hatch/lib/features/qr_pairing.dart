@@ -207,7 +207,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                 children: [
                   Text(
                     identity.kind == 's3'
-                        ? 'บอร์ดหลัก ESP32-S3'
+                        ? 'บอร์ดหลัก ESP32'
                         : 'กล้อง ESP32-CAM',
                     style: const TextStyle(
                       fontSize: 20,

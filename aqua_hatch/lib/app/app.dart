@@ -246,7 +246,7 @@ class AppShell extends ConsumerWidget {
                                   ),
                                   SizedBox(height: 10),
                                   Text(
-                                    'Aqua Hatch · v0.14.0',
+                                    'Aqua Hatch · v0.15.0',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: AquaColors.muted,

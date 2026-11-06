@@ -1,12 +1,12 @@
 param(
-  [Parameter(Mandatory=$true)][ValidateSet('s3','camera')][string]$Kind,
+  [Parameter(Mandatory=$true)][ValidateSet('wroom-da','camera')][string]$Kind,
   [string]$Port,
   [switch]$ReadOnly
 )
 $ErrorActionPreference='Stop'
 $bundleRoot=Split-Path -Parent $PSScriptRoot
-if (!$Port) { $Port=Read-Host 'พอร์ตของบอร์ด เช่น COM3 (ต่อทีละบอร์ด และปิด Serial Monitor)' }
-if ($Port -notmatch '^COM[1-9][0-9]*$') { throw 'พอร์ตต้องเป็น COM ตามด้วยตัวเลข เช่น COM3' }
+if (!$Port) { $Port=Read-Host 'พอร์ตของบอร์ด เช่น COM5 (ต่อทีละบอร์ด และปิด Serial Monitor)' }
+if ($Port -notmatch '^COM[1-9][0-9]*$') { throw 'พอร์ตต้องเป็น COM ตามด้วยตัวเลข เช่น COM5' }
 $pythonCandidate=Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
 if (Test-Path -LiteralPath $pythonCandidate) { $pythonExe=$pythonCandidate }
 elseif (Get-Command python -ErrorAction SilentlyContinue) { $pythonExe=(Get-Command python).Source }

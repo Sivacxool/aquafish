@@ -1,5 +1,5 @@
 // AquaHatch local HTTPS server, DS18B20 on GPIO4. No actuator GPIO control.
-// Arduino-ESP32 3.3.12, ArduinoJson 7.4.3, ESP32-S3 16 MB / OPI PSRAM 8 MB.
+// Arduino-ESP32 3.3.12, ArduinoJson 7.4.3, ESP32-WROOM-DA target, 4 MB flash.
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -19,7 +19,7 @@ AquaIdentity boardIdentity;
 #include "sensor_do.h"
 #include "sensor_ph.h"
 
-static const char VERSION[] = "0.14.0-sensors.1";
+static const char VERSION[] = "0.15.0-wroom-da.1";
 Preferences prefs;
 httpd_handle_t httpsServer = nullptr;
 bool tlsReady = false, wasConnected = false;
@@ -78,12 +78,14 @@ void serialStatus(const char *type = "status") {
   JsonDocument doc;
   doc["type"] = type; doc["device_id"] = DEVICE_ID;
   doc["firmware"] = VERSION; doc["chip"] = ESP.getChipModel();
+  doc["board_profile"] = "esp32-wroom-da";
   doc["flash_bytes"] = ESP.getFlashChipSize(); doc["psram_bytes"] = ESP.getPsramSize();
   doc["connected"] = WiFi.status() == WL_CONNECTED;
   doc["ssid"] = WiFi.SSID(); doc["ip"] = WiFi.localIP().toString();
   doc["tls_ready"] = tlsReady; doc["uptime_ms"] = millis();
   temperature_sensor::append(doc["telemetry"].to<JsonObject>());
   oxygen_sensor::append(doc["telemetry"].as<JsonObject>());
+  ph_sensor::append(doc["telemetry"].as<JsonObject>());
   doc["free_heap"] = ESP.getFreeHeap(); doc["command_count"] = commandCount;
   doc["wifi_status"] = (int)WiFi.status();
   doc["disconnect_reason"] = (int)lastDisconnectReason;
@@ -239,7 +241,7 @@ esp_err_t api(httpd_req_t *req) {
     }
     commandCount++;
     JsonDocument response; response["command_id"]=id; response["status"]="applied";
-    response["message"]=action=="calibrate_ph"?calibrationMessage:action == "ping" ? "ESP32-S3 ตอบรับคำสั่งจริงแล้ว" : "บอร์ดบันทึกค่าตั้งแล้ว ยังไม่เปิดอุปกรณ์";
+    response["message"]=action=="calibrate_ph"?calibrationMessage:action == "ping" ? "บอร์ดหลักตอบรับคำสั่งจริงแล้ว" : "บอร์ดบันทึกค่าตั้งแล้ว ยังไม่เปิดอุปกรณ์";
     response["uptime_ms"]=millis(); response["command_count"]=commandCount;
     String reply; serializeJson(response,reply);
     cache[cacheIndex] = {id,body,reply}; cacheIndex=(cacheIndex+1)%8;
