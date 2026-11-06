@@ -17,7 +17,7 @@
 
 ## เฟิร์มแวร์
 
-ไฟล์ firmware/AquaHatchUsbCamera/AquaHatchUsbCamera.ino ใช้เป้าหมาย esp32:esp32:esp32cam สำหรับ ESP32-S / AI Thinker ESP32-CAM ที่ตรวจจริง ไม่ใช่ ESP32-S3 ตัวควบคุมหลัก ใช้ขากล้องเดิมและ PSRAM; เริ่มที่ 320×240 JPEG และ UART 921600 baud
+ไฟล์ firmware/AquaHatchUsbCamera/AquaHatchUsbCamera.ino ใช้เป้าหมาย esp32:esp32:esp32cam สำหรับ ESP32-S / AI Thinker ESP32-CAM ที่ตรวจจริง ไม่ใช่ ESP32-WROOM-DA ตัวควบคุมหลัก ใช้ขากล้องเดิมและ PSRAM; เริ่มที่ 320×240 JPEG และ UART 921600 baud
 
 เมื่อใช้งาน USB ช่อง Serial เป็นข้อมูลภาพไบนารี จึงไม่ได้ใช้ Serial Monitor ดูข้อความทั่วไปพร้อมกัน ตัวรับภาพถามข้อมูลผ่าน HELLO และรับ JPEG ผ่าน CAP โดยใช้ request ID, ความยาวข้อมูล และ CRC32 ไม่ปะปนข้อความกับภาพ
 
@@ -36,7 +36,7 @@ python viewer/viewer.py --port COM4 --http-port 8771
 
 - นี่คือ USB–Serial พร้อมโปรแกรมรับภาพ ไม่ใช่กล้อง UVC ที่ Windows Camera มองเห็นทันที
 - ใช้แอป Android ใน LDPlayer บนคอมที่ต่อบอร์ดอยู่ ยังไม่ใช่การต่อ Android มือถือด้วยสาย OTG
-- Wi-Fi ของบอร์ดกล้องปิดอยู่ การเชื่อมเซนเซอร์/ตัวควบคุมหลัก ESP32-S3 เป็นคนละส่วน
+- Wi-Fi ของบอร์ดกล้องปิดอยู่ การเชื่อมเซนเซอร์/ตัวควบคุมหลัก ESP32-WROOM-DA เป็นคนละส่วน
 - ใช้ภาพ USB นับด้วยมือได้ ยังไม่มีผลยืนยันโมเดล AI ลูกปลา และการเปลี่ยนวิธีส่งไม่ได้ยืนยันว่าแก้เลนส์เบลอแล้ว
 - รักษาการจับคู่กล้อง Wi-Fi เดิมไว้ แต่จะใช้ได้เมื่อเปลี่ยนเฟิร์มแวร์บอร์ดกลับเป็นแบบ Wi-Fi และเลือกโหมด Wi-Fi ในแอป
 - source ZIP ไม่รวมภาพห้องจริง รหัส Wi-Fi, TLS private key, pairing token หรือ signing key

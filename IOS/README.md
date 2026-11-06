@@ -1,13 +1,9 @@
-# AquaHatch สำหรับ iPhone — 0.14.0+2015
+# AquaHatch 0.15.0 สำหรับ iPhone
 
-[ดาวน์โหลดชุดล่าสุด](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/IOS/AquaHatch-v0.14.0-iOS-unsigned.ipa)
+บอร์ดหลัก ESP32-WROOM-DA ใช้ DS18B20 ที่ GPIO4 และ RS485 ที่ GPIO16/17/18 ส่วน ADS1115 ใช้ SDA GPIO21 / SCL GPIO22
 
-เพิ่มการสแกน QR เพื่อรับตัวตนและ CA เฉพาะบอร์ด ไม่ต้อง build แอปประจำบอร์ดใหม่
-[ขั้นตอนลง firmware และรับ QR](../FIRST_BOOT_PAIRING_TH.md) · [FirstBoot package](../AquaHatch-v0.14.0-FirstBoot.zip)
-อุปกรณ์เก่าที่ยังไม่ลง generic firmware ใช้การเชื่อมต่อเดิมได้ตามใบรับรองเดิมของอุปกรณ์
+[ดาวน์โหลด AquaHatch-v0.15.0-iOS-unsigned.ipa](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/IOS/AquaHatch-v0.15.0-iOS-unsigned.ipa)
 
-IPA นี้ยังไม่เซ็น ต้องติดตั้งผ่าน Sideloadly ด้วย Apple ID / bundle identifier เดิมเพื่ออัปเดตทับ ตาม [คู่มือ iPhone](../IOS_INSTALL_TH.md) เปิดไฟล์จาก Safari แล้วติดตั้งตรงไม่ได้
+IPA สำหรับ iPhone arm64 ยังไม่เซ็น ติดตั้งด้วย Sideloadly ตาม [คู่มือ iPhone](../IOS_INSTALL_TH.md)
 
-Native arm64 / iPhoneOS และ Simulator ผ่าน ยังไม่ได้ทดสอบการสแกนบน iPhone จริงในรุ่นนี้
-
-[ผลตรวจ](../VERIFICATION.md) · [SHA256](../SHA256SUMS.txt)
+[ติดตั้งบอร์ดและจับคู่ QR](../FIRST_BOOT_PAIRING_TH.md) · [ผังเซนเซอร์](../aqua_hatch/SENSORS_SETUP_TH.md) · [ผลตรวจ](../VERIFICATION.md)

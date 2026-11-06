@@ -1,3 +1,16 @@
+# การตรวจ AquaHatch 0.15.0
+
+- คอมไพล์โปรไฟล์ ESP32-WROOM-DA ขนาด Flash 4 MB ผ่าน เฟิร์มแวร์ใช้พื้นที่โปรแกรม 60%
+- ลง `0.15.0-wroom-da.1` ที่ COM5 ด้วยตัวติดตั้งชุด FirstBoot ตรวจข้อมูล Flash ผ่าน บูตและส่ง QR จริงผ่าน USB หลังรีเซ็ตยังได้ QR เดิม
+- ผลเซนเซอร์จาก USB รอบนี้ DS18B20 `ok`, DO `ok`, pH `adc_not_found` ต้องต่อและตรวจค่าจริงก่อนใช้วัดน้ำ
+- Flutter analyzer ผ่าน ทดสอบผ่าน 100 รายการ ข้าม 6 รายการที่ต้องใช้อุปกรณ์หรือระบบภายนอก
+- APK Universal ตรวจลายเซ็นเดิมและครบสาม ABI ส่วน iOS native และ Simulator ผ่าน [GitHub Actions](https://github.com/Sivacxool/aquafish/actions/runs/42216281075)
+- การสแกนด้วยกล้องโทรศัพท์จริงและการจับคู่ผ่าน Wi-Fi บ้านรอทดสอบบนโทรศัพท์
+
+[รายงานชุดติดตั้ง](verification/v0.15.0/release.json) · [สถานะ COM5](verification/v0.15.0/controller-usb.json) · [Android](verification/v0.15.0/android-apk.json) · [iOS](verification/v0.15.0/ios-ipa.json)
+
+## ผลจากรุ่นก่อนหน้า
+
 # ผลตรวจ AquaHatch 0.14.0 — First boot / QR pairing
 
 ## รหัสเฉพาะตัว

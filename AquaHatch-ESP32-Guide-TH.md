@@ -1,12 +1,12 @@
 # คู่มือ ESP32 ชุดปัจจุบัน
 
-แอปรุ่นปัจจุบันคือ 0.10.0 ดู [เริ่มเชื่อมทีละขั้น](START_HERE_TH.md)
+แอปรุ่นปัจจุบันคือ 0.15.0 ดู [เริ่มเชื่อมทีละขั้น](START_HERE_TH.md)
 
-- [ESP32-S3, DS18B20 และ DO RS485](aqua_hatch/SENSORS_SETUP_TH.md)
-- [กล้อง AI Thinker ESP32-CAM + OV5640](AquaHatch-Camera-Start-TH.md)
+- [ESP32-WROOM-DA และผังขาเซนเซอร์](aqua_hatch/SENSORS_SETUP_TH.md)
+- [กล้อง AI Thinker ESP32-CAM + OV3660](AquaHatch-Camera-Start-TH.md)
 - [ตั้ง Wi-Fi จากแอป](CONNECTION_UI_TH.md)
 - [ประกอบซอฟต์แวร์สำหรับบอร์ดใหม่](REBUILD.md)
 
-มือถือ S3 และกล้องอยู่ Wi-Fi บ้านเดียวกัน โดย S3 กับกล้องมี IP แยกกัน
+มือถือ WROOM-DA และกล้องอยู่ Wi-Fi บ้านเดียวกัน บอร์ดหลักกับกล้องมี IP แยกกัน
 บอร์ดหลักอ่านเซนเซอร์ กล้องส่ง JPEG ส่วนแอปแสดงข้อมูลและภาพ
 ชุดปัจจุบันยังไม่เปิดการขับรีเลย์ ปั๊ม หรือฮีตเตอร์

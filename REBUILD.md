@@ -1,6 +1,6 @@
-# สร้าง AquaHatch 0.14.0 และ generic firmware
+# สร้าง AquaHatch 0.15.0 และ generic firmware
 
-รุ่นนี้ S3/CAM สร้างตัวตนและ private keys ในบอร์ดตอนเปิดครั้งแรก ไม่ต้องสร้าง device_private.h หรือบิลด์แอปประจำบอร์ด
+รุ่นนี้ WROOM-DA/CAM สร้างตัวตนและ private keys ในบอร์ดตอนเปิดครั้งแรก ไม่ต้องสร้าง device_private.h หรือบิลด์แอปประจำบอร์ด
 อ่าน [คู่มือติดตั้งและจับคู่ด้วย QR](FIRST_BOOT_PAIRING_TH.md) ก่อนใช้งาน
 
 ## เครื่องมือ
@@ -18,9 +18,9 @@
 ```
 
 สคริปต์รวม `firmware/libraries/AquaIdentity` ให้อัตโนมัติ
-S3 เป้าหมาย Flash16MB / OPI PSRAM8MB; CAM ใช้ AI Thinker ESP32-CAM
-เพิ่ม `-Upload -Port COM3` หรือพอร์ตจริงเมื่อต้องการลงบอร์ด แต่รอบนี้ผู้พัฒนาไม่ได้รันคำสั่งอัปโหลด
-เพื่อรับบัตร QR หลังลง ใช้ FirstBoot package หรือตัวอ่าน `tools/pairing_card.py --read-only`
+บอร์ดหลักใช้ ESP32-WROOM-DA Module, Flash 4 MB, DIO 40 MHz, Minimal SPIFFS และ Upload Speed 115200 ส่วนกล้องใช้ AI Thinker ESP32-CAM
+เพิ่ม `-Upload -Port COM5` เมื่อพอร์ตของบอร์ดหลักเป็น COM5 เลือกหมายเลขจริงของบอร์ดแต่ละตัว
+เพื่อรับบัตร QR หลังลง ใช้ FirstBoot package หรือตัวอ่าน `tools/pairing_card.py --kind wroom-da --port COM5 --read-only`
 อย่าสั่งล้าง NVS เพื่ออัปเดตรุ่นปกติ เพราะการล้างทำให้ CA/token เปลี่ยนและต้องสแกนใหม่
 
 ## แอป

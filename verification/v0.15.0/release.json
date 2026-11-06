@@ -1,0 +1,19 @@
+{
+  "version": "0.15.0+2016",
+  "date": "2026-11-06",
+  "build_source": "dd0c71eba3cb103e79910c37cd329340799ca23a",
+  "ios_ci": "https://github.com/Sivacxool/aquafish/actions/runs/42216281075",
+  "ios_ci_conclusion": "success",
+  "flutter_tests_passed": 100,
+  "hardware_tests_skipped": 6,
+  "flutter_analyze": "passed",
+  "wroom_compile": [
+    "Sketch uses 1194353 bytes (60%) of program storage space. Maximum is 1966080 bytes.",
+    "Global variables use 53668 bytes (16%) of dynamic memory, leaving 274012 bytes for local variables. Maximum is 327680 bytes."
+  ],
+  "wroom_flashed_and_qr_read_on_com5": true,
+  "backup_stored_locally": true,
+  "firstboot_private_credentials_included": false,
+  "real_phone_install_tested": false,
+  "camera_binary_reused_from": "0.14.0-camera.1"
+}
