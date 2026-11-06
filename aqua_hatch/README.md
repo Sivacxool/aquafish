@@ -1,4 +1,4 @@
-# AquaHatch 0.16.0
+# AquaHatch 0.16.1
 
 ซอร์สแอป Flutter, เฟิร์มแวร์ ESP32-WROOM-DA และ ESP32-CAM
 

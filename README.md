@@ -1,17 +1,19 @@
-# AquaHatch 0.16.0 สำหรับ ESP32-WROOM-DA
+# AquaHatch 0.16.1 สำหรับ ESP32-WROOM-DA
 
 AquaHatch อ่านอุณหภูมิ DO และ pH จาก ESP32-WROOM-DA และรับภาพจาก AI Thinker ESP32-CAM ผ่าน Wi-Fi บ้าน แต่ละบอร์ดมี IP และ QR จับคู่ของตัวเอง
 
 | ชุดติดตั้ง | ดาวน์โหลด |
 | --- | --- |
-| เฟิร์มแวร์และตัวติดตั้ง Windows | [FirstBoot ZIP](AquaHatch-v0.16.0-FirstBoot.zip) |
-| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/ANDROID/AquaHatch-v0.16.0-Android-universal.apk) |
-| iPhone | [IPA สำหรับ Sideloadly](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/IOS/AquaHatch-v0.16.0-iOS-unsigned.ipa) |
-| ซอร์ส | [Source ZIP](AquaHatch-v0.16.0-source.zip) |
+| เฟิร์มแวร์และตัวติดตั้ง Windows | [FirstBoot ZIP](AquaHatch-v0.16.1-FirstBoot.zip) |
+| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/ANDROID/AquaHatch-v0.16.1-Android-universal.apk) |
+| iPhone | [IPA สำหรับ Sideloadly](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/IOS/AquaHatch-v0.16.1-iOS-unsigned.ipa) |
+| ซอร์ส | [Source ZIP](AquaHatch-v0.16.1-source.zip) |
 
-รุ่น 0.16.0 เพิ่มการเชื่อมผ่านอินเทอร์เน็ตสำหรับบอร์ดหลักและ ESP32-CAM ผ่าน Cloudflare Workers
-แอปกลับมาใช้ทางตรงเมื่อเข้าถึงบอร์ดได้ และแสดงสถานะการเชื่อมต่อแบบย่อ
+รุ่น 0.16.1 แก้การเริ่มกล้องในขณะถ่ายภาพและปรับหน้า IP/USB ให้เลื่อนได้ เพิ่มปุ่มปิดแจ้งเตือนและลบรอบฟักพร้อมยืนยัน ปิดการดูจากนอกบ้านผ่านอินเทอร์เน็ตได้แยกตามอุปกรณ์
+เฟิร์มแวร์กล้องเป็น 0.16.1-camera.1 ส่วน WROOM-DA ใช้ 0.16.0-wroom-da.1
 ดูขั้นตอนใน [คู่มือใช้นอกบ้าน](REMOTE_SETUP_TH.md)
+
+[แผนต่อปั๊ม ลูกลอย และฮีตเตอร์](PUMP_FLOAT_HEATER_PLAN_TH.md)
 
 ## สายเซนเซอร์บนบอร์ดหลัก
 

@@ -1,0 +1,177 @@
+{
+  "version": "0.16.1+2018",
+  "source": "b817d04e2d76c3909aca4a2523c6cf907d8686f2",
+  "camera": {
+    "tested_at": "2026-11-06T14:44:44.155754+00:00",
+    "pairing_identity_preserved": true,
+    "captures": [
+      {
+        "route": "LAN",
+        "resolution_requested": "3mp",
+        "firmware": "0.16.1-camera.1",
+        "sensor": "OV3660",
+        "ready": true,
+        "status_message": "กล้องพร้อมถ่ายภาพผ่าน Wi-Fi",
+        "capture_http": 202,
+        "capture_status": "captured",
+        "error": null,
+        "image_http": 200,
+        "bytes": 117747,
+        "decoded": [
+          2048,
+          1536
+        ],
+        "jpeg_ok": true,
+        "width": 2048,
+        "height": 1536,
+        "flash_used": true
+      },
+      {
+        "route": "Cloudflare",
+        "resolution_requested": "3mp",
+        "firmware": "0.16.1-camera.1",
+        "sensor": "OV3660",
+        "ready": true,
+        "status_message": "กล้องพร้อมถ่ายภาพผ่าน Wi-Fi",
+        "capture_http": 202,
+        "capture_status": "captured",
+        "error": null,
+        "image_http": 200,
+        "bytes": 117280,
+        "decoded": [
+          2048,
+          1536
+        ],
+        "jpeg_ok": true,
+        "width": 2048,
+        "height": 1536,
+        "flash_used": true
+      },
+      {
+        "route": "LAN",
+        "resolution_requested": "svga",
+        "firmware": "0.16.1-camera.1",
+        "sensor": "OV3660",
+        "ready": true,
+        "status_message": "กล้องพร้อมถ่ายภาพผ่าน Wi-Fi",
+        "capture_http": 202,
+        "capture_status": "captured",
+        "error": null,
+        "image_http": 200,
+        "bytes": 14897,
+        "decoded": [
+          800,
+          600
+        ],
+        "jpeg_ok": true,
+        "width": 800,
+        "height": 600,
+        "flash_used": true
+      },
+      {
+        "route": "Cloudflare",
+        "resolution_requested": "svga",
+        "firmware": "0.16.1-camera.1",
+        "sensor": "OV3660",
+        "ready": true,
+        "status_message": "กล้องพร้อมถ่ายภาพผ่าน Wi-Fi",
+        "capture_http": 202,
+        "capture_status": "captured",
+        "error": null,
+        "image_http": 200,
+        "bytes": 14788,
+        "decoded": [
+          800,
+          600
+        ],
+        "jpeg_ok": true,
+        "width": 800,
+        "height": 600,
+        "flash_used": true
+      },
+      {
+        "route": "LAN",
+        "resolution_requested": "3mp",
+        "firmware": "0.16.1-camera.1",
+        "sensor": "OV3660",
+        "ready": true,
+        "status_message": "กล้องพร้อมถ่ายภาพผ่าน Wi-Fi",
+        "capture_http": 202,
+        "capture_status": "captured",
+        "error": null,
+        "image_http": 200,
+        "bytes": 117251,
+        "decoded": [
+          2048,
+          1536
+        ],
+        "jpeg_ok": true,
+        "width": 2048,
+        "height": 1536,
+        "flash_used": true
+      },
+      {
+        "route": "Cloudflare",
+        "resolution_requested": "3mp",
+        "firmware": "0.16.1-camera.1",
+        "sensor": "OV3660",
+        "ready": true,
+        "status_message": "กล้องพร้อมถ่ายภาพผ่าน Wi-Fi",
+        "capture_http": 202,
+        "capture_status": "captured",
+        "error": null,
+        "image_http": 200,
+        "bytes": 117770,
+        "decoded": [
+          2048,
+          1536
+        ],
+        "jpeg_ok": true,
+        "width": 2048,
+        "height": 1536,
+        "flash_used": true
+      }
+    ],
+    "driver": []
+  },
+  "camera_original_dma_failure": {
+    "requested_bytes": 32768,
+    "largest_contiguous_block_bytes": 17396
+  },
+  "actual_flutter_decoded_via_lan_and_cloudflare": true,
+  "worker_version": "304d0412-97f9-4de9-ad18-818428ea9605",
+  "worker_live_access_checks": [
+    {
+      "kind": "readings",
+      "access_api_verified": true,
+      "reader_denied": true,
+      "state_preserved": true,
+      "enabled": true
+    },
+    {
+      "kind": "cameras",
+      "access_api_verified": true,
+      "reader_denied": true,
+      "state_preserved": true,
+      "enabled": true
+    }
+  ],
+  "worker_synthetic_off_on_passed": true,
+  "flutter_tests_passed": 110,
+  "flutter_tests_skipped": 6,
+  "camera_settings_small_screen_passed": true,
+  "notification_close_and_hatch_delete_passed": true,
+  "native_ios_ci": {
+    "url": "https://github.com/Sivacxool/aquafish/actions/runs/42236709009",
+    "source": "b817d04e2d76c3909aca4a2523c6cf907d8686f2",
+    "device_build": "success",
+    "simulator": "in_progress"
+  },
+  "physical_iphone_install_tested": false,
+  "android_signer_sha256": "f6df9948344bc96c8db247aeb7f8fc6ffefdf1f172e25fc67bd23736eac39fbd",
+  "android_supported_abis": [
+    "armeabi-v7a",
+    "arm64-v8a",
+    "x86_64"
+  ]
+}
