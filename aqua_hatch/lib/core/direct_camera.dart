@@ -228,7 +228,12 @@ class DirectCameraClient {
     return (DeviceCameraStatus.fromJson(online), true);
   }
 
-  Future<DeviceCameraStatus> status() async => (await _selectCamera()).$1;
+  Future<DeviceCameraStatus> status({bool localOnly = false}) async {
+    if (localOnly) {
+      return DeviceCameraStatus.fromJson(_json(await _send('GET', '')));
+    }
+    return (await _selectCamera()).$1;
+  }
 
   Future<DeviceCapture> capture(
     String id, {

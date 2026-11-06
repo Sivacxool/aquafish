@@ -187,6 +187,7 @@ void main() {
         'camera_id': config.deviceId,
         'server_time_unix': DateTime.now().millisecondsSinceEpoch ~/ 1000,
       };
+      var relayReads = 0;
       final camera = DirectCameraClient(
         config,
         pairing.token,
@@ -195,6 +196,7 @@ void main() {
           throw http.ClientException('no route to camera LAN');
         }),
         relayClient: MockClient((request) async {
+          relayReads++;
           final path = request.url.path;
           expect(
             request.headers['Authorization'],
@@ -238,6 +240,11 @@ void main() {
         }),
       );
       addTearDown(camera.close);
+      await expectLater(
+        camera.status(localOnly: true),
+        throwsA(isA<http.ClientException>()),
+      );
+      expect(relayReads, 0);
       final photo = await camera.capture(id);
       expect(photo.bytes, bytes);
       expect(photo.cameraId, config.deviceId);

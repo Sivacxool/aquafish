@@ -781,7 +781,7 @@ class AppController extends Notifier<AppState> {
       }
       if (secret.isEmpty) return 'ใส่รหัสจับคู่กล้องจากบัตร';
       candidate = ref.read(directCameraFactoryProvider)(config, secret);
-      final status = await candidate.status();
+      final status = await candidate.status(localOnly: true);
       if (!status.ready) return status.message;
       if (_disposed) return 'ปิดแอปแล้ว';
       await ref.read(credentialStoreProvider).save(config, secret);

@@ -20,7 +20,7 @@ AquaIdentity boardIdentity;
 #include "camera_pins.h"
 #include "camera_quality.h"
 
-static const char VERSION[]="0.16.0-camera.1";
+static const char VERSION[]="0.16.1-camera.1";
 Preferences prefs;
 httpd_handle_t server=nullptr;
 bool tlsReady=false,wasConnected=false,cameraReady=false,cameraActive=false;
@@ -53,7 +53,7 @@ uint32_t lastWarmupMs=0,lastCaptureMs=0;
 bool flashAttached=false,flashActive=false,lastFlashUsed=false;
 uint8_t lastFlashDuty=0,lastJpegQuality=10;
 void startTls();
-void initCamera(framesize_t size=FRAMESIZE_INVALID,int quality=10);
+void initCamera();
 void shutdownCamera();
 void flashOff();
 esp_err_t sendJson(httpd_req_t*,const char*,const JsonDocument&);
@@ -160,15 +160,19 @@ const char *performCapture(const JsonDocument &incoming, JsonDocument &result, S
   seenIds[seenIndex]=id; seenIndex=(seenIndex+1)%8;
   releasePhoto(); captureId=id;
   const uint32_t captureStart=millis();lastFlashUsed=false;lastWarmupMs=warmup;lastCaptureMs=0;lastFlashDuty=0;lastJpegQuality=quality;
-  initCamera(frameSize,quality);
-  if(!cameraReady) {shutdownCamera();return fail("503 Service Unavailable",cameraError.c_str());}
+  if(!cameraReady) initCamera();
+  if(!cameraReady) return fail("503 Service Unavailable",cameraError.c_str());
   sensor_t *sensor=esp_camera_sensor_get();lastFocus=aquaPrepareFocus(sensor,focus&&autofocusSupported);
+  frameSize=min(frameSize,nativeFrameSize);
+  if((sensor->status.framesize!=frameSize && sensor->set_framesize(sensor,frameSize)!=0) ||
+     (sensor->status.quality!=quality && sensor->set_quality(sensor,quality)!=0))
+    return fail("503 Service Unavailable","ตั้งค่าขนาดภาพหรือคุณภาพกล้องไม่สำเร็จ");
   if(!autofocusSupported)lastFocus.status="not_supported_sensor";
   if(flash) {
     lastFlashUsed=flashOn(duty);lastFlashDuty=lastFlashUsed?duty:0;
-    if(!lastFlashUsed) {shutdownCamera();return fail("503 Service Unavailable","เปิดแฟลชกล้องไม่สำเร็จ");}
+    if(!lastFlashUsed) {flashOff();return fail("503 Service Unavailable","เปิดแฟลชกล้องไม่สำเร็จ");}
   }
-  // Let exposure and white balance converge after each on-demand startup.
+  // Let exposure and white balance converge after changing the capture settings.
   const uint32_t warmStart=millis();
   while(millis()-warmStart<(uint32_t)warmup) {
     camera_fb_t *settle=esp_camera_fb_get();
@@ -184,12 +188,13 @@ const char *performCapture(const JsonDocument &incoming, JsonDocument &result, S
     cameraReady=false;cameraError="กล้องยังส่งภาพ JPEG ที่สมบูรณ์ไม่ได้ ตรวจสายแพและไฟเลี้ยง";
     shutdownCamera();return fail("503 Service Unavailable",cameraError.c_str());
   }
-  // Own a copy before deinitializing the driver: its frame buffer becomes
-  // invalid on deinit. Keep the sensor/DMA off during TLS and image transfer.
+  flashOff();
+  // Keep the DMA allocation for the next shot. The JPEG copy lets the
+  // camera reuse its frame buffer while the image is served over HTTPS.
   uint8_t *copy=(uint8_t*)heap_caps_malloc(frame->len,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
-  if(!copy) {esp_camera_fb_return(frame);shutdownCamera();return fail("503 Service Unavailable","หน่วยความจำเก็บภาพไม่พอ");}
+  if(!copy) {esp_camera_fb_return(frame);return fail("503 Service Unavailable","หน่วยความจำเก็บภาพไม่พอ");}
   memcpy(copy,frame->buf,frame->len);storedPhoto=*frame;storedPhoto.buf=copy;photo=&storedPhoto;
-  esp_camera_fb_return(frame);shutdownCamera();
+  esp_camera_fb_return(frame);
   unsigned char digest[32]; mbedtls_sha256(photo->buf,photo->len,digest,0);
   photoDigest=""; const char *hex="0123456789abcdef";
   for(uint8_t value:digest) { photoDigest+=hex[value>>4]; photoDigest+=hex[value&15]; }
@@ -230,7 +235,7 @@ esp_err_t api(httpd_req_t *req) {
   CameraGuard guard;
   if (!guard) return error(req, "503 Service Unavailable", "กล้องกำลังถ่ายภาพ");
   if(req->method==HTTP_GET&&uri==base+"/camera") {
-    if(!cameraReady&&millis()-lastCameraProbeAt>15000) {initCamera();shutdownCamera();}
+    if(!cameraReady&&millis()-lastCameraProbeAt>15000) initCamera();
     JsonDocument doc; status(doc); return sendJson(req,"200 OK",doc);
   }
   if(photo&&millis()-capturedAt>120000) releasePhoto();
@@ -269,7 +274,8 @@ void startTls() {
   httpd_uri_t route={}; route.uri="/api/v1/*"; route.method=HTTP_GET; route.handler=api; httpd_register_uri_handler(server,&route);
   route.method=HTTP_POST; httpd_register_uri_handler(server,&route); tlsReady=true;
 }
-void initCamera(framesize_t size,int quality) {
+void initCamera() {
+  if(cameraActive) return;
   lastCameraProbeAt=millis();cameraReady=false;cameraError="";
   if(!psramFound()) { cameraError="ไม่พบ PSRAM ตรวจรุ่นบอร์ดและการตั้งค่า"; return; }
   camera_config_t c={}; c.ledc_channel=LEDC_CHANNEL_0; c.ledc_timer=LEDC_TIMER_0;
@@ -277,13 +283,16 @@ void initCamera(framesize_t size,int quality) {
   c.pin_d4=Y6_GPIO_NUM;c.pin_d5=Y7_GPIO_NUM;c.pin_d6=Y8_GPIO_NUM;c.pin_d7=Y9_GPIO_NUM;
   c.pin_xclk=XCLK_GPIO_NUM;c.pin_pclk=PCLK_GPIO_NUM;c.pin_vsync=VSYNC_GPIO_NUM;c.pin_href=HREF_GPIO_NUM;
   c.pin_sccb_sda=SIOD_GPIO_NUM;c.pin_sccb_scl=SIOC_GPIO_NUM;c.pin_pwdn=PWDN_GPIO_NUM;c.pin_reset=RESET_GPIO_NUM;
-  // Clamp legacy 5mp requests to the detected sensor's native size. Never
-  // upscale OV3660 or advertise a 5MP image from its 3MP sensor.
+  // The driver clamps this to the detected sensor's maximum. Allocate once
+  // before HTTPS starts, so TLS cannot fragment the contiguous DMA buffer.
   c.xclk_freq_hz=20000000;c.pixel_format=PIXFORMAT_JPEG;
-  c.frame_size=size==FRAMESIZE_INVALID?nativeFrameSize:(size>nativeFrameSize?nativeFrameSize:size);
-  c.jpeg_quality=quality;c.fb_count=1;c.fb_location=CAMERA_FB_IN_PSRAM;c.grab_mode=CAMERA_GRAB_WHEN_EMPTY;
+  c.frame_size=FRAMESIZE_QSXGA;
+  c.jpeg_quality=10;c.fb_count=1;c.fb_location=CAMERA_FB_IN_PSRAM;c.grab_mode=CAMERA_GRAB_WHEN_EMPTY;
   esp_err_t result=esp_camera_init(&c);
-  if(result!=ESP_OK) { cameraError=String("เริ่มกล้องไม่สำเร็จ รหัส ")+String(result,HEX); return; }
+  if(result!=ESP_OK) {
+    cameraError=String("เริ่มกล้องไม่สำเร็จ (")+esp_err_to_name(result)+")";
+    shutdownCamera(); return;
+  }
   cameraActive=true;
   sensor_t *sensor=esp_camera_sensor_get();
   autofocusSupported=sensor->id.PID==OV5640_PID;
@@ -296,7 +305,7 @@ void initCamera(framesize_t size,int quality) {
   } else if(sensor->id.PID==OV2640_PID) {
     sensorName="OV2640";nativeFrameSize=FRAMESIZE_UXGA;nativeWidth=1600;nativeHeight=1200;nativeResolution="uxga";
   } else {
-    cameraError="ยังไม่รองรับเซนเซอร์กล้องรุ่นนี้";return;
+    cameraError="ยังไม่รองรับเซนเซอร์กล้องรุ่นนี้";shutdownCamera();return;
   }
   cameraReady=true; Serial.printf("CAMERA_READY sensor=%s pid=0x%04x psram=%u\n",sensorName.c_str(),sensor->id.PID,ESP.getPsramSize());
 }
@@ -347,7 +356,7 @@ void setup() {
   provisioning::apName=boardIdentity.setupSsid();
   cameraMutex = xSemaphoreCreateMutex();
   if (!cameraMutex) { Serial.println("CAMERA_MUTEX_FAILED"); while (true) delay(1000); }
-  prefs.begin("aquacam",false);initCamera();shutdownCamera();
+  prefs.begin("aquacam",false);flashOff();initCamera();
   WiFi.onEvent([](WiFiEvent_t,WiFiEventInfo_t info){lastDisconnectReason=info.wifi_sta_disconnected.reason;},ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   WiFi.persistent(false);WiFi.setHostname(boardIdentity.mdnsName().c_str());WiFi.mode(WIFI_AP_STA);WiFi.setAutoReconnect(true);WiFi.setSleep(false);
   provisioning::begin();String ssid,password;provisioning::loadSaved(ssid,password);

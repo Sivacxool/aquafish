@@ -12,10 +12,7 @@ void poll(const String &url, const aqua_relay::Keys &keys) {
   {
     CameraGuard guard;
     if (!guard) return;
-    if (!cameraReady && millis() - lastCameraProbeAt > 15000) {
-      initCamera();
-      shutdownCamera();
-    }
+    if (!cameraReady && millis() - lastCameraProbeAt > 15000) initCamera();
     JsonDocument snapshot;
     status(snapshot);
     snapshot.remove("ip");

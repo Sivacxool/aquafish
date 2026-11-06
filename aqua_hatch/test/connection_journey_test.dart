@@ -45,7 +45,10 @@ void main() {
       expect(find.byKey(const ValueKey('start-board-setup')), findsOneWidget);
       expect(find.text('ติดต่อไม่ได้'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'URL บอร์ด'), findsNothing);
-      expect(find.widgetWithText(TextField, 'URL บอร์ดกล้อง'), findsNothing);
+      expect(
+        find.widgetWithText(TextField, 'IP หรือ URL บอร์ดกล้อง'),
+        findsNothing,
+      );
       expect(find.byKey(const ValueKey('connect-usb-camera')), findsNothing);
       await tap(tester, find.byKey(const ValueKey('connection-preview')));
       expect(
@@ -66,6 +69,51 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'camera IP and USB page scrolls on a small phone and accepts a bare IP',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 620);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = WifiTestController(true);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appControllerProvider.overrideWith(() => controller)],
+          child: MaterialApp(
+            theme: buildTheme(),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(1.4)),
+              child: child!,
+            ),
+            home: const Scaffold(body: SettingsScreen()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tap(tester, find.text('กล้อง: IP และ USB'));
+      expect(find.byType(BackButton), findsOneWidget);
+      final usb = find.byKey(const ValueKey('connect-usb-camera'));
+      await tester.ensureVisible(usb);
+      await tester.pumpAndSettle();
+      expect(usb.hitTestable(), findsOneWidget);
+      final address = find.widgetWithText(TextField, 'IP หรือ URL บอร์ดกล้อง');
+      await tester.ensureVisible(address);
+      await tester.enterText(address, '192.168.1.55');
+      await tester.pumpAndSettle();
+      await tap(
+        tester,
+        find.widgetWithText(OutlinedButton, 'เชื่อมกล้องด้วย IP'),
+      );
+      expect(controller.configuredCamera?.baseUrl, 'https://192.168.1.55');
+      await tap(tester, find.byType(BackButton));
+      expect(address, findsNothing);
+      expect(tester.takeException(), isNull);
     },
   );
 
