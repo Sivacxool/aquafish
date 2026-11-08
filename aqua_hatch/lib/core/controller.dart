@@ -94,6 +94,13 @@ class AppState {
   });
   bool get fresh => connected && (telemetry?.isFresh(now) ?? false);
   bool get canControl => fresh && (telemetry?.hardwareReady ?? false);
+  bool get canControlFill =>
+      fresh &&
+      !connection.demo &&
+      connection.localEsp32 &&
+      telemetry?.fill != null &&
+      telemetry?.viaRelay == false &&
+      telemetry?.simulated == false;
   List<String> get alerts => telemetry?.alerts(settings) ?? [];
   String get connectionLabel {
     if (connection.demo) {
@@ -106,6 +113,7 @@ class AppState {
     if (telemetry == null) return 'รอข้อมูลจากเครื่อง';
     if (!telemetry!.deviceOnline) return 'เครื่องออฟไลน์';
     if (!fresh) return 'ข้อมูลเครื่องขาดช่วง';
+    if (telemetry?.fill != null) return 'บอร์ดออนไลน์ · ระบบเติมน้ำ';
     if (connection.localEsp32 && telemetry?.hardwareReady == false) {
       if (telemetry?.temperatureStatus == 'ok' ||
           telemetry?.dissolvedOxygenStatus == 'ok') {
@@ -493,6 +501,9 @@ class AppController extends Notifier<AppState> {
 
   Future<String?> send(String action, Map<String, dynamic> payload) async {
     if (state.busy) return 'มีคำสั่งกำลังดำเนินการ';
+    if (action == 'set_fill' && !state.canControlFill) {
+      return 'เชื่อม Wi-Fi เดียวกับบอร์ดและรอสถานะระบบเติมน้ำ';
+    }
     if ((action == 'set_mode' || action == 'set_output') &&
         state.telemetry?.hardwareReady == false) {
       return state.telemetry?.hardwareMessage ?? 'ยังไม่ติดตั้งวงจรควบคุม';

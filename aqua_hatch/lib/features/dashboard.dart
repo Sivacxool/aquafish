@@ -124,15 +124,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               MetricCard(
                 title: 'ระดับน้ำ',
-                value: data?.waterLevelOk == null
+                value: data?.fill != null
+                    ? (data!.fill!.requested ? 'ขอเติม' : 'หยุดเติม')
+                    : data?.waterLevelOk == null
                     ? 'ไม่ทราบ'
                     : data!.waterLevelOk!
                     ? 'ปกติ'
                     : 'ต่ำ',
                 unit: '',
-                detail: 'ระบบตรวจระดับน้ำ',
+                detail: data?.fill != null
+                    ? 'สัญญาณลูกลอย'
+                    : 'ระบบตรวจระดับน้ำ',
                 icon: Icons.water_drop_outlined,
-                warning: data?.waterLevelOk != true,
+                warning: data?.fill?.timedOut ?? (data?.waterLevelOk != true),
               ),
             ];
             return Wrap(
@@ -229,14 +233,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       const SizedBox(width: 12),
                       Expanded(child: Text(entry.$2)),
                       Pill(
-                        data?.hardwareReady == false
+                        entry.$3 == 'pump' && data?.fill != null
+                            ? (data!.fill!.running ? 'สั่งเปิด' : 'สั่งปิด')
+                            : data?.hardwareReady == false
                             ? 'รอติดตั้ง'
                             : data == null
                             ? 'รอข้อมูล'
                             : data.output(entry.$3)
                             ? 'เปิด'
                             : 'ปิด',
-                        color: data?.output(entry.$3) == true
+                        color:
+                            (entry.$3 == 'pump'
+                                    ? data?.fill?.running ??
+                                          data?.output(entry.$3)
+                                    : data?.output(entry.$3)) ==
+                                true
                             ? AquaColors.teal
                             : AquaColors.muted,
                       ),
@@ -425,7 +436,11 @@ class _BatchCard extends StatelessWidget {
           ),
         const SizedBox(height: 8),
         Text(
-          state.telemetry?.hardwareReady == false
+          state.telemetry?.fill != null
+              ? (state.telemetry!.fill!.armed
+                    ? 'เติมน้ำอัตโนมัติ'
+                    : 'ระบบเติมน้ำปิดอยู่')
+              : state.telemetry?.hardwareReady == false
               ? 'รอติดตั้งวงจรควบคุม'
               : state.telemetry == null
               ? 'รอข้อมูลโหมดเครื่อง'

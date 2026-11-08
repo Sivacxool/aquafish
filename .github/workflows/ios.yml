@@ -2,7 +2,7 @@ name: iOS personal install
 
 on:
   push:
-    branches: [main, codex/ios-personal-install, codex/ov3660-camera, codex/ph-ads1115, codex/auto-pair, codex/wroom-da, codex/connection-recovery, codex/relay-off-switch]
+    branches: [main, codex/ios-personal-install, codex/ov3660-camera, codex/ph-ads1115, codex/auto-pair, codex/wroom-da, codex/connection-recovery, codex/relay-off-switch, codex/pump-prototype]
     paths:
       - aqua_hatch/**
       - .github/workflows/ios.yml
@@ -45,6 +45,10 @@ jobs:
         run: |
           c++ -std=c++17 ../tools/test_ph_calibration.cpp -o build/ios-delivery/test-ph-calibration
           build/ios-delivery/test-ph-calibration
+      - name: Verify fill pump interlock
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror ../tools/test_fill_policy.cpp -o build/ios-delivery/test-fill-policy
+          build/ios-delivery/test-fill-policy
       - name: Verify main S3 certificate with Apple trust policy
         run: |
           set -o pipefail
@@ -87,8 +91,8 @@ jobs:
         run: |
           mkdir -p build/ios-delivery/stage/Payload
           ditto build/ios/iphoneos/Runner.app build/ios-delivery/stage/Payload/Runner.app
-          ditto -c -k --keepParent build/ios-delivery/stage/Payload build/ios-delivery/AquaHatch-v0.16.1-iOS-unsigned.ipa
-          python3 tools/verify_ios_ipa.py build/ios-delivery/AquaHatch-v0.16.1-iOS-unsigned.ipa
+          ditto -c -k --keepParent build/ios-delivery/stage/Payload build/ios-delivery/AquaHatch-v0.17.0-PumpPrototype-iOS-unsigned.ipa
+          python3 tools/verify_ios_ipa.py build/ios-delivery/AquaHatch-v0.17.0-PumpPrototype-iOS-unsigned.ipa
           cp ../IOS_INSTALL_TH.md build/ios-delivery/
       - name: Upload install package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
