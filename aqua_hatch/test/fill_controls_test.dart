@@ -7,7 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _Controller extends AppController {
   final bool viaRelay;
-  _Controller(this.viaRelay);
+  final bool requested;
+  _Controller(this.viaRelay, {this.requested = true});
   final commands = <(String, Map<String, dynamic>)>[];
 
   @override
@@ -22,9 +23,9 @@ class _Controller extends AppController {
         at: now,
         viaRelay: viaRelay,
         hardwareReady: false,
-        fill: const FillStatus(
+        fill: FillStatus(
           armed: false,
-          requested: true,
+          requested: requested,
           running: false,
           timedOut: false,
           limitSeconds: 60,
@@ -57,6 +58,7 @@ void main() {
           ),
         );
         expect(find.text('ลูกลอยปิด · ขอเติมน้ำ'), findsOneWidget);
+        expect(find.text('ระดับน้ำ ปกติ'), findsOneWidget);
         expect(find.text('ฮีตเตอร์'), findsNothing);
         final start = find.widgetWithText(FilledButton, 'เปิดเติมน้ำอัตโนมัติ');
         expect(tester.widget<FilledButton>(start).onPressed == null, remote);
@@ -73,4 +75,20 @@ void main() {
       },
     );
   }
+  testWidgets('open float shows overflow and a disconnected-wire hint', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appControllerProvider.overrideWith(
+            () => _Controller(false, requested: false),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: ControlsScreen())),
+      ),
+    );
+    expect(find.text('ระดับน้ำ น้ำล้น'), findsOneWidget);
+    expect(find.text('ลูกลอยเปิดหรือสายหลุด · หยุดเติม'), findsOneWidget);
+  });
 }

@@ -376,10 +376,12 @@ class _FillControls extends StatelessWidget {
                 color: fill.armed ? AquaColors.teal : AquaColors.muted,
               ),
             ),
+            Text('ระดับน้ำ ${fill.waterLabel}'),
+            const SizedBox(height: 4),
             Text(
               fill.requested
                   ? 'ลูกลอยปิด · ขอเติมน้ำ'
-                  : 'ลูกลอยเปิด · หยุดเติม',
+                  : 'ลูกลอยเปิดหรือสายหลุด · หยุดเติม',
             ),
             const SizedBox(height: 6),
             Text(fill.running ? 'บอร์ดสั่งรีเลย์เปิด' : 'บอร์ดสั่งรีเลย์ปิด'),

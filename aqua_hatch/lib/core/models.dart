@@ -160,6 +160,8 @@ class FillStatus {
     required this.limitSeconds,
   });
 
+  String get waterLabel => requested ? 'ปกติ' : 'น้ำล้น';
+
   static FillStatus? parse(Object? value) {
     if (value is! Map) return null;
     final armed = value['armed'], requested = value['requested'];

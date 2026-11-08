@@ -124,19 +124,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               MetricCard(
                 title: 'ระดับน้ำ',
-                value: data?.fill != null
-                    ? (data!.fill!.requested ? 'ขอเติม' : 'หยุดเติม')
-                    : data?.waterLevelOk == null
-                    ? 'ไม่ทราบ'
-                    : data!.waterLevelOk!
-                    ? 'ปกติ'
-                    : 'ต่ำ',
+                value:
+                    data?.fill?.waterLabel ??
+                    (data?.waterLevelOk == null
+                        ? 'ไม่ทราบ'
+                        : data!.waterLevelOk!
+                        ? 'ปกติ'
+                        : 'ต่ำ'),
                 unit: '',
                 detail: data?.fill != null
                     ? 'สัญญาณลูกลอย'
                     : 'ระบบตรวจระดับน้ำ',
                 icon: Icons.water_drop_outlined,
-                warning: data?.fill?.timedOut ?? (data?.waterLevelOk != true),
+                warning: data?.fill != null
+                    ? !data!.fill!.requested
+                    : data?.waterLevelOk != true,
               ),
             ];
             return Wrap(
