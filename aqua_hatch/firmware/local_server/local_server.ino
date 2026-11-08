@@ -1,4 +1,4 @@
-// AquaHatch local HTTPS server, DS18B20 on GPIO4. No actuator GPIO control.
+// AquaHatch local HTTPS server with a float-controlled 12 V fill pump.
 // Arduino-ESP32 3.3.12, ArduinoJson 7.4.3, ESP32-WROOM-DA target, 4 MB flash.
 #include <Arduino.h>
 #include <WiFi.h>
@@ -18,8 +18,9 @@ AquaIdentity boardIdentity;
 #include "sensor_temperature.h"
 #include "sensor_do.h"
 #include "sensor_ph.h"
+#include "fill_control.h"
 
-static const char VERSION[] = "0.16.0-wroom-da.1";
+static const char VERSION[] = "0.17.0-wroom-da.pump.1";
 Preferences prefs;
 httpd_handle_t httpsServer = nullptr;
 bool tlsReady = false, wasConnected = false;
@@ -56,6 +57,7 @@ void snapshot(JsonDocument &doc) {
   doc["backend"] = "esp32-local"; doc["protocol_version"] = 1;
   doc["uptime_ms"] = millis(); doc["command_count"] = commandCount;
   doc["capabilities"]["hardware_control"] = false;
+  doc["capabilities"]["pump_fill"] = fill_control::ready;
   doc["capabilities"]["camera"] = false;
   doc["capabilities"]["ai"] = false;
   doc["capabilities"]["temperature"] = true;
@@ -71,10 +73,11 @@ void snapshot(JsonDocument &doc) {
   t["simulated"] = false;
   t["device_online"] = true; t["hardware_ready"] = false;
   t["hardware_message"] = oxygen_sensor::enabled()
-    ? "อ่าน DS18B20 / DO / pH ADS1115 · ยังไม่เปิดวงจรควบคุมปั๊ม/ฮีตเตอร์"
+    ? "อ่าน DS18B20 / DO / pH ADS1115"
     : "อ่าน DS18B20 / pH ADS1115 · DO ยังไม่เปิดใช้ · ยังไม่เปิดวงจรควบคุม";
   t["wifi_rssi"] = WiFi.RSSI(); t["mode"] = "setup";
   t["outputs"].to<JsonObject>();
+  fill_control::append(t);
 }
 void serialStatus(const char *type = "status") {
   JsonDocument doc;
@@ -90,6 +93,7 @@ void serialStatus(const char *type = "status") {
   temperature_sensor::append(doc["telemetry"].to<JsonObject>());
   oxygen_sensor::append(doc["telemetry"].as<JsonObject>());
   ph_sensor::append(doc["telemetry"].as<JsonObject>());
+  fill_control::append(doc["telemetry"].as<JsonObject>(), true);
   doc["free_heap"] = ESP.getFreeHeap(); doc["command_count"] = commandCount;
   doc["wifi_status"] = (int)WiFi.status();
   doc["disconnect_reason"] = (int)lastDisconnectReason;
@@ -233,8 +237,18 @@ esp_err_t api(httpd_req_t *req) {
     String action = incoming["action"] | "";
     if (action == "set_mode" || action == "set_output")
       return error(req,"409 Conflict","ยังไม่กำหนดวงจรและ GPIO จึงยังเปิดอุปกรณ์จริงไม่ได้");
-    if (action != "ping" && action != "set_config" && action != "calibrate_ph")
+    if (action != "ping" && action != "set_config" && action != "calibrate_ph" && action != "set_fill")
       return error(req,"422 Unprocessable Entity","บอร์ดยังไม่รองรับคำสั่งนี้");
+    String fillMessage;
+    if (action == "set_fill") {
+      JsonObject payload = incoming["payload"];
+      if (!payload["enabled"].is<bool>())
+        return error(req,"422 Unprocessable Entity","ระบุสถานะเปิดหรือปิดการเติมน้ำ");
+      const bool enabled = payload["enabled"].as<bool>();
+      if (!fill_control::setArmed(enabled))
+        return error(req,"503 Service Unavailable","วงจรเติมน้ำบนบอร์ดยังไม่พร้อม");
+      fillMessage = enabled ? "เปิดระบบเติมน้ำอัตโนมัติแล้ว" : "ปิดระบบเติมน้ำและหยุดปั๊มแล้ว";
+    }
     if (action == "set_config") {
       JsonObject p = incoming["payload"];
       if (!p["temperature_target"].is<double>() || !p["ph_minimum"].is<double>() ||
@@ -258,7 +272,7 @@ esp_err_t api(httpd_req_t *req) {
     }
     commandCount++;
     JsonDocument response; response["command_id"]=id; response["status"]="applied";
-    response["message"]=action=="calibrate_ph"?calibrationMessage:action == "ping" ? "บอร์ดหลักตอบรับคำสั่งจริงแล้ว" : "บอร์ดบันทึกค่าตั้งแล้ว ยังไม่เปิดอุปกรณ์";
+    response["message"]=action=="set_fill" ? fillMessage : action=="calibrate_ph" ? calibrationMessage : action=="ping" ? "บอร์ดหลักตอบรับคำสั่งจริงแล้ว" : "บอร์ดบันทึกค่าตั้งแล้ว";
     response["uptime_ms"]=millis(); response["command_count"]=commandCount;
     String reply; serializeJson(response,reply);
     cache[cacheIndex] = {id,body,reply}; cacheIndex=(cacheIndex+1)%8;
@@ -318,6 +332,7 @@ void serialCommand() {
   Serial.println("{\"type\":\"unknown_command\"}");
 }
 void setup() {
+  fill_control::begin();
   Serial.begin(115200); delay(200);
   WiFi.persistent(false);
   if(!WiFi.mode(WIFI_AP_STA)){Serial.println("WIFI_INIT_FAILED");while(true)delay(1000);}

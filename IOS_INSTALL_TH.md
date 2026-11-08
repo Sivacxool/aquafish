@@ -1,8 +1,8 @@
-# AquaHatch 0.16.1 — ติดตั้งทดสอบบน iPhone จาก Windows
+# AquaHatch 0.17.0 Pump Prototype — ติดตั้งทดสอบบน iPhone จาก Windows
 
-ไฟล์ **AquaHatch-v0.16.1-iOS-unsigned.ipa** เป็นแอป iOS สำหรับเครื่องจริงที่ยังไม่เซ็น ต้องเซ็นด้วย Apple ID ของเจ้าของก่อนติดตั้ง เปิดไฟล์จาก Safari เพื่อติดตั้งตรง ๆ ไม่ได้
+ไฟล์ **AquaHatch-v0.17.0-PumpPrototype-iOS-unsigned.ipa** เป็นแอป iOS สำหรับเครื่องจริงที่ต้องเซ็นด้วย Apple ID ของเจ้าของก่อนติดตั้งผ่าน Sideloadly
 
-ดาวน์โหลดชุดล่าสุดจาก [โฟลเดอร์ IOS](IOS/) · [Android / LDPlayer](ANDROID/)
+ดาวน์โหลด [ชุดต้นแบบปั๊มเติมน้ำ](prototype/) และอ่าน [ผังสาย GPIO27 / GPIO25](PUMP_PROTOTYPE_TH.md)
 
 รุ่น 0.11.1 เคยได้รับการยืนยันเพิ่มกล้องบน iPhone แล้ว รุ่น 0.12.0 เพิ่ม OV3660 และต้องติดตั้งทดสอบรับภาพบน iPhone อีกครั้ง
 

@@ -145,6 +145,10 @@ class Esp32Repository implements DeviceRepository {
         capabilities is Map &&
         capabilities['hardware_control'] == true &&
         telemetry['hardware_ready'] == true;
+    if (ageMs == null &&
+        (capabilities is! Map || capabilities['pump_fill'] != true)) {
+      telemetry.remove('fill');
+    }
     final settings = data['config'];
     if (settings is Map) {
       _settings = DeviceSettings.fromJson(Map<String, dynamic>.from(settings));

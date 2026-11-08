@@ -149,6 +149,50 @@ bool isPrivateIpv4(String host) {
       (bytes[0] == 192 && bytes[1] == 168);
 }
 
+class FillStatus {
+  final bool armed, requested, running, timedOut;
+  final int limitSeconds;
+  const FillStatus({
+    required this.armed,
+    required this.requested,
+    required this.running,
+    required this.timedOut,
+    required this.limitSeconds,
+  });
+
+  String get waterLabel => requested ? 'ปกติ' : 'น้ำล้น';
+
+  static FillStatus? parse(Object? value) {
+    if (value is! Map) return null;
+    final armed = value['armed'], requested = value['requested'];
+    final running = value['running'], timedOut = value['timed_out'];
+    final limit = value['limit_seconds'];
+    if (armed is! bool ||
+        requested is! bool ||
+        running is! bool ||
+        timedOut is! bool ||
+        limit is! int ||
+        limit <= 0) {
+      return null;
+    }
+    return FillStatus(
+      armed: armed,
+      requested: requested,
+      running: running,
+      timedOut: timedOut,
+      limitSeconds: limit,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'armed': armed,
+    'requested': requested,
+    'running': running,
+    'timed_out': timedOut,
+    'limit_seconds': limitSeconds,
+  };
+}
+
 class Telemetry {
   final PhSensorInfo phSensor;
   final DateTime at;
@@ -156,6 +200,7 @@ class Telemetry {
   final String? temperatureStatus, dissolvedOxygenStatus;
   final DateTime? temperatureSampledAt, dissolvedOxygenSampledAt;
   final bool? waterLevelOk;
+  final FillStatus? fill;
   final bool phCalibrated;
   final DateTime? phCalibratedAt;
   final int? wifiRssi;
@@ -179,6 +224,7 @@ class Telemetry {
     this.dissolvedOxygenSampledAt,
     this.ph,
     this.waterLevelOk,
+    this.fill,
     this.phCalibrated = false,
     this.phCalibratedAt,
     this.wifiRssi,
@@ -211,8 +257,12 @@ class Telemetry {
     } else if (ph! < settings.phMinimum || ph! > settings.phMaximum) {
       result.add('pH อยู่นอกช่วงที่ตั้งไว้');
     }
-    if (waterLevelOk == null) result.add('อ่านค่าระดับน้ำไม่ได้');
-    if (waterLevelOk == false) result.add('ระดับน้ำต่ำ ระบบป้องกันทำงาน');
+    if (fill == null) {
+      if (waterLevelOk == null) result.add('อ่านค่าระดับน้ำไม่ได้');
+      if (waterLevelOk == false) result.add('ระดับน้ำต่ำ ระบบป้องกันทำงาน');
+    } else if (fill!.timedOut) {
+      result.add('หยุดเติมน้ำเมื่อครบเวลาที่กำหนด');
+    }
     return result;
   }
 
@@ -231,6 +281,7 @@ class Telemetry {
     'wifi_rssi': wifiRssi,
     'firmware_version': firmwareVersion,
     'water_level_ok': waterLevelOk,
+    if (fill != null) 'fill': fill!.toJson(),
     'simulated': simulated,
     if (viaRelay) 'via_relay': true,
     'device_online': deviceOnline,
@@ -283,6 +334,7 @@ class Telemetry {
       waterLevelOk: j['water_level_ok'] is bool
           ? j['water_level_ok'] as bool
           : null,
+      fill: FillStatus.parse(j['fill']),
       simulated: j['simulated'] == true,
       viaRelay: j['via_relay'] == true,
       deviceOnline: j['device_online'] != false,

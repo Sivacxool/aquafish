@@ -1,0 +1,3 @@
+283292407633931de1469af0e0a1ed32b7b04d4c60e91c3cc3b7981a36efc3a1  AquaHatch-v0.17.0-PumpPrototype-Android-universal.apk
+3c92c4973b08589ad805568dfab0e89d05950ffef5c981e9eebb1bdce796e888  AquaHatch-v0.17.0-PumpPrototype-iOS-unsigned.ipa
+68340bcd005bc1071b3f656a7f0b776973c55c08bb083d57e654a0013fe8c020  AquaHatch-v0.17.0-PumpPrototype-WROOM-DA.zip

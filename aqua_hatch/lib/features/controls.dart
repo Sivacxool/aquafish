@@ -48,6 +48,10 @@ class ControlsScreen extends ConsumerWidget {
     final state = ref.watch(appControllerProvider);
     final controller = ref.read(appControllerProvider.notifier);
     final data = state.telemetry;
+    final fill = data?.fill;
+    if (fill != null) {
+      return _FillControls(state: state, fill: fill, controller: controller);
+    }
     final manual = data?.mode == RunMode.manual;
     final remaining = Duration(
       seconds: (data?.manualUntil?.difference(state.now).inSeconds ?? 0).clamp(
@@ -298,6 +302,107 @@ class ControlsScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+class _FillControls extends StatelessWidget {
+  final AppState state;
+  final FillStatus fill;
+  final AppController controller;
+  const _FillControls({
+    required this.state,
+    required this.fill,
+    required this.controller,
+  });
+
+  Future<void> _setFill(BuildContext context) async {
+    final enabled = !fill.armed;
+    if (enabled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('เปิดเติมน้ำอัตโนมัติ?'),
+          content: Text(
+            'ปั๊มจะเริ่มเมื่อระดับน้ำต่ำและหยุดเมื่อลูกลอยเปิด '
+            'หากเติมถึง ${fill.limitSeconds} วินาที ระบบจะตัดและรอเปิดใหม่',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('ยกเลิก'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('ยืนยันเปิด'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !context.mounted) return;
+    }
+    final error = await controller.send('set_fill', {'enabled': enabled});
+    if (!context.mounted) return;
+    showFeedback(
+      context,
+      error,
+      success: enabled ? 'บอร์ดเปิดระบบเติมน้ำแล้ว' : 'บอร์ดหยุดเติมน้ำแล้ว',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => PageBody(
+    children: [
+      const PageTitle('ควบคุมเครื่อง', 'ปั๊มเติมน้ำอัตโนมัติ'),
+      if (!state.canControlFill)
+        const Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: Notice('เชื่อม Wi-Fi เดียวกับบอร์ดเพื่อสั่งเปิดหรือหยุด'),
+        ),
+      if (fill.timedOut)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Notice(
+            'หยุดหลังเติมครบ ${fill.limitSeconds} วินาที ตรวจน้ำต้นทางและลูกลอยก่อนเปิดใหม่',
+            warning: true,
+          ),
+        ),
+      Surface(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeading(
+              'ระบบเติมน้ำ',
+              trailing: Pill(
+                fill.armed ? 'พร้อมเติม' : 'ปิดอยู่',
+                color: fill.armed ? AquaColors.teal : AquaColors.muted,
+              ),
+            ),
+            Text('ระดับน้ำ ${fill.waterLabel}'),
+            const SizedBox(height: 4),
+            Text(
+              fill.requested
+                  ? 'ลูกลอยปิด · ขอเติมน้ำ'
+                  : 'ลูกลอยเปิดหรือสายหลุด · หยุดเติม',
+            ),
+            const SizedBox(height: 6),
+            Text(fill.running ? 'บอร์ดสั่งรีเลย์เปิด' : 'บอร์ดสั่งรีเลย์ปิด'),
+            const SizedBox(height: 16),
+            if (state.busy) const LinearProgressIndicator(minHeight: 3),
+            FilledButton.icon(
+              onPressed: state.canControlFill && !state.busy
+                  ? () => _setFill(context)
+                  : null,
+              icon: Icon(
+                fill.armed ? Icons.stop_circle_outlined : Icons.play_arrow,
+              ),
+              label: Text(
+                fill.armed ? 'หยุดระบบเติมน้ำ' : 'เปิดเติมน้ำอัตโนมัติ',
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
 }
 
 class _ModeTile extends StatelessWidget {
