@@ -1,13 +1,15 @@
-# AquaHatch 0.16.1 สำหรับ ESP32-WROOM-DA
+# AquaHatch 0.19.0 สำหรับ ESP32-WROOM-DA
 
 AquaHatch อ่านอุณหภูมิ DO และ pH จาก ESP32-WROOM-DA และรับภาพจาก AI Thinker ESP32-CAM ผ่าน Wi-Fi บ้าน แต่ละบอร์ดมี IP และ QR จับคู่ของตัวเอง
 
 | ชุดติดตั้ง | ดาวน์โหลด |
 | --- | --- |
-| เฟิร์มแวร์และตัวติดตั้ง Windows | [FirstBoot ZIP](AquaHatch-v0.16.1-FirstBoot.zip) |
-| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/ANDROID/AquaHatch-v0.16.1-Android-universal.apk) |
-| iPhone | [IPA สำหรับ Sideloadly](https://github.com/Sivacxool/aquafish/raw/refs/heads/main/IOS/AquaHatch-v0.16.1-iOS-unsigned.ipa) |
-| ซอร์ส | [Source ZIP](AquaHatch-v0.16.1-source.zip) |
+| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-v0.19.0-FishFryAI-Android.apk) |
+| iPhone (iOS 16 ขึ้นไป) | [IPA สำหรับ Sideloadly](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-v0.19.0-FishFryAI-iOS-unsigned.ipa) |
+| เฟิร์มแวร์และตัวติดตั้ง Windows | [ชุด FirstBoot 0.16.1](AquaHatch-v0.16.1-FirstBoot.zip) · [ชุดต้นแบบปั๊ม 0.17.0](prototype/) |
+| ซอร์สแอป | [Flutter](aqua_hatch/) |
+
+รุ่น 0.19.0 เพิ่ม AI นับลูกปลาจากภาพนิ่งบนมือถือ เลือกโมเดลตามขนาดภาพแล้วให้ตรวจแก้จุดก่อนบันทึก [รายละเอียดรุ่น](https://github.com/Sivacxool/aquafish/releases/tag/v0.19.0)
 
 รุ่น 0.16.1 แก้การเริ่มกล้องในขณะถ่ายภาพและปรับหน้า IP/USB ให้เลื่อนได้ เพิ่มปุ่มปิดแจ้งเตือนและลบรอบฟักพร้อมยืนยัน ปิดการดูจากนอกบ้านผ่านอินเทอร์เน็ตได้แยกตามอุปกรณ์
 เฟิร์มแวร์กล้องเป็น 0.16.1-camera.1 ส่วน WROOM-DA ใช้ 0.16.0-wroom-da.1

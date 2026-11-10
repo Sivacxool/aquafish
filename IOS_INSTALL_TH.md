@@ -1,6 +1,6 @@
-# AquaHatch 0.17.0 Pump Prototype — ติดตั้งทดสอบบน iPhone จาก Windows
+# AquaHatch 0.19.0 — ติดตั้งทดสอบบน iPhone จาก Windows
 
-ไฟล์ **AquaHatch-v0.17.0-PumpPrototype-iOS-unsigned.ipa** เป็นแอป iOS สำหรับเครื่องจริงที่ต้องเซ็นด้วย Apple ID ของเจ้าของก่อนติดตั้งผ่าน Sideloadly
+ไฟล์ **AquaHatch-v0.19.0-FishFryAI-iOS-unsigned.ipa** ใช้กับ iPhone ที่มี iOS 16 ขึ้นไปและต้องเซ็นด้วย Apple ID ของเจ้าของก่อนติดตั้งผ่าน Sideloadly
 
 ดาวน์โหลด [ชุดต้นแบบปั๊มเติมน้ำ](prototype/) และอ่าน [ผังสาย GPIO27 / GPIO25](PUMP_PROTOTYPE_TH.md)
 
@@ -27,7 +27,7 @@
 
 ## ติดตั้งด้วย Windows และ Apple ID ธรรมดา
 
-1. ดาวน์โหลด IPA จากชุดส่งมอบหรือ artifact ชื่อ AquaHatch-iOS-unsigned ในหน้า Actions ของ repository
+1. ดาวน์โหลด [IPA 0.19.0](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-v0.19.0-FishFryAI-iOS-unsigned.ipa) จาก GitHub Releases
 2. ติดตั้ง [Sideloadly จากเว็บไซต์ผู้พัฒนา](https://sideloadly.io/) ตามข้อกำหนด Windows ในหน้านั้น โปรแกรมระบุว่าต้องใช้ iTunes/iCloud รุ่นจากเว็บไซต์ Apple; ตรวจโปรแกรมเดิมก่อนเปลี่ยนหรือถอนการติดตั้ง
 3. เสียบ iPhone ทาง USB ปลดล็อก แล้วกดเชื่อถือคอมพิวเตอร์บน iPhone
 4. เปิด Sideloadly เลือก iPhone และลาก IPA เข้าไป เลือกโหมดติดตั้งด้วย Apple ID
