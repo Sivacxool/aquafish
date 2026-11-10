@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../app/theme.dart';
 import '../core/controller.dart';
+import '../core/fish_head_analyzer.dart';
 import '../core/models.dart';
 import '../core/ui.dart';
 import '../core/camera.dart';
@@ -52,7 +53,10 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   Future<void> _recover() async {
     try {
       final data = await ImagePicker().retrieveLostData();
-      if (data.files?.isNotEmpty == true) {
+      if (mounted &&
+          !_busy &&
+          _imageGeneration == 0 &&
+          data.files?.isNotEmpty == true) {
         await _load(data.files!.first, video: data.type == RetrieveType.video);
       }
     } catch (_) {}
@@ -158,7 +162,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
         _captureId = image.id;
         _receivedAt = image.receivedAt;
         _filename = 'กล้อง ${image.cameraId} / ${image.id}';
-        _captureProgress = 'ได้รับภาพใหม่จากกล้องแล้ว พร้อมนับด้วยมือ';
+        _captureProgress = 'ได้รับภาพใหม่จากกล้องแล้ว';
         _captureDetails = [
           if (image.sensor?.isNotEmpty == true) image.sensor!,
           if (image.width != null && image.height != null)
@@ -218,7 +222,10 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
         });
       } else {
         final controller = ref.read(appControllerProvider.notifier);
-        final result = _captureId != null
+        final localAnalyzer = ref.read(fishHeadAnalyzerProvider);
+        final result = !_video && localAnalyzer != null
+            ? await localAnalyzer(_bytes!)
+            : _captureId != null
             ? await controller.analyzeDeviceCapture(_captureId!)
             : await controller.analyze(_bytes!, _filename, _video);
         double? aspect;
@@ -621,9 +628,11 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
         state.connection.demo && state.cameraConnection == null && !usb;
     final hasImage = _sample || _bytes != null;
     final directCapture = _captureId != null && state.cameraConnection != null;
+    final localAI = !_video && ref.watch(fishHeadAnalyzerProvider) != null;
     final canAI =
         _sample ||
-        (_bytes != null && !state.connection.demo && !usb && !directCapture);
+        (_bytes != null &&
+            (localAI || (!state.connection.demo && !usb && !directCapture)));
     return PageBody(
       children: [
         const PageTitle(
@@ -784,7 +793,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                             ? 'กำลังประมวลผล…'
                             : _sample
                             ? 'ลองนับภาพตัวอย่าง'
-                            : directCapture || usb
+                            : !canAI
                             ? 'AI ยังไม่พร้อมใช้งาน'
                             : 'วิเคราะห์ด้วย AI',
                       ),
@@ -798,8 +807,8 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                     Text(
                       _sample
                           ? 'ภาพตัวอย่าง 48 ตัว ใช้ทดลองขั้นตอน ไม่ใช่ผลจาก AI'
-                          : directCapture || usb
-                          ? 'ใช้ปุ่มนับด้วยมือแตะหัวลูกปลาในภาพได้ ส่วน AI ยังต้องติดตั้งโมเดลที่ฝึกและตรวจความแม่นยำแล้ว'
+                          : localAI
+                          ? 'นับบนเครื่อง แล้วตรวจแก้จุดหัวปลาก่อนบันทึก'
                           : _video
                           ? 'นับเฉพาะตัวที่เห็นในเฟรมที่เลือก'
                           : 'ตรวจภาพให้ชัด เห็นถาดครบ และลดเงาสะท้อนก่อนนับ',

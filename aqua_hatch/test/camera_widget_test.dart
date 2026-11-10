@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:aqua_hatch/core/camera.dart';
 import 'package:aqua_hatch/core/controller.dart';
+import 'package:aqua_hatch/core/fish_head_analyzer.dart';
 import 'package:aqua_hatch/core/models.dart';
 import 'package:aqua_hatch/core/repository.dart';
 import 'package:aqua_hatch/features/counting.dart';
@@ -92,7 +93,11 @@ DeviceCapture captured() => DeviceCapture(
   ),
 );
 
-Future<void> mount(WidgetTester tester, CameraController controller) async {
+Future<void> mount(
+  WidgetTester tester,
+  CameraController controller, {
+  FishHeadAnalyzer? localAnalyzer,
+}) async {
   await initializeDateFormatting('th');
   tester.view.physicalSize = const Size(1440, 1200);
   tester.view.devicePixelRatio = 1;
@@ -100,7 +105,10 @@ Future<void> mount(WidgetTester tester, CameraController controller) async {
   addTearDown(tester.view.resetDevicePixelRatio);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [appControllerProvider.overrideWith(() => controller)],
+      overrides: [
+        appControllerProvider.overrideWith(() => controller),
+        fishHeadAnalyzerProvider.overrideWithValue(localAnalyzer),
+      ],
       child: const MaterialApp(home: Scaffold(body: CountingScreen())),
     ),
   );
@@ -110,14 +118,24 @@ Future<void> mount(WidgetTester tester, CameraController controller) async {
 
 void main() {
   testWidgets(
-    'OV3660 photo supports manual head counting without claiming AI is ready',
+    'OV3660 photo can use local AI and its head markers can be corrected',
     (tester) async {
       final controller = Ov3660Controller();
-      await mount(tester, controller);
+      final capture = captured();
+      var calls = 0;
+      await mount(
+        tester,
+        controller,
+        localAnalyzer: (bytes) async {
+          expect(bytes, same(capture.bytes));
+          calls++;
+          return const AnalysisResult([CountPoint(.25, .25)], 'fishfry-test');
+        },
+      );
       expect(find.text('OV3660 · 2048 × 1536 พิกเซล'), findsOneWidget);
       await tester.tap(find.text('ถ่ายภาพจากกล้องในเครื่อง'));
       await tester.pump();
-      controller.photo.complete(captured());
+      controller.photo.complete(capture);
       final wait = Stopwatch()..start();
       while (find.text('ภาพจากกล้องในเครื่อง').evaluate().isEmpty &&
           wait.elapsed < const Duration(seconds: 5)) {
@@ -127,17 +145,21 @@ void main() {
         await tester.pump();
       }
       expect(find.text('ภาพจากกล้องในเครื่อง'), findsOneWidget);
-      final ai = find.widgetWithText(FilledButton, 'AI ยังไม่พร้อมใช้งาน');
-      expect(tester.widget<FilledButton>(ai).onPressed, isNull);
-      final manual = find.text('นับด้วยมือ');
-      await tester.ensureVisible(manual);
-      await tester.tap(manual);
+      final ai = find.widgetWithText(FilledButton, 'วิเคราะห์ด้วย AI');
+      await tester.ensureVisible(ai);
+      await tester.tap(ai);
       await tester.pumpAndSettle();
+      expect(calls, 1);
+      expect(find.text('AI ก่อนแก้ 1 ตัว · ตรวจแก้ได้'), findsOneWidget);
+      final add = find.text('เพิ่มจุด');
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pump();
       final image = find.byKey(const ValueKey('count-review-image'));
       await tester.ensureVisible(image);
       await tester.tap(image);
       await tester.pump();
-      expect(find.text('1'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
       expect(controller.analyzedId, isNull);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

@@ -1,7 +1,7 @@
 name: aqua_hatch
 description: แอปภาษาไทยสำหรับเครื่องฟักไข่ปลาดุกอัจฉริยะ
 publish_to: 'none'
-version: 0.17.0+2019
+version: 0.18.0+2020
 
 environment:
   sdk: ^3.12.0
@@ -22,6 +22,7 @@ dependencies:
   web_socket_channel: ^3.0.3
   intl: ^0.20.2
   mobile_scanner: 7.5.0
+  flutter_onnxruntime: 1.9.0
 
 dev_dependencies:
   flutter_test:
@@ -33,6 +34,7 @@ flutter:
   assets:
     - assets/device/device_ca.pem
     - assets/device/camera_ca.pem
+    - assets/models/fishfry_heads_v1.onnx
   fonts:
     - family: NotoSansThai
       fonts:
