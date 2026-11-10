@@ -7,7 +7,7 @@ with zipfile.ZipFile(path) as archive:
     assert archive.testzip() is None, 'Corrupt IPA archive'
     info=plistlib.loads(archive.read('Payload/Runner.app/Info.plist'))
     assert info['CFBundleIdentifier']=='th.ac.aquahatch.aquaHatch'
-    assert info['CFBundleShortVersionString']=='0.18.0'
+    assert info['CFBundleShortVersionString']=='0.19.0'
     assert info['NSLocalNetworkUsageDescription']
     assert info['NSAppTransportSecurity']['NSAllowsLocalNetworking'] is True
     assert not info['NSAppTransportSecurity'].get('NSAllowsArbitraryLoads',False)
@@ -18,6 +18,7 @@ with zipfile.ZipFile(path) as archive:
     assert any(n.endswith('/flutter_assets/assets/device/device_ca.pem') for n in archive.namelist())
     assert any(n.endswith('/flutter_assets/assets/device/camera_ca.pem') for n in archive.namelist())
     assert any(n.endswith('/flutter_assets/assets/models/fishfry_heads_v1.onnx') for n in archive.namelist())
+    assert any(n.endswith('/flutter_assets/assets/models/fishfry_heads_v2.onnx') for n in archive.namelist())
     names=archive.namelist()
     report={'version':info['CFBundleShortVersionString'],'build':info['CFBundleVersion'],
             'bundle_id':info['CFBundleIdentifier'],'minimum_ios':info.get('MinimumOSVersion'),

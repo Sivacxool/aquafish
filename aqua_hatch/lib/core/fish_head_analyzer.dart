@@ -22,26 +22,39 @@ final fishHeadAnalyzerProvider = Provider<FishHeadAnalyzer?>((ref) {
   };
 });
 
-const _modelAsset = 'assets/models/fishfry_heads_v1.onnx';
-const _modelId = 'aquahatch-fry-heads-v1';
+const _largePhoto = (
+  asset: 'assets/models/fishfry_heads_v1.onnx',
+  id: 'aquahatch-fry-heads-v1',
+  threshold: .34,
+  radius: 3,
+);
+const _cameraPhoto = (
+  asset: 'assets/models/fishfry_heads_v2.onnx',
+  id: 'aquahatch-fry-heads-v2',
+  threshold: 0.44,
+  radius: 2,
+);
 const _side = 320;
 const _halo = 32;
 const _step = _side - 2 * _halo;
 const _plane = _side * _side;
-const _threshold = .34;
-const _radius = 3;
 
 Future<AnalysisResult> _analyzeFishHeads(Uint8List bytes) async {
   final token = ui.RootIsolateToken.instance!;
   final pixels = await _decode(bytes);
+  final profile = max(pixels.width, pixels.height) <= 2560
+      ? _cameraPhoto
+      : _largePhoto;
   try {
     final session = await OnnxRuntime().createSessionFromAsset(
-      _modelAsset,
+      profile.asset,
       options: OrtSessionOptions(intraOpNumThreads: 3),
     );
     try {
-      final points = await Isolate.run(() => _infer(pixels, session, token));
-      return AnalysisResult(points, _modelId);
+      final points = await Isolate.run(
+        () => _infer(pixels, session, token, profile.threshold, profile.radius),
+      );
+      return AnalysisResult(points, profile.id);
     } finally {
       await session.close();
     }
@@ -95,6 +108,8 @@ Future<List<CountPoint>> _infer(
   ({int width, int height, TransferableTypedData rgba}) pixels,
   OrtSession session,
   ui.RootIsolateToken token,
+  double threshold,
+  int radius,
 ) async {
   BackgroundIsolateBinaryMessenger.ensureInitialized(token);
   final width = pixels.width;
@@ -154,25 +169,31 @@ Future<List<CountPoint>> _infer(
     }
   }
 
-  return _headPoints(heatmap, width, height);
+  return _headPoints(heatmap, width, height, threshold, radius);
 }
 
-List<CountPoint> _headPoints(Float32List heatmap, int width, int height) {
+List<CountPoint> _headPoints(
+  Float32List heatmap,
+  int width,
+  int height,
+  double threshold,
+  int radius,
+) {
   final candidates = <int>[];
   for (var index = 0; index < heatmap.length; index++) {
     final score = heatmap[index];
-    if (!score.isFinite || score < _threshold) continue;
+    if (!score.isFinite || score < threshold) continue;
     final x = index % width;
     final y = index ~/ width;
     var peak = true;
     for (
-      var row = max(0, y - _radius);
-      peak && row <= min(height - 1, y + _radius);
+      var row = max(0, y - radius);
+      peak && row <= min(height - 1, y + radius);
       row++
     ) {
       for (
-        var col = max(0, x - _radius);
-        col <= min(width - 1, x + _radius);
+        var col = max(0, x - radius);
+        col <= min(width - 1, x + radius);
         col++
       ) {
         if (heatmap[row * width + col] > score) {
@@ -196,13 +217,13 @@ List<CountPoint> _headPoints(Float32List heatmap, int width, int height) {
     final y = index ~/ width;
     var duplicate = false;
     for (
-      var row = max(0, y - _radius);
-      !duplicate && row <= min(height - 1, y + _radius);
+      var row = max(0, y - radius);
+      !duplicate && row <= min(height - 1, y + radius);
       row++
     ) {
       for (
-        var col = max(0, x - _radius);
-        col <= min(width - 1, x + _radius);
+        var col = max(0, x - radius);
+        col <= min(width - 1, x + radius);
         col++
       ) {
         if (occupied.contains(row * width + col)) {

@@ -91,8 +91,8 @@ jobs:
         run: |
           mkdir -p build/ios-delivery/stage/Payload
           ditto build/ios/iphoneos/Runner.app build/ios-delivery/stage/Payload/Runner.app
-          ditto -c -k --keepParent build/ios-delivery/stage/Payload build/ios-delivery/AquaHatch-v0.18.0-FishFryAI-iOS-unsigned.ipa
-          python3 tools/verify_ios_ipa.py build/ios-delivery/AquaHatch-v0.18.0-FishFryAI-iOS-unsigned.ipa
+          ditto -c -k --keepParent build/ios-delivery/stage/Payload build/ios-delivery/AquaHatch-v0.19.0-FishFryAI-iOS-unsigned.ipa
+          python3 tools/verify_ios_ipa.py build/ios-delivery/AquaHatch-v0.19.0-FishFryAI-iOS-unsigned.ipa
           cp ../IOS_INSTALL_TH.md build/ios-delivery/
       - name: Upload install package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
