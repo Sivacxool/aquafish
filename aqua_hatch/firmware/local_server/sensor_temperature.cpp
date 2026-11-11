@@ -1,4 +1,5 @@
 #include "sensor_temperature.h"
+#include "sensor_config.h"
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <math.h>
@@ -6,7 +7,7 @@
 
 namespace temperature_sensor {
 namespace {
-constexpr uint8_t DATA_PIN = 4;
+constexpr uint8_t DATA_PIN = TEMPERATURE_DATA_PIN;
 constexpr uint32_t CONVERSION_MS = 800, SAMPLE_MS = 2000, RESCAN_MS = 5000;
 OneWire bus(DATA_PIN);
 DallasTemperature sensor(&bus);

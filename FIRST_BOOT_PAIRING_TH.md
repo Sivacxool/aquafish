@@ -1,30 +1,30 @@
 # บอร์ดใหม่สร้างรหัสเอง แล้วสแกน QR จับคู่
 
-สำหรับ AquaHatch 0.16.1+2018 / WROOM-DA 0.16.0-wroom-da.1 / CAM 0.16.1-camera.1
+สำหรับ AquaHatch 0.19.0 และบอร์ด ET-ESP32 WROOM 32UE V1 / กล้อง AI Thinker ESP32-CAM
 
 เฟิร์มแวร์รุ่นนี้ไม่ฝังรหัสจับคู่หรือ private key ประจำเจ้าของในไฟล์แจกจ่าย บอร์ดแต่ละตัวสร้างข้อมูลของตัวเองตอนเปิดครั้งแรกและเก็บใน NVS
-ใช้ไฟล์ WROOM-DA ชุดเดียวกันลงบอร์ดหลักรุ่นเดียวกันหลายตัว หรือไฟล์ CAM ชุดเดียวกันลง CAM หลายตัวได้ โดยแต่ละตัวมีรหัสและใบรับรองแยกกัน
+ใช้ไฟล์ ETT ชุดเดียวกันลงบอร์ด ETT หลายตัว หรือไฟล์ CAM ชุดเดียวกันลง CAM หลายตัวได้ โดยแต่ละตัวมีรหัสและใบรับรองแยกกัน
 บอร์ดไม่มีจอ จึงใช้โปรแกรมบน Windows รับบัตร QR ผ่าน USB หลังลงเฟิร์มแวร์ แล้วเปิดบัตรบนคอมให้มือถือสแกนหรือพิมพ์แปะกล่อง
 
 ## รุ่นบอร์ดที่เตรียมไว้
 
 | ไฟล์ | รุ่น |
 | --- | --- |
-| WROOM-DA | ESP32-WROOM-DA Module โปรไฟล์ Flash 4 MB, DIO 40 MHz, Minimal SPIFFS |
+| ETT | ET-ESP32 WROOM 32UE V1 โปรไฟล์ ESP32 Dev Module, Flash 4 MB |
 | CAM | AI Thinker ESP32-CAM / ESP32-S บนฐาน ESP32-CAM-MB พร้อม OV3660 (ไดรเวอร์เดิมรองรับ OV2640 / OV5640 ด้วย) |
 
-WROOM-DA และ CAM ใช้เฟิร์มแวร์คนละไฟล์ ห้ามสลับกัน บอร์ดต่างรุ่นหรือผังขากล้องต่างออกไปต้องปรับเป้าหมายก่อน
+ETT และ CAM ใช้เฟิร์มแวร์คนละไฟล์ ห้ามสลับกัน บอร์ดต่างรุ่นหรือผังขากล้องต่างออกไปต้องปรับเป้าหมายก่อน
 ขั้นตอนนี้เตรียมสำหรับ Windows ที่มี Arduino IDE / Arduino CLI และ Arduino-ESP32 3.3.12 แล้ว พร้อม Python3.11ขึ้นไป การเตรียมไลบรารี QR ครั้งแรกใช้อินเทอร์เน็ต
 
 ## 1. ลงเฟิร์มแวร์
 
-1. ดาวน์โหลดและแตก [FirstBoot package](AquaHatch-v0.16.1-FirstBoot.zip) ลงโฟลเดอร์ของคุณ
-2. ปิด Serial Monitor ต่อบอร์ดทีละตัวผ่าน USB โดยเริ่มจาก WROOM-DA
-3. เปิด `Install-WROOM-DA.cmd` กรอกพอร์ตที่ Windows แสดง เช่น COM5 แล้วรอจนลงเสร็จ
+1. ดาวน์โหลดและแตก [FirstBoot สำหรับ ETT](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-ETT-WROOM32UE-v0.19.0-ett32ue.2.zip) และ [FirstBoot สำหรับกล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-ESP32-CAM-FirstBoot.zip) แยกกัน
+2. ปิด Serial Monitor ต่อโปรแกรมเมอร์ของบอร์ด ETT ตาม [คู่มือ ETT](ETT_WROOM32UE_SETUP_TH.md)
+3. เปิด `Install-ETT-WROOM32UE.cmd` กรอกพอร์ตที่ Windows แสดง เช่น COM5 แล้วรอจนลงเสร็จ
 4. โปรแกรมรอบอร์ดสร้างตัวตน จากนั้นรับบัตรผ่าน USB และเปิดไฟล์ `PAIRING_PRIVATE.html` ให้เอง
 5. ทำซ้ำกับกล้อง โดยใช้ `Install-CAM.cmd` และพอร์ตของ CAM จริง
 
-บอร์ดหลักที่ตรวจในรอบนี้ใช้ COM5 เลือกพอร์ตตามที่ Windows แสดง และเลือกพอร์ตของกล้องแยกจากบอร์ดหลัก
+เลือกพอร์ตตามที่ Windows แสดงสำหรับบอร์ดที่เสียบอยู่
 ตัวติดตั้งไม่ใช้คำสั่ง erase-flash และไม่แจกภาพ NVS ของบอร์ดอื่น ต้องเก็บ NVS เดิมเมื่อลงอัปเดตเพื่อรักษารหัสเดิม
 หากเข้าระบบอัปโหลดไม่ได้ ใช้ BOOT / RST ตาม [Espressif](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/get-started/flashing-troubleshooting.html)
 
@@ -37,7 +37,7 @@ WROOM-DA และ CAM ใช้เฟิร์มแวร์คนละไฟ
 5. เมื่อเชื่อมต่อสำเร็จ กลับภาพรวมเพื่อดูเซนเซอร์ หรือไปนับลูกปลาเพื่อรับภาพจาก CAM
 
 ใน LDPlayer หรืออุปกรณ์ไม่มีกล้อง ให้เปิดรายละเอียดในบัตร กด **คัดลอกข้อมูล QR ทั้งหมด** แล้ววางในช่องข้อมูล QR ของแอป ไม่ใช่เฉพาะ token
-WROOM-DA และ CAM ใช้ Wi-Fi บ้านเดียวกันแต่มี IP แยกกัน บัตรของแต่ละตัวแยกกันด้วย
+ETT และ CAM ใช้ Wi-Fi บ้านเดียวกันแต่มี IP แยกกัน บัตรของแต่ละตัวแยกกันด้วย
 
 ## 3. รหัสจะเปลี่ยนเมื่อไร
 
@@ -56,11 +56,11 @@ WROOM-DA และ CAM ใช้ Wi-Fi บ้านเดียวกันแ�
 
 ## 4. บัตรหาย อ่านใหม่ได้
 
-เสียบ USB ปิด Serial Monitor แล้วใช้ `Read-QR-WROOM-DA.cmd` หรือ `Read-QR-CAM.cmd` ในชุดติดตั้ง
+เสียบ USB ปิด Serial Monitor แล้วใช้  `Read-QR-ETT-WROOM32UE.cmd` หรือ `Read-QR-CAM.cmd` ในชุดติดตั้ง
 หรือจาก source root:
 
 ```powershell
-python tools/pairing_card.py --kind wroom-da --port COM5 --read-only
+python tools/pairing_card.py --kind ett32ue --port COM5 --read-only
 python tools/pairing_card.py --kind camera --port COM4 --read-only
 ```
 
@@ -84,13 +84,13 @@ TLS ใช้ CA เฉพาะตัวและตรวจ hostname ตา�
 
 ดู [VERIFICATION.md](VERIFICATION.md) สำหรับผลตรวจแยกซอฟต์แวร์ บอร์ดจริง และเซนเซอร์
 
-บน WROOM-DA ต่อ DS18B20 ที่ GPIO4, RS485 ที่ GPIO16/17/18 และ ADS1115 ที่ GPIO21/22 ตาม [ผังสาย](aqua_hatch/SENSORS_SETUP_TH.md)
+บนบอร์ด ETT ให้ต่อ DS18B20, DO, pH และลูกลอยตาม [ผังสาย ETT](ETT_WROOM32UE_SETUP_TH.md)
 รูปแบบ QR ยังใช้ค่า `s3` และชื่อ Wi-Fi ขึ้นต้น `AquaHatch-S3-` สำหรับบทบาทบอร์ดหลัก เพื่อให้แอปที่มีอยู่จับคู่ได้ ให้เลือก Wi-Fi ตามชื่อในบัตรที่บอร์ดสร้าง
 
 ## สำหรับอุปกรณ์เดิมที่ยังใช้ 0.13.0 หรือต่ำกว่า
 
 แอปยังเก็บวิธีเชื่อมต่อด้วยบัตรเดิมและ CA เดิมไว้ บอร์ดเดิมไม่ถูกอัปเดตเองเมื่ออัปเดตแอป
-เมื่อลงเฟิร์มแวร์นี้บน WROOM-DA จะสร้างตัวตนระบบใหม่เมื่อยังไม่มี `aqua_ident` ใน NVS แล้วให้รับและสแกน QR ใหม่หนึ่งครั้ง
+เมื่อลงเฟิร์มแวร์บนบอร์ดที่รองรับ จะสร้างตัวตนระบบใหม่เมื่อยังไม่มี `aqua_ident` ใน NVS แล้วให้รับและสแกน QR ใหม่หนึ่งครั้ง
 ไม่ใช้ `prepare_device.py` / `prepare_camera.py` เพื่อสร้างตัวตนให้ generic firmware รุ่นนี้ เครื่องมือเหล่านั้นเป็นวิธีเดิมสำหรับ firmware ที่ฝังเอกลักษณ์ตอน build
 
 [ตั้งค่าดูเซนเซอร์และถ่ายภาพจากนอกบ้าน](REMOTE_SETUP_TH.md)

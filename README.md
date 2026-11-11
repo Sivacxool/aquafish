@@ -1,54 +1,25 @@
-# AquaHatch 0.19.0 สำหรับ ESP32-WROOM-DA
+# AquaHatch 0.19.0
 
-AquaHatch อ่านอุณหภูมิ DO และ pH จาก ESP32-WROOM-DA และรับภาพจาก AI Thinker ESP32-CAM ผ่าน Wi-Fi บ้าน แต่ละบอร์ดมี IP และ QR จับคู่ของตัวเอง
+AquaHatch อ่านอุณหภูมิ DO และ pH จากบอร์ดควบคุม ET-ESP32 WROOM 32UE V1 สั่งเติมน้ำ และรับภาพจากกล้อง AI Thinker ESP32-CAM + OV3660 เพื่อใช้ AI นับลูกปลาในแอป
 
 | ชุดติดตั้ง | ดาวน์โหลด |
 | --- | --- |
 | Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-v0.19.0-FishFryAI-Android.apk) |
-| iPhone (iOS 16 ขึ้นไป) | [IPA สำหรับ Sideloadly](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-v0.19.0-FishFryAI-iOS-unsigned.ipa) |
-| เฟิร์มแวร์และตัวติดตั้ง Windows | [ชุด FirstBoot 0.16.1](AquaHatch-v0.16.1-FirstBoot.zip) · [ชุดต้นแบบปั๊ม 0.17.0](prototype/) |
-| ซอร์สแอป | [Flutter](aqua_hatch/) |
+| iPhone (iOS 16 ขึ้นไป) | [IPA สำหรับ Sideloadly](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-v0.19.0-FishFryAI-iOS-unsigned.ipa) · [วิธีติดตั้ง](IOS_INSTALL_TH.md) |
+| บอร์ดควบคุม ETT | [FirstBoot 0.19.0-ett32ue.2](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-ETT-WROOM32UE-v0.19.0-ett32ue.2.zip) · [คู่มือต่อสาย](ETT_WROOM32UE_SETUP_TH.md) |
+| กล้อง ESP32-CAM | [FirstBoot สำหรับกล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-ESP32-CAM-FirstBoot.zip) · [คู่มือกล้อง](AquaHatch-Camera-Start-TH.md) |
 
-รุ่น 0.19.0 เพิ่ม AI นับลูกปลาจากภาพนิ่งบนมือถือ เลือกโมเดลตามขนาดภาพแล้วให้ตรวจแก้จุดก่อนบันทึก [รายละเอียดรุ่น](https://github.com/Sivacxool/aquafish/releases/tag/v0.19.0)
+## เริ่มใช้งาน
 
-รุ่น 0.16.1 แก้การเริ่มกล้องในขณะถ่ายภาพและปรับหน้า IP/USB ให้เลื่อนได้ เพิ่มปุ่มปิดแจ้งเตือนและลบรอบฟักพร้อมยืนยัน ปิดการดูจากนอกบ้านผ่านอินเทอร์เน็ตได้แยกตามอุปกรณ์
-เฟิร์มแวร์กล้องเป็น 0.16.1-camera.1 ส่วน WROOM-DA ใช้ 0.16.0-wroom-da.1
-ดูขั้นตอนใน [คู่มือใช้นอกบ้าน](REMOTE_SETUP_TH.md)
+1. แตกไฟล์ FirstBoot ของ ETT แล้วเปิด `Install-ETT-WROOM32UE.cmd` เลือก COM ของโปรแกรมเมอร์บอร์ดควบคุม ใช้ผังใน [คู่มือ ETT](ETT_WROOM32UE_SETUP_TH.md) สำหรับ DS18B20, DO, ADS1115, ลูกลอย และปั๊ม
+2. เปิด AquaHatch → **ตั้งค่า → สแกน QR เพื่อเพิ่มอุปกรณ์** สแกนบัตรที่โปรแกรมเปิดขึ้น แล้วตั้ง Wi-Fi 2.4 GHz ให้บอร์ด
+3. หากติดตั้งกล้องใหม่ ให้แตกชุด ESP32-CAM เปิด `Install-CAM.cmd` ที่ COM ของกล้อง แล้วสแกนบัตร QR ของกล้องแยกในแอป
+4. ไปที่ **นับลูกปลา** เพื่อถ่ายจากกล้องหรือเลือกภาพ แล้วกด **วิเคราะห์ด้วย AI** ตรวจแก้จุดก่อนบันทึก
 
-[แผนต่อปั๊ม ลูกลอย และฮีตเตอร์](PUMP_FLOAT_HEATER_PLAN_TH.md)
+บอร์ดควบคุมและกล้องใช้ Wi-Fi เดียวกันได้ แต่ละตัวมี IP และ QR ของตัวเอง [คู่มือจับคู่](FIRST_BOOT_PAIRING_TH.md) · [การเชื่อมต่อ 4 ขั้น](START_HERE_TH.md) · [ดูจากนอกบ้าน](REMOTE_SETUP_TH.md)
 
-## สายเซนเซอร์บนบอร์ดหลัก
+## ซอร์สโค้ด
 
-| อุปกรณ์ | สายสัญญาณ | GPIO |
-| --- | --- | --- |
-| DS18B20 | DATA | 4 |
-| RS485 ของหัววัด DO | DI / TX | 16 |
-| RS485 ของหัววัด DO | DE + /RE | 17 |
-| RS485 ของหัววัด DO | RO / RX | 18 |
-| ADS1115 ของหัววัด pH | SDA | **21** |
-| ADS1115 ของหัววัด pH | SCL | **22** |
-
-ย้ายเฉพาะ SDA และ SCL จากผัง S3 เดิม GPIO8/9 ของ ESP32 รุ่นคลาสสิกใช้กับ Flash ชุดนี้เลือกโปรไฟล์ Arduino **ESP32-WROOM-DA Module** และตั้ง Flash **4 MB** ตามบอร์ดที่อ่านได้บน COM5 พอร์ตอาจเปลี่ยนตามเครื่อง
-
-อ่านวงจรไฟเลี้ยงและระดับสัญญาณใน [คู่มือเซนเซอร์](aqua_hatch/SENSORS_SETUP_TH.md) และ [คู่มือ pH](PH_ADS1115_SETUP_TH.md) หลังย้ายหัววัด pH ไปบอร์ดใหม่ให้สอบเทียบสองจุดอีกครั้ง เพราะค่าที่บันทึกบนบอร์ดเดิมอยู่ใน NVS ของบอร์ดเดิม
-
-## ติดตั้ง
-
-1. แตก FirstBoot ZIP ต่อ WROOM-DA ผ่าน USB แล้วเปิด `Install-WROOM-DA.cmd` เลือก COM ของบอร์ดหลัก
-2. โปรแกรมเปิดบัตร QR ส่วนตัวบนคอม เปิด AquaHatch → **ตั้งค่า → สแกน QR เพื่อเพิ่มอุปกรณ์**
-3. เลือก Wi-Fi 2.4 GHz ของบ้านตามขั้นตอนในแอป แล้วเปิดภาพรวมตรวจค่าเซนเซอร์
-
-เฟิร์มแวร์สร้าง token และใบรับรองต่อบอร์ด เก็บไว้ใน NVS และรับบัตรผ่าน USB รูปแบบ QR ใช้กับ AquaHatch 0.14.0 ขึ้นไป รุ่น 0.16.0 ปรับหน้าจอและคำแนะนำให้ตรงกับบอร์ดหลักรุ่นนี้ บอร์ดกล้องใช้ไฟล์ `Install-CAM.cmd` และพอร์ตของกล้องเอง
-
-[คู่มือ QR](FIRST_BOOT_PAIRING_TH.md) · [เริ่มใช้งาน](START_HERE_TH.md) · [คู่มือ iPhone](IOS_INSTALL_TH.md) · [วิธีคอมไพล์](REBUILD.md) · [ผลทดสอบ](VERIFICATION.md) · [SHA256](SHA256SUMS.txt)
-
-## โค้ดหลัก
-
-- [เฟิร์มแวร์บอร์ดหลัก](aqua_hatch/firmware/local_server/) และ [ผังขาในซอร์ส](aqua_hatch/firmware/local_server/sensor_config.h)
-- [รับข้อมูล ESP32](aqua_hatch/lib/core/esp32_repository.dart) และ [รับภาพกล้อง](aqua_hatch/lib/core/direct_camera.dart)
-- [จับคู่ด้วย QR](aqua_hatch/lib/features/qr_pairing.dart) และ [ตัวติดตั้ง USB](tools/pairing_card.py)
-- [อ่านและสอบเทียบ pH](aqua_hatch/firmware/local_server/sensor_ph.cpp) และ [หน้านับลูกปลา](aqua_hatch/lib/features/counting.dart)
-
-ชุดแจกจ่ายเป็นเฟิร์มแวร์เปล่าสำหรับบอร์ดแต่ละชนิด เก็บบัตร QR และไฟล์สำรอง Flash เป็นส่วนตัว
-
-[ตั้งค่าดูเซนเซอร์และถ่ายภาพจากนอกบ้าน](REMOTE_SETUP_TH.md)
+- [แอป Flutter](aqua_hatch/) · [เชื่อมต่อบอร์ดหลัก](aqua_hatch/lib/core/esp32_repository.dart) · [รับภาพกล้อง](aqua_hatch/lib/core/direct_camera.dart)
+- [เฟิร์มแวร์บอร์ดควบคุม](aqua_hatch/firmware/local_server/) · [เฟิร์มแวร์กล้อง](aqua_hatch/firmware/camera_server/) · [วิธีคอมไพล์](REBUILD.md)
+- [รายละเอียดรุ่น](https://github.com/Sivacxool/aquafish/releases/tag/v0.19.0) · [SHA256](SHA256SUMS.txt)

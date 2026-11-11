@@ -1,10 +1,5 @@
-# AquaHatch 0.17.0 ต้นแบบปั๊มเติมน้ำ
+# ชุดต้นแบบปั๊มเติมน้ำ AquaHatch
 
-- [Android APK](AquaHatch-v0.17.0-PumpPrototype-Android-universal.apk)
-- [iOS IPA สำหรับเซ็นด้วย Sideloadly](AquaHatch-v0.17.0-PumpPrototype-iOS-unsigned.ipa)
-- [เฟิร์มแวร์ ESP32-WROOM-DA](AquaHatch-v0.17.0-PumpPrototype-WROOM-DA.zip)
-- [ผังต่อ GPIO27 และ GPIO25](../PUMP_PROTOTYPE_TH.md)
+ไฟล์ติดตั้งต้นแบบถูกแทนด้วย [ชุดติดตั้งปัจจุบัน](../README.md) สำหรับบอร์ด ET-ESP32 WROOM 32UE V1 ให้ใช้ [ผัง ETT](../ETT_WROOM32UE_SETUP_TH.md)
 
-ทดสอบโค้ด 113 รายการ ข้าม 6 รายการ ลงบน WROOM-DA ที่ COM5 และทดสอบคำสั่งจริงผ่าน HTTPS โดยถอดไฟฝั่งปั๊ม ตรวจว่า GPIO25 ดับเมื่อ GPIO27 เปิด และรหัสจับคู่เดิมยังอยู่ การต่อรีเลย์และทดสอบน้ำไหลเป็นขั้นทดสอบถัดไป
-
-[ผลบิลด์ iOS](https://github.com/Sivacxool/aquafish/actions/runs/42493966241)
+[ผังต้นแบบ ESP32-WROOM-DA](../PUMP_PROTOTYPE_TH.md) ใช้กับบอร์ดต้นแบบเดิม

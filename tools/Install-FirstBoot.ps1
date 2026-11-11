@@ -1,5 +1,5 @@
-param(
-  [Parameter(Mandatory=$true)][ValidateSet('wroom-da','camera')][string]$Kind,
+﻿param(
+  [Parameter(Mandatory=$true)][ValidateSet('wroom-da','ett32ue','camera')][string]$Kind,
   [string]$Port,
   [switch]$ReadOnly
 )

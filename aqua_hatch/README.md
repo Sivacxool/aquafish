@@ -1,10 +1,10 @@
-# AquaHatch 0.16.1
+# AquaHatch 0.19.0
 
-ซอร์สแอป Flutter, เฟิร์มแวร์ ESP32-WROOM-DA และ ESP32-CAM
+ซอร์สแอป Flutter, เฟิร์มแวร์ ET-ESP32 WROOM 32UE V1 และ ESP32-CAM
 
 - [เริ่มใช้งานและดาวน์โหลด](../README.md)
 - [การเชื่อมต่อ 4 ขั้น](../START_HERE_TH.md)
-- [เซนเซอร์ DS18B20, DO และ pH](SENSORS_SETUP_TH.md)
+- [การต่อเซนเซอร์และปั๊มบนบอร์ด ETT](../ETT_WROOM32UE_SETUP_TH.md)
 - [สร้างชุดสำหรับบอร์ดใหม่](../REBUILD.md)
 - [ผลตรวจและข้อจำกัด](../VERIFICATION.md)
 

@@ -6,7 +6,7 @@
 namespace oxygen_sensor {
 namespace {
 constexpr uint32_t PERIOD_MS = 2000, RESPONSE_MS = 1200;
-HardwareSerial wire(1);
+HardwareSerial wire(DO_UART);
 portMUX_TYPE guard = portMUX_INITIALIZER_UNLOCKED;
 struct Sample {
   float mgL = NAN, temperatureC = NAN, saturationRatio = NAN;
@@ -18,6 +18,7 @@ struct Sample {
 bool waiting = false;
 uint32_t lastRequest = 0, startedAt = 0;
 uint8_t received[32];
+uint8_t requestFrame[8];
 size_t used = 0;
 void failure(const char *status) {
   portENTER_CRITICAL(&guard);
@@ -52,8 +53,10 @@ void processReply() {
 bool enabled() { return DO_ENABLED; }
 void begin() {
   if (!DO_ENABLED) return;
-  digitalWrite(DO_DIRECTION_PIN, LOW);
-  pinMode(DO_DIRECTION_PIN, OUTPUT);
+  if constexpr (DO_DIRECTION_PIN >= 0) {
+    digitalWrite(DO_DIRECTION_PIN, LOW);
+    pinMode(DO_DIRECTION_PIN, OUTPUT);
+  }
   wire.begin(DO_BAUD, SERIAL_8N1, DO_RX_PIN, DO_TX_PIN);
 }
 void tick() {
@@ -65,6 +68,14 @@ void tick() {
       received[used++] = wire.read();
     }
     if (!waiting) return;
+    if constexpr (DO_DIRECTION_PIN < 0) {
+      // The on-board transceiver can echo our request before the reply.
+      if (used >= sizeof(requestFrame) &&
+          memcmp(received, requestFrame, sizeof(requestFrame)) == 0) {
+        used -= sizeof(requestFrame);
+        memmove(received, received + sizeof(requestFrame), used);
+      }
+    }
     const size_t expected = used >= 2 && (received[1] & 0x80) ? 5 : 17;
     if (used >= expected) { processReply(); return; }
     if (now - startedAt >= RESPONSE_MS) failure("timeout");
@@ -73,13 +84,17 @@ void tick() {
   if (now - lastRequest < PERIOD_MS) return;
   lastRequest = now;
   while (wire.available()) wire.read();
-  uint8_t frame[8]; renke_do::request(DO_ADDRESS, frame);
+  renke_do::request(DO_ADDRESS, requestFrame);
   used = 0;
-  digitalWrite(DO_DIRECTION_PIN, HIGH);
-  delayMicroseconds(50);
-  wire.write(frame, sizeof(frame));
-  wire.flush(); // Wait for all stop bits before returning the bus to receive.
-  digitalWrite(DO_DIRECTION_PIN, LOW);
+  if constexpr (DO_DIRECTION_PIN >= 0) {
+    digitalWrite(DO_DIRECTION_PIN, HIGH);
+    delayMicroseconds(50);
+  }
+  wire.write(requestFrame, sizeof(requestFrame));
+  wire.flush(true);
+  if constexpr (DO_DIRECTION_PIN >= 0) {
+    digitalWrite(DO_DIRECTION_PIN, LOW);
+  }
   startedAt = millis(); waiting = true;
   portENTER_CRITICAL(&guard);
   latest.requests++;
@@ -109,7 +124,13 @@ void append(JsonObject telemetry) {
   details["model"] = "RS-LDO-N01-2-20";
   details["enabled"] = DO_ENABLED;
   details["tx_gpio"] = DO_TX_PIN; details["rx_gpio"] = DO_RX_PIN;
-  details["direction_gpio"] = DO_DIRECTION_PIN;
+  if constexpr (DO_DIRECTION_PIN >= 0) {
+    details["direction_gpio"] = DO_DIRECTION_PIN;
+  } else {
+    details["direction_gpio"] = nullptr;
+    details["auto_direction"] = true;
+  }
+  details["uart"] = DO_UART;
   details["baud"] = DO_BAUD; details["address"] = DO_ADDRESS;
   details["requests"] = copy.requests; details["valid_responses"] = copy.successes;
   details["timeouts"] = copy.timeouts; details["errors"] = copy.errors;

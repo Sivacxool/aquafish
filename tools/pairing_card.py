@@ -4,15 +4,16 @@ Never generate a token/key on the PC, erase NVS, discover network devices, or lo
 the returned secret. Nothing touches a serial port unless main() is invoked.
 """
 from pathlib import Path
-import argparse,base64,hashlib,html,io,json,os,re,subprocess,time,webbrowser
+import argparse,base64,hashlib,html,io,json,os,re,shutil,subprocess,time,webbrowser
 
 ROOT=Path(__file__).resolve().parent.parent
 FQBN={
     'wroom-da':'esp32:esp32:esp32da:FlashSize=4M,FlashMode=dio,FlashFreq=40,PartitionScheme=min_spiffs,UploadSpeed=115200',
+    'ett32ue':'esp32:esp32:esp32:FlashSize=4M,FlashMode=dio,FlashFreq=40,PartitionScheme=min_spiffs,UploadSpeed=115200',
     'camera':'esp32:esp32:esp32cam',
 }
 # The controller's QR role predates WROOM-DA and is shared with 0.14 apps.
-PAIRING_KIND={'wroom-da':'s3','camera':'camera'}
+PAIRING_KIND={'wroom-da':'s3','ett32ue':'s3','camera':'camera'}
 
 def validate(payload,expected_kind=None):
     if not isinstance(payload,dict) or set(payload)!={'format','version','kind','id','host','ssid','token','ca'}:
@@ -82,8 +83,20 @@ def read_pairing(port,kind,timeout=60):
         raise TimeoutError('Board did not return a pairing card. Close Serial Monitor, check the port and reset the board.')
     finally:connection.close()
 
-def flash(port,kind,arduino_cli,images):
-    folder='local_server' if kind=='wroom-da' else 'camera_server'
+def arduino_command(override):
+    ide_cli = Path(os.environ.get('LOCALAPPDATA', '')) / 'Programs/Arduino IDE/resources/app/lib/backend/resources/arduino-cli.exe'
+    cli = override or (str(ide_cli) if ide_cli.is_file() else shutil.which('arduino-cli'))
+    if cli is None:
+        raise FileNotFoundError('Arduino CLI not found')
+    command = [cli]
+    config = Path.home() / '.arduinoIDE' / 'arduino-cli.yaml'
+    if config.is_file():
+        command.extend(['--config-file', str(config)])
+    return command
+
+
+def flash(port,kind,command,images):
+    folder='camera_server' if kind=='camera' else 'local_server'
     images=Path(images)
     required=[images/f'{folder}.ino{suffix}.bin' for suffix in ['', '.bootloader','.partitions']]
     if not all(path.is_file() for path in required):raise FileNotFoundError('Generic firmware files are missing. Use the complete FirstBoot package.')
@@ -93,20 +106,20 @@ def flash(port,kind,arduino_cli,images):
     for file in required:
         relative=file.relative_to(images.parent).as_posix()
         if hashlib.sha256(file.read_bytes()).hexdigest()!=expected.get(relative):raise ValueError('Firmware checksum mismatch')
-    subprocess.run([str(arduino_cli),'upload','--fqbn',FQBN[kind],'--port',port,'--input-dir',str(images),str(ROOT/'aqua_hatch/firmware'/folder)],check=True)
+    subprocess.run(command + ['upload','--fqbn',FQBN[kind],'--port',port,'--input-dir',str(images),str(ROOT/'aqua_hatch/firmware'/folder)],check=True)
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--kind',choices=FQBN,required=True);parser.add_argument('--port',required=True)
     parser.add_argument('--read-only',action='store_true',help='Retrieve the existing QR without flashing or changing identity')
-    parser.add_argument('--arduino-cli',default=str(Path(os.environ.get('LOCALAPPDATA',''))/'Programs/Arduino IDE/resources/app/lib/backend/resources/arduino-cli.exe'))
+    parser.add_argument('--arduino-cli',help='Path to Arduino CLI (normally auto-detected)')
     parser.add_argument('--images',type=Path);parser.add_argument('--output',type=Path,default=ROOT/'outputs/private-pairing')
     parser.add_argument('--no-open',action='store_true');args=parser.parse_args()
     if not re.fullmatch(r'COM[1-9][0-9]*',args.port,re.IGNORECASE):parser.error('Use a Windows COM port such as COM3')
     try:
         if not args.read_only:
             print('กำลังลงเฟิร์มแวร์ โดยไม่สั่งล้าง NVS…',flush=True)
-            flash(args.port,args.kind,Path(args.arduino_cli),args.images or ROOT/'firmware-images'/args.kind)
+            flash(args.port,args.kind,arduino_command(args.arduino_cli),args.images or ROOT/'firmware-images'/args.kind)
         print('รอบอร์ดเตรียมรหัสเฉพาะตัว แล้วรับบัตรผ่าน USB…',flush=True)
         payload=read_pairing(args.port,PAIRING_KIND[args.kind])
         card=render_card(payload,args.output)

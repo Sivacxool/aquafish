@@ -1,6 +1,6 @@
-# สร้าง AquaHatch 0.16.1 และ generic firmware
+# สร้าง AquaHatch 0.19.0 และเฟิร์มแวร์
 
-รุ่นนี้ WROOM-DA/CAM สร้างตัวตนและ private keys ในบอร์ดตอนเปิดครั้งแรก ไม่ต้องสร้าง device_private.h หรือบิลด์แอปประจำบอร์ด
+บอร์ดควบคุมและกล้อง สร้างตัวตนและ private keys ในบอร์ดตอนเปิดครั้งแรก ไม่ต้องสร้าง device_private.h หรือบิลด์แอปประจำบอร์ด
 อ่าน [คู่มือติดตั้งและจับคู่ด้วย QR](FIRST_BOOT_PAIRING_TH.md) ก่อนใช้งาน
 
 ## เครื่องมือ
@@ -13,14 +13,14 @@
 ## เฟิร์มแวร์
 
 ```powershell
-./aqua_hatch/firmware/local_server/Build-Device.ps1
+./aqua_hatch/firmware/local_server/Build-Device.ps1 -Profile ett32ue
 ./aqua_hatch/firmware/camera_server/Build-Camera.ps1
 ```
 
 สคริปต์รวม `firmware/libraries/AquaIdentity` ให้อัตโนมัติ
-บอร์ดหลักใช้ ESP32-WROOM-DA Module, Flash 4 MB, DIO 40 MHz, Minimal SPIFFS และ Upload Speed 115200 ส่วนกล้องใช้ AI Thinker ESP32-CAM
+โปรไฟล์ `ett32ue` ใช้ ESP32 Dev Module, Flash 4 MB ส่วนกล้องใช้ AI Thinker ESP32-CAM สำหรับ WROOM-DA เดิมใช้ `-Profile wroom-da`
 เพิ่ม `-Upload -Port COM5` เมื่อพอร์ตของบอร์ดหลักเป็น COM5 เลือกหมายเลขจริงของบอร์ดแต่ละตัว
-เพื่อรับบัตร QR หลังลง ใช้ FirstBoot package หรือตัวอ่าน `tools/pairing_card.py --kind wroom-da --port COM5 --read-only`
+เพื่อรับบัตร QR หลังลง ใช้ [FirstBoot](README.md) หรือตัวอ่าน `tools/pairing_card.py --kind ett32ue --port COM5 --read-only` สำหรับ ETT
 อย่าสั่งล้าง NVS เพื่ออัปเดตรุ่นปกติ เพราะการล้างทำให้ CA/token เปลี่ยนและต้องสแกนใหม่
 
 ## แอป

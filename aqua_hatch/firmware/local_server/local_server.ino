@@ -1,5 +1,5 @@
 // AquaHatch local HTTPS server with a float-controlled 12 V fill pump.
-// Arduino-ESP32 3.3.12, ArduinoJson 7.4.3, ESP32-WROOM-DA target, 4 MB flash.
+// Arduino-ESP32 3.3.12, ArduinoJson 7.4.3, classic ESP32, 4 MB flash.
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -18,9 +18,18 @@ AquaIdentity boardIdentity;
 #include "sensor_temperature.h"
 #include "sensor_do.h"
 #include "sensor_ph.h"
+#include "sensor_config.h"
+#if defined(AQUAHATCH_ET_WROOM32UE)
+#include "ett_fill_control.h"
+#else
 #include "fill_control.h"
+#endif
 
+#if defined(AQUAHATCH_ET_WROOM32UE)
+static const char VERSION[] = "0.19.0-ett32ue.2";
+#else
 static const char VERSION[] = "0.17.0-wroom-da.pump.1";
+#endif
 Preferences prefs;
 httpd_handle_t httpsServer = nullptr;
 bool tlsReady = false, wasConnected = false;
@@ -57,7 +66,7 @@ void snapshot(JsonDocument &doc) {
   doc["backend"] = "esp32-local"; doc["protocol_version"] = 1;
   doc["uptime_ms"] = millis(); doc["command_count"] = commandCount;
   doc["capabilities"]["hardware_control"] = false;
-  doc["capabilities"]["pump_fill"] = fill_control::ready;
+  doc["capabilities"]["pump_fill"] = static_cast<bool>(fill_control::ready);
   doc["capabilities"]["camera"] = false;
   doc["capabilities"]["ai"] = false;
   doc["capabilities"]["temperature"] = true;
@@ -83,7 +92,7 @@ void serialStatus(const char *type = "status") {
   JsonDocument doc;
   doc["type"] = type; doc["device_id"] = DEVICE_ID;
   doc["firmware"] = VERSION; doc["chip"] = ESP.getChipModel();
-  doc["board_profile"] = "esp32-wroom-da";
+  doc["board_profile"] = BOARD_PROFILE;
   doc["flash_bytes"] = ESP.getFlashChipSize(); doc["psram_bytes"] = ESP.getPsramSize();
   doc["connected"] = WiFi.status() == WL_CONNECTED;
   doc["ssid"] = WiFi.SSID(); doc["ip"] = WiFi.localIP().toString();

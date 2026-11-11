@@ -1,7 +1,7 @@
 #include "sensor_ph.h"
 #include "sensor_config.h"
-#include "ph_calibration.h"
-#include <Wire.h>
+#include "ph_filter.h"
+#include "sensor_bus.h"
 #include <Preferences.h>
 #include <time.h>
 #include <freertos/semphr.h>
@@ -12,13 +12,12 @@ namespace {
 // comparator disabled. PGA range does NOT permit input above ADC VDD.
 constexpr uint16_t ADC_CONFIG=0xC383;
 constexpr uint32_t SAMPLE_MS=100,RESCAN_MS=2000,STALE_MS=5000;
-constexpr uint8_t WINDOW=20;
 SemaphoreHandle_t mutex=nullptr;
 struct Guard { Guard(){xSemaphoreTake(mutex,portMAX_DELAY);} ~Guard(){xSemaphoreGive(mutex);} };
 Preferences storage;
 bool storageReady=false,wireReady=false,found=false,converting=false;
 uint32_t lastAttempt=0,lastProbe=0,started=0;
-float window[WINDOW]={};uint8_t windowCount=0,windowIndex=0;
+ph_filter::Window readings;
 struct Sample {
   float voltage=NAN;
   uint32_t atMs=0;time_t atUnix=0;
@@ -39,10 +38,10 @@ bool readRegister(uint8_t reg,uint16_t &value) {
   if(Wire.requestFrom(PH_ADS_ADDRESS,(uint8_t)2)!=(size_t)2)return false;
   value=((uint16_t)Wire.read()<<8)|(uint8_t)Wire.read();return true;
 }
-void fail(const char *status,bool detected=false) {
-  windowCount=0;windowIndex=0;
-  Guard lock;sample.voltage=NAN;sample.stable=false;
-  sample.status=status;sample.detected=detected;
+void fail(const char *status) {
+  readings.reset();
+  Guard lock;sample.voltage=NAN;sample.stable=false;sample.atUnix=0;
+  sample.status=status;sample.detected=false;
 }
 void timestamp(JsonObject t,const char *key,time_t value) {
   t[key]=nullptr;
@@ -74,13 +73,14 @@ void begin() {
       calibratedAt=doc["at"]|(int64_t)0;
     }
   }
-  wireReady=Wire.begin(PH_SDA_PIN,PH_SCL_PIN,100000);
-  Wire.setTimeOut(20);
+  wireReady=sensor_bus::begin();
 }
 
 void tick() {
   const uint32_t now=millis();
   if(!wireReady)return;
+  sensor_bus::Guard bus;
+  if(!bus)return;
   if(!found) {
     if(now-lastProbe<RESCAN_MS)return;
     lastProbe=now;Wire.beginTransmission(PH_ADS_ADDRESS);
@@ -100,14 +100,12 @@ void tick() {
     uint16_t raw=0;
     if(!readRegister(0,raw)){found=false;fail("read_error");return;}
     const float voltage=(int16_t)raw*0.000125f;
-    if(!ph_math::inputValid(voltage)){fail("input_out_of_range",true);return;}
-    window[windowIndex]=voltage;windowIndex=(windowIndex+1)%WINDOW;
-    if(windowCount<WINDOW)windowCount++;
-    float sum=0,low=window[0],high=window[0];
-    for(uint8_t i=0;i<windowCount;i++){sum+=window[i];low=fminf(low,window[i]);high=fmaxf(high,window[i]);}
-    Guard lock;sample.voltage=sum/windowCount;sample.atMs=now;sample.atUnix=time(nullptr);
-    sample.stable=windowCount==WINDOW && high-low<=0.010f;
-    sample.status=windowCount==WINDOW?"ready":"warming_up";sample.detected=true;
+    readings.add(voltage);
+    const float filtered=readings.voltage();
+    const bool stable=isfinite(filtered);
+    Guard lock;sample.voltage=filtered;sample.atMs=now;sample.atUnix=stable?time(nullptr):0;
+    sample.stable=stable;sample.detected=true;
+    sample.status=stable?"ready":ph_math::inputValid(voltage)?"warming_up":"input_out_of_range";
   }
   if(!converting && now-lastAttempt>=SAMPLE_MS) {
     lastAttempt=now;
@@ -118,12 +116,12 @@ void tick() {
 
 bool calibrate(float bufferPh,bool startNew,String &message) {
   Guard lock;
-  if(!sample.detected || !isfinite(sample.voltage) || millis()-sample.atMs>STALE_MS) {
+  if(!sample.detected || millis()-sample.atMs>STALE_MS) {
     message = "ยังอ่าน ADS1115 ไม่ได้ ตรวจสาย SDA GPIO" + String(PH_SDA_PIN)
       + " / SCL GPIO" + String(PH_SCL_PIN) + " และ A0";
     return false;
   }
-  if(!sample.stable){message="แรงดันยังไม่นิ่ง รอหัววัดในน้ำยามาตรฐานแล้วลองอีกครั้ง";return false;}
+  if(!sample.stable){message="แรงดันยังไม่นิ่งหรือนอกช่วง ตรวจสายและรอหัววัดในน้ำยามาตรฐาน";return false;}
   ph_math::Calibration next=calibration;
   if(ph_math::neutralReference(bufferPh)) {
     if(!startNew){message="เริ่มรอบสอบเทียบใหม่ที่น้ำยา pH 7.00 หรือ 6.86 ก่อน";return false;}
