@@ -26,7 +26,7 @@ AquaIdentity boardIdentity;
 #endif
 
 #if defined(AQUAHATCH_ET_WROOM32UE)
-static const char VERSION[] = "0.19.0-ett32ue.2";
+static const char VERSION[] = "0.19.0-ett32ue.3";
 #else
 static const char VERSION[] = "0.17.0-wroom-da.pump.1";
 #endif

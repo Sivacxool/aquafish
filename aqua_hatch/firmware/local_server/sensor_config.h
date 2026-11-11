@@ -4,7 +4,7 @@ constexpr int DO_UART = 2;
 constexpr int DO_TX_PIN = 27;
 constexpr int DO_RX_PIN = 26;
 constexpr int DO_DIRECTION_PIN = -1; // MAX13487E onboard AutoDirection.
-constexpr int TEMPERATURE_DATA_PIN = 13; // GPIO13/TXD1 at the unused 4G header.
+constexpr int TEMPERATURE_DATA_PIN = 32; // IO32 solder pad beside the ESP32-WROOM-32UE module.
 constexpr char BOARD_PROFILE[] = "et-esp32-wroom32ue-v1";
 #else
 constexpr int DO_UART = 1;

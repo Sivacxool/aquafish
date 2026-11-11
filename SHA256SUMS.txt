@@ -1,4 +1,4 @@
 22938bccb90fed14267138798c97ba4c347c5b708667b9c8e11b4522b0ca3e9a  AquaHatch-v0.19.0-FishFryAI-Android.apk
 54e47264ded2e7d553083c322ae52d9e4583614c6e0deac52f2a4c1023ae075b  AquaHatch-v0.19.0-FishFryAI-iOS-unsigned.ipa
-d64cf13d95251fd58193ae150553ec20c6d9ed392da9a9c7577e0332535d4c84  AquaHatch-ETT-WROOM32UE-v0.19.0-ett32ue.2.zip
+6a5e49815936b9cd9156ddccd68c75f0771e898b9aa47095f798f997b2a77dae  AquaHatch-ETT-WROOM32UE-v0.19.0-ett32ue.3.zip
 8a7c20cb49a30bfb4cde98d4b5e26ccff07ea5f3cf4811b3fc1ad21f1af03792  AquaHatch-ESP32-CAM-FirstBoot.zip

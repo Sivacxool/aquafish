@@ -6,7 +6,7 @@ AquaHatch อ่านอุณหภูมิ DO และ pH จากบอ�
 | --- | --- |
 | Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-v0.19.0-FishFryAI-Android.apk) |
 | iPhone (iOS 16 ขึ้นไป) | [IPA สำหรับ Sideloadly](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-v0.19.0-FishFryAI-iOS-unsigned.ipa) · [วิธีติดตั้ง](IOS_INSTALL_TH.md) |
-| บอร์ดควบคุม ETT | [FirstBoot 0.19.0-ett32ue.2](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-ETT-WROOM32UE-v0.19.0-ett32ue.2.zip) · [คู่มือต่อสาย](ETT_WROOM32UE_SETUP_TH.md) |
+| บอร์ดควบคุม ETT | [FirstBoot 0.19.0-ett32ue.3](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-ETT-WROOM32UE-v0.19.0-ett32ue.3.zip) · [คู่มือต่อสาย GPIO32](ETT_WROOM32UE_SETUP_TH.md) |
 | กล้อง ESP32-CAM | [FirstBoot สำหรับกล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-ESP32-CAM-FirstBoot.zip) · [คู่มือกล้อง](AquaHatch-Camera-Start-TH.md) |
 
 ## เริ่มใช้งาน
