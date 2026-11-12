@@ -75,7 +75,7 @@ class _PhCalibrationScreenState extends ConsumerState<PhCalibrationScreen> {
         children: [
           const PageTitle(
             'ตั้งค่า pH ครั้งแรก',
-            'E-201-C / PH-4502C / ADS1115',
+            subtitle: 'E-201-C / PH-4502C / ADS1115',
           ),
           Surface(
             child: Column(

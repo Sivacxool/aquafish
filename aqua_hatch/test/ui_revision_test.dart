@@ -63,14 +63,15 @@ void main() {
     await tester.tap(find.text('เริ่มควบคุม'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    expect(find.textContaining('กลับสู่อัตโนมัติใน'), findsOneWidget);
-    final auto = find.text('กลับอัตโนมัติ');
+    final remaining = find.byKey(const ValueKey('manual-mode-remaining'));
+    expect(remaining, findsOneWidget);
+    final auto = find.text('อัตโนมัติ');
     await tester.ensureVisible(auto);
     await tester.pump();
     await tester.tap(auto);
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    expect(find.textContaining('กลับสู่อัตโนมัติใน'), findsNothing);
+    expect(remaining, findsNothing);
     await closeApp(tester);
   });
 

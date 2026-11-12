@@ -57,8 +57,7 @@ void main() {
             child: const MaterialApp(home: Scaffold(body: ControlsScreen())),
           ),
         );
-        expect(find.text('ลูกลอยปิด · ขอเติมน้ำ'), findsOneWidget);
-        expect(find.text('ระดับน้ำ ปกติ'), findsOneWidget);
+        expect(find.text('ปกติ'), findsOneWidget);
         expect(find.text('ฮีตเตอร์'), findsNothing);
         final start = find.widgetWithText(FilledButton, 'เปิดเติมน้ำอัตโนมัติ');
         expect(tester.widget<FilledButton>(start).onPressed == null, remote);
@@ -75,9 +74,7 @@ void main() {
       },
     );
   }
-  testWidgets('open float shows overflow and a disconnected-wire hint', (
-    tester,
-  ) async {
+  testWidgets('open float shows overflow', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -88,7 +85,6 @@ void main() {
         child: const MaterialApp(home: Scaffold(body: ControlsScreen())),
       ),
     );
-    expect(find.text('ระดับน้ำ น้ำล้น'), findsOneWidget);
-    expect(find.text('ลูกลอยเปิดหรือสายหลุด · หยุดเติม'), findsOneWidget);
+    expect(find.text('น้ำล้น'), findsOneWidget);
   });
 }

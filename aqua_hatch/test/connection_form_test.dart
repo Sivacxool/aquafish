@@ -10,7 +10,7 @@ void main() {
       await mountApp(tester, size: size);
       await tester.tap(find.text('ตั้งค่า').last);
       await tester.pumpAndSettle();
-      final group = find.text('เชื่อมต่อด้วย IP / Gateway');
+      final group = find.text('ตั้งค่าบอร์ดขั้นสูง');
       await tester.ensureVisible(group);
       await tester.pump();
       // Offline settings start expanded; a fresh demo can start collapsed.

@@ -55,6 +55,18 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 350));
         expect(tester.takeException(), isNull);
+        if (label == 'นับลูกปลา') {
+          expect(find.text('ภาพนิ่งตามคำสั่ง · ไม่ใช่ภาพสด'), findsNothing);
+          expect(
+            find.byKey(const ValueKey('device-capture-button')),
+            findsOneWidget,
+          );
+        }
+        if (label == 'ตั้งค่า') {
+          final scan = find.byKey(const ValueKey('add-device-by-qr'));
+          expect(scan.hitTestable(), findsOneWidget);
+          expect(find.text('เชื่อมต่อด้วย IP / Gateway'), findsNothing);
+        }
       }
       await tester.pumpWidget(const SizedBox());
       await tester.pump();

@@ -23,10 +23,7 @@ void main() {
       await camera_fixture.mount(tester, app);
       expect(find.text('พร้อมถ่าย'), findsOneWidget);
       expect(find.text('โหมดทดลอง'), findsNothing);
-      final button = find.widgetWithText(
-        FilledButton,
-        'ถ่ายภาพจากกล้องในเครื่อง',
-      );
+      final button = find.widgetWithText(FilledButton, 'ถ่ายภาพ');
       expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
       await tester.ensureVisible(button);
       await tester.tap(button);

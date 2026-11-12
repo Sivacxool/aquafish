@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 
 abstract final class AquaColors {
-  static const navy = Color(0xFF16354B),
-      blue = Color(0xFF087D86),
-      deep = Color(0xFF064563),
-      teal = Color(0xFF08796F),
-      background = Color(0xFFF5F8FA),
-      muted = Color(0xFF526775),
-      line = Color(0xFFE3EDF2),
-      orange = Color(0xFFAC6715),
-      red = Color(0xFFBC4252);
+  static const navy = Color(0xFF1B2921),
+      blue = Color(0xFF2B5F46),
+      deep = Color(0xFF142D22),
+      teal = Color(0xFF2D6749),
+      background = Color(0xFFF4F4ED),
+      paper = Color(0xFFFEFEFA),
+      sage = Color(0xFFE8EDE0),
+      lime = Color(0xFFE3EFAD),
+      muted = Color(0xFF526157),
+      line = Color(0xFFE0E4D9),
+      orange = Color(0xFF87551D),
+      red = Color(0xFFA03632);
 }
 
 ThemeData buildTheme() => ThemeData(
@@ -19,39 +22,46 @@ ThemeData buildTheme() => ThemeData(
   colorScheme: ColorScheme.fromSeed(seedColor: AquaColors.blue).copyWith(
     primary: AquaColors.blue,
     secondary: AquaColors.teal,
-    surface: Colors.white,
+    surface: AquaColors.paper,
     onSurface: AquaColors.navy,
     error: AquaColors.red,
   ),
+  appBarTheme: const AppBarTheme(
+    backgroundColor: AquaColors.background,
+    foregroundColor: AquaColors.navy,
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+  ),
   textTheme: const TextTheme(
     headlineLarge: TextStyle(
-      fontSize: 30,
+      fontSize: 34,
       fontWeight: FontWeight.w700,
       color: AquaColors.navy,
     ),
     headlineMedium: TextStyle(
-      fontSize: 25,
+      fontSize: 28,
       fontWeight: FontWeight.w700,
       color: AquaColors.navy,
     ),
-    titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-    titleMedium: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+    titleLarge: TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
+    titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
     bodyMedium: TextStyle(fontSize: 15, height: 1.5),
     bodySmall: TextStyle(fontSize: 13, height: 1.5, color: AquaColors.muted),
   ),
   cardTheme: CardThemeData(
     elevation: 0,
-    color: Colors.white,
+    color: AquaColors.paper,
+    surfaceTintColor: Colors.transparent,
     margin: EdgeInsets.zero,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(22),
       side: const BorderSide(color: AquaColors.line),
     ),
   ),
   dividerTheme: const DividerThemeData(color: AquaColors.line, thickness: 1),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: AquaColors.background,
+    fillColor: AquaColors.sage,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
@@ -80,8 +90,12 @@ ThemeData buildTheme() => ThemeData(
     ),
   ),
   navigationBarTheme: const NavigationBarThemeData(
-    backgroundColor: Colors.white,
-    indicatorColor: Color(0xFFE3F1F6),
-    height: 76,
+    backgroundColor: AquaColors.paper,
+    surfaceTintColor: Colors.transparent,
+    indicatorColor: AquaColors.lime,
+    height: 68,
+    labelTextStyle: WidgetStatePropertyAll(
+      TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+    ),
   ),
 );

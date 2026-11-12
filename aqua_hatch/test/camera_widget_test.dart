@@ -133,7 +133,7 @@ void main() {
         },
       );
       expect(find.text('OV3660 · 2048 × 1536 พิกเซล'), findsOneWidget);
-      await tester.tap(find.text('ถ่ายภาพจากกล้องในเครื่อง'));
+      await tester.tap(find.text('ถ่ายภาพ'));
       await tester.pump();
       controller.photo.complete(capture);
       final wait = Stopwatch()..start();
@@ -176,10 +176,7 @@ void main() {
       final controller = CameraController();
       await mount(tester, controller);
       expect(find.text('ภาพตัวอย่างจำลอง'), findsNothing);
-      final captureButton = find.widgetWithText(
-        FilledButton,
-        'ถ่ายภาพจากกล้องในเครื่อง',
-      );
+      final captureButton = find.widgetWithText(FilledButton, 'ถ่ายภาพ');
       expect(tester.widget<FilledButton>(captureButton).onPressed, isNotNull);
       await tester.ensureVisible(captureButton);
       await tester.tap(captureButton);
@@ -221,7 +218,7 @@ void main() {
   ) async {
     final controller = CameraController();
     await mount(tester, controller);
-    await tester.tap(find.text('ถ่ายภาพจากกล้องในเครื่อง'));
+    await tester.tap(find.text('ถ่ายภาพ'));
     await tester.pump();
     controller.switchMachine();
     await tester.pump();

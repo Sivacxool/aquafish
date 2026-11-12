@@ -45,33 +45,21 @@ class Surface extends StatelessWidget {
 }
 
 class PageTitle extends StatelessWidget {
-  final String title, subtitle;
-  final Widget? trailing;
-  const PageTitle(this.title, this.subtitle, {super.key, this.trailing});
+  final String title;
+  final String? subtitle;
+  const PageTitle(this.title, {super.key, this.subtitle});
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, c) => Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 20,
-        runSpacing: 14,
-        children: [
-          SizedBox(
-            width: c.maxWidth < 650 ? c.maxWidth : c.maxWidth - 230,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: 5),
-                Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ),
-          ),
-          ?trailing,
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.headlineMedium),
+        if (subtitle != null) ...[
+          const SizedBox(height: 5),
+          Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
         ],
-      ),
+      ],
     ),
   );
 }

@@ -185,7 +185,7 @@ class AppShell extends ConsumerWidget {
                   width: 240,
                   child: Container(
                     decoration: const BoxDecoration(
-                      color: Colors.white,
+                      color: AquaColors.paper,
                       border: Border(right: BorderSide(color: AquaColors.line)),
                     ),
                     child: SafeArea(
@@ -200,7 +200,7 @@ class AppShell extends ConsumerWidget {
                                 FishIllustration(size: 47),
                                 SizedBox(width: 12),
                                 Text(
-                                  'AQUA HATCH',
+                                  'AquaHatch',
                                   style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w800,
@@ -208,14 +208,6 @@ class AppShell extends ConsumerWidget {
                                   ),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 9),
-                            const Text(
-                              'ระบบฟักไข่ปลาดุกอัจฉริยะ',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AquaColors.muted,
-                              ),
                             ),
                             const SizedBox(height: 42),
                             const Text(
@@ -232,7 +224,7 @@ class AppShell extends ConsumerWidget {
                                 padding: const EdgeInsets.only(bottom: 9),
                                 child: Material(
                                   color: shell.currentIndex == i
-                                      ? const Color(0xFFE9F3F8)
+                                      ? AquaColors.lime
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(13),
                                   child: InkWell(
@@ -272,42 +264,6 @@ class AppShell extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                            const Spacer(),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(18),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF0F8FA),
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              child: const Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  FishIllustration(
-                                    size: 55,
-                                    color: AquaColors.teal,
-                                  ),
-                                  SizedBox(height: 12),
-                                  Text(
-                                    'ดูแลชีวิตเล็ก ๆ\nให้เติบโตไปด้วยกัน',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      height: 1.8,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  SizedBox(height: 10),
-                                  Text(
-                                    'Aqua Hatch · v0.16.1',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AquaColors.muted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 12),
                           ],
                         ),
                       ),
@@ -320,12 +276,12 @@ class AppShell extends ConsumerWidget {
                   child: Column(
                     children: [
                       Container(
-                        height: 64,
+                        height: 60,
                         padding: EdgeInsets.symmetric(
                           horizontal: desktop ? 32 : 20,
                         ),
                         decoration: const BoxDecoration(
-                          color: Colors.white,
+                          color: AquaColors.paper,
                           border: Border(
                             bottom: BorderSide(color: AquaColors.line),
                           ),
@@ -336,58 +292,26 @@ class AppShell extends ConsumerWidget {
                               const FishIllustration(size: 32),
                               const SizedBox(width: 10),
                             ],
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    desktop
-                                        ? 'เครื่องฟัก · โถ 01'
-                                        : 'AQUA HATCH',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Text(
-                                    (state.connection.demo ||
-                                            state.telemetry?.simulated == true)
-                                        ? 'พื้นที่ทดลอง · ข้อมูลจำลอง'
-                                        : state.connection.deviceId,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AquaColors.muted,
-                                    ),
-                                  ),
-                                ],
+                            const Expanded(
+                              child: Text(
+                                'AquaHatch',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 19,
+                                ),
                               ),
                             ),
-                            Pill(
-                              (state.connection.demo ||
-                                      state.telemetry?.simulated == true)
-                                  ? 'โหมดทดลอง'
-                                  : state.fresh
-                                  ? 'เชื่อมต่อแล้ว'
-                                  : 'รอเชื่อมต่อ',
-                              color:
-                                  (state.connection.demo ||
-                                      state.telemetry?.simulated == true)
-                                  ? AquaColors.blue
-                                  : state.fresh
-                                  ? AquaColors.teal
-                                  : AquaColors.orange,
-                              icon:
-                                  (state.connection.demo ||
-                                      state.telemetry?.simulated == true)
-                                  ? Icons.science_outlined
-                                  : Icons.circle,
-                            ),
-                            const SizedBox(width: 10),
+                            if (shell.currentIndex != 0 &&
+                                !state.connection.demo)
+                              Pill(
+                                state.fresh ? 'ออนไลน์' : 'ออฟไลน์',
+                                color: state.fresh
+                                    ? AquaColors.teal
+                                    : AquaColors.orange,
+                                icon: Icons.circle,
+                              ),
                             IconButton(
                               tooltip: 'กิจกรรมและการแจ้งเตือน',
                               onPressed: () {
@@ -429,7 +353,7 @@ class AppShell extends ConsumerWidget {
               : NavigationBar(
                   height: MediaQuery.textScalerOf(
                     context,
-                  ).scale(76).clamp(76, 140),
+                  ).scale(68).clamp(68, 132),
                   selectedIndex: shell.currentIndex,
                   onDestinationSelected: (i) => shell.goBranch(i),
                   destinations: List.generate(

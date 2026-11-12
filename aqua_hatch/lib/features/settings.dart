@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/theme.dart';
 import '../core/controller.dart';
@@ -61,9 +60,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   double? _parse(String? value) =>
       double.tryParse((value ?? '').replaceAll(',', '.'));
   Future<void> _openQrPairing() async {
-    await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => const QrPairingScreen()));
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => const QrPairingScreen(scanOnOpen: true),
+      ),
+    );
     if (!mounted) return;
     final state = ref.read(appControllerProvider);
     setState(() {
@@ -152,14 +153,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
     return PageBody(
       children: [
-        const PageTitle('ตั้งค่า', 'อุปกรณ์และรอบฟัก'),
-        FilledButton.icon(
-          key: const ValueKey('add-device-by-qr'),
-          onPressed: state.busy ? null : _openQrPairing,
-          icon: const Icon(Icons.qr_code_scanner),
-          label: const Text('สแกน QR เพื่อเพิ่มอุปกรณ์'),
+        const PageTitle('ตั้งค่า'),
+        SizedBox(
+          width: double.infinity,
+          child: Material(
+            color: AquaColors.deep,
+            borderRadius: BorderRadius.circular(24),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              key: const ValueKey('add-device-by-qr'),
+              onTap: state.busy ? null : _openQrPairing,
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: AquaColors.lime,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.qr_code_scanner_rounded,
+                        color: AquaColors.deep,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'สแกน QR เพื่อเพิ่มอุปกรณ์',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(color: AquaColors.paper),
+                          ),
+                          const Text(
+                            'บอร์ดควบคุมหรือกล้อง',
+                            style: TextStyle(color: AquaColors.lime),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_rounded,
+                      color: AquaColors.lime,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 22),
+        const SectionHeading('อุปกรณ์'),
         ConnectionOverview(
           state: state,
           onBoard: state.busy || _connecting ? null : _openWifiSetup,
@@ -178,7 +227,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               state.connection.relayOrigin != null ||
                   state.cameraConnection?.relayOrigin != null
               ? 'เปิดใช้งานแล้ว'
-              : 'เซนเซอร์และภาพผ่านอินเทอร์เน็ต',
+              : 'ผ่านอินเทอร์เน็ต',
           icon: Icons.public_rounded,
           child: const RemoteSettings(),
         ),
@@ -198,7 +247,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               'กล้อง: IP และ USB',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
-            subtitle: const Text('ตั้ง IP หรือเชื่อมกล้องผ่าน LDPlayer'),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.of(context).push<void>(
               MaterialPageRoute(builder: (_) => const CameraConnectionScreen()),
@@ -207,8 +255,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 14),
         _SettingsGroup(
-          title: 'เชื่อมต่อด้วย IP / Gateway',
-          subtitle: 'ตัวเลือกเพิ่มเติมสำหรับผู้ที่มีที่อยู่เครื่องแล้ว',
+          title: 'ตั้งค่าบอร์ดขั้นสูง',
+          subtitle: 'IP และเซิร์ฟเวอร์ของบอร์ด',
           icon: Icons.router_outlined,
           initiallyExpanded: false,
           child: Column(
@@ -244,11 +292,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     : (values) => setState(() => _demo = values.first),
               ),
               const SizedBox(height: 20),
-              if (_demo)
-                const Notice(
-                  'ใช้ข้อมูลและคำสั่งจำลองได้ทันที ไม่ส่งคำสั่งไปยัง ESP32',
-                )
-              else ...[
+              if (!_demo) ...[
                 DropdownButtonFormField<bool>(
                   initialValue: _localEsp32,
                   isExpanded: true,
@@ -256,7 +300,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   items: const [
                     DropdownMenuItem(
                       value: false,
-                      child: Text('Gateway / เซิร์ฟเวอร์'),
+                      child: Text('เซิร์ฟเวอร์ของบอร์ด'),
                     ),
                     DropdownMenuItem(value: true, child: Text('ESP32 ในบ้าน')),
                   ],
@@ -298,13 +342,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Notice(
-                  _localEsp32
-                      ? 'ใช้ IP ของบอร์ดและรหัสจากบัตรจับคู่'
-                      : kIsWeb
-                      ? 'เว็บใช้รหัสเฉพาะครั้งนี้ การเชื่อมต่อภายนอกต้องใช้ HTTPS'
-                      : 'มือถือเก็บรหัสแบบเข้ารหัสและเชื่อมต่อใหม่อัตโนมัติ การเชื่อมต่อภายนอกต้องใช้ HTTPS',
-                ),
+                if (!_localEsp32) const Notice('เซิร์ฟเวอร์ภายนอกใช้ HTTPS'),
                 TextButton.icon(
                   onPressed: state.busy
                       ? null
@@ -365,14 +403,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 22),
         _SettingsGroup(
-          title: 'pH ผ่าน ADS1115',
-          subtitle: 'E-201-C / PH-4502C · ตั้งค่าและสอบเทียบ',
+          title: 'สอบเทียบ pH',
+          subtitle: '',
           icon: Icons.science_outlined,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('อ่านแรงดันที่ขา A0 ของ ADS1115'),
-              const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -407,11 +443,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                 ),
-                const Text(
-                  'ตั้งค่าตามชนิดปลา ระยะฟัก และคำแนะนำของผู้ดูแลการเพาะฟัก',
-                  style: TextStyle(fontSize: 12, color: AquaColors.muted),
-                ),
-                const SizedBox(height: 18),
                 LayoutBuilder(
                   builder: (context, c) {
                     final fields = [
@@ -561,14 +592,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 22),
         ],
-        const _SettingsGroup(
-          title: 'การแจ้งเตือน',
-          subtitle: 'ดูความสามารถและข้อจำกัดก่อนเฝ้าเครื่อง',
-          icon: Icons.notifications_outlined,
-          child: Notice(
-            'การแจ้งเตือนในมือถือทำงานขณะเปิดแอป เมื่อปิดแอปให้ตรวจประวัติที่ Gateway บันทึกไว้ ระบบยังไม่มี Push notification',
-          ),
-        ),
       ],
     );
   }
@@ -633,10 +656,9 @@ class _SettingsGroupState extends State<_SettingsGroup> {
         widget.title,
         style: const TextStyle(fontWeight: FontWeight.w700),
       ),
-      subtitle: Text(
-        widget.subtitle,
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
+      subtitle: widget.subtitle.isEmpty
+          ? null
+          : Text(widget.subtitle, style: Theme.of(context).textTheme.bodySmall),
       tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
       children: [
         Padding(

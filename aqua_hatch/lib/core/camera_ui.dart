@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../app/theme.dart';
 import 'controller.dart';
-import 'ui.dart';
 
 class CameraConnectionCard extends ConsumerWidget {
   const CameraConnectionCard({super.key});
@@ -18,57 +17,32 @@ class CameraConnectionCard extends ConsumerWidget {
     final usb = ref.watch(
       appControllerProvider.select((s) => s.usbCameraEnabled),
     );
-    return Surface(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.linked_camera_outlined, color: AquaColors.blue),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'ดูถาดฟัก · นับลูกปลา',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  status?.message ?? 'กำลังตรวจการเชื่อมต่อกล้อง…',
-                  style: const TextStyle(fontSize: 12, color: AquaColors.muted),
-                ),
-                if (status?.cameraId.isNotEmpty == true) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    status!.cameraId,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AquaColors.muted,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Pill(
-                  usb
-                      ? 'กล้อง USB'
-                      : demo
-                      ? 'โหมดจำลอง'
-                      : status?.ready == true
-                      ? 'พร้อมถ่าย'
-                      : 'ยังไม่พร้อมถ่าย',
-                  color: status?.ready == true
-                      ? AquaColors.teal
-                      : AquaColors.blue,
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: 'เปิดกล้องในเครื่อง',
-            onPressed: () => context.go('/counting'),
-            icon: const Icon(Icons.arrow_forward_rounded),
-          ),
-        ],
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        onTap: () => context.go('/counting'),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: const CircleAvatar(
+          foregroundColor: AquaColors.blue,
+          backgroundColor: AquaColors.sage,
+          child: Icon(Icons.photo_camera_outlined),
+        ),
+        title: const Text(
+          'เปิดกล้อง',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          usb
+              ? 'กล้อง USB'
+              : status?.ready == true
+              ? 'พร้อมถ่าย'
+              : demo
+              ? 'โหมดทดลอง'
+              : camera.isLoading
+              ? 'กำลังเช็กกล้อง'
+              : 'ยังไม่เชื่อมต่อ',
+        ),
+        trailing: const Icon(Icons.arrow_forward_rounded),
       ),
     );
   }

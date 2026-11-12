@@ -44,19 +44,25 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('บอร์ดออนไลน์ · รอติดตั้งอุปกรณ์'), findsOneWidget);
+      expect(find.text('ออนไลน์ · รอติดตั้ง'), findsOneWidget);
       await tester.tap(find.text('ควบคุม').last);
       await tester.pumpAndSettle();
-      expect(find.text('รอติดตั้งอุปกรณ์'), findsOneWidget);
-      expect(find.text('ยังไม่ติดตั้ง / ยังไม่ยืนยันวงจร'), findsNWidgets(4));
+      expect(find.text('รอติดตั้งวงจรควบคุม'), findsOneWidget);
+      expect(find.text('รอติดตั้ง'), findsNWidgets(4));
+      expect(
+        tester
+            .widget<SegmentedButton<bool>>(find.byType(SegmentedButton<bool>))
+            .onSelectionChanged,
+        isNull,
+      );
       await tester.tap(find.text('ควบคุมเอง').first);
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.tap(find.text('ตั้งค่า').last);
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('เชื่อมต่อด้วย IP / Gateway'));
-      await tester.tap(find.text('เชื่อมต่อด้วย IP / Gateway'));
+      await tester.ensureVisible(find.text('ตั้งค่าบอร์ดขั้นสูง'));
+      await tester.tap(find.text('ตั้งค่าบอร์ดขั้นสูง'));
       await tester.pumpAndSettle();
       expect(find.text('ESP32 ในบ้าน'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'URL บอร์ด'), findsOneWidget);

@@ -33,11 +33,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         .toList();
     return PageBody(
       children: [
-        Text(
-          'ภาพรวมเครื่องฟัก',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-        const SizedBox(height: 12),
         _ConnectionCard(state: state, reconnect: controls.reconnect),
         if (state.fresh &&
             data?.hardwareReady != false &&
@@ -72,7 +67,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       MediaQuery.textScalerOf(context).scale(14) < 20
                 ? 2
                 : 1;
-            final width = (c.maxWidth - 12 * (columns - 1)) / columns;
             final cards = [
               MetricCard(
                 title: 'อุณหภูมิน้ำ',
@@ -81,7 +75,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 detail: state.connection.localEsp32
                     ? sensorStatusLabel(
                         data?.temperatureStatus,
-                        source: 'DS18B20 · GPIO4',
+                        source: 'DS18B20',
                       )
                     : 'ค่าตั้ง ${number(state.settings.temperatureTarget)} °C',
                 icon: Icons.thermostat_rounded,
@@ -141,12 +135,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     : data?.waterLevelOk != true,
               ),
             ];
-            return Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: cards
-                  .map((card) => SizedBox(width: width, child: card))
-                  .toList(),
+            return Column(
+              children: [
+                for (var start = 0; start < cards.length; start += columns) ...[
+                  if (start > 0) const SizedBox(height: 12),
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (
+                          var index = start;
+                          index < start + columns;
+                          index++
+                        ) ...[
+                          if (index > start) const SizedBox(width: 12),
+                          Expanded(child: cards[index]),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             );
           },
         ),
@@ -204,7 +213,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ),
                 icon: const Icon(Icons.history_rounded),
-                label: const Text('ประวัติคุณภาพน้ำ / คัดลอก CSV'),
+                label: const Text('ประวัติคุณภาพน้ำ'),
               ),
             ],
           ),
@@ -223,9 +232,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               ...[
                 (Icons.water_rounded, 'ปั๊มน้ำ', 'pump'),
-                (Icons.thermostat_rounded, 'ฮีตเตอร์', 'heater'),
-                (Icons.ac_unit_rounded, 'ทำความเย็น', 'cooler'),
-                (Icons.sync_rounded, 'หมุนเวียนไข่', 'tumbler'),
+                if (data?.fill == null) ...[
+                  (Icons.thermostat_rounded, 'ฮีตเตอร์', 'heater'),
+                  (Icons.ac_unit_rounded, 'ทำความเย็น', 'cooler'),
+                  (Icons.sync_rounded, 'หมุนเวียนไข่', 'tumbler'),
+                ],
               ].map(
                 (entry) => Padding(
                   padding: const EdgeInsets.only(bottom: 14),
@@ -256,10 +267,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ],
                   ),
                 ),
-              ),
-              Text(
-                'การเปิดรีเลย์ยังไม่ยืนยันว่าอุปกรณ์ทำงานจริง',
-                style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),
@@ -344,35 +351,89 @@ class _ConnectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final online = state.fresh;
-    final title = state.connection.demo
+    final status = state.connection.demo
         ? 'โหมดทดลอง'
         : online
         ? (state.telemetry?.viaRelay == true
               ? 'ออนไลน์ · ผ่านอินเทอร์เน็ต'
-              : state.connectionLabel)
+              : state.telemetry?.hardwareReady == false &&
+                    state.telemetry?.fill == null
+              ? 'ออนไลน์ · รอติดตั้ง'
+              : 'ออนไลน์')
         : state.error != null || state.telemetry != null
         ? 'ติดต่อบอร์ดไม่ได้'
         : 'กำลังเชื่อมต่อ';
-    final subtitle = !online && state.connection.localEsp32
-        ? 'ลองเชื่อมต่อใหม่อัตโนมัติ'
-        : null;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: ListTile(
-        onTap: () => _details(context),
-        leading: Icon(
-          online ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-          color: online ? AquaColors.teal : AquaColors.muted,
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: subtitle == null ? null : Text(subtitle),
-        trailing: online
-            ? const Icon(Icons.chevron_right_rounded)
-            : IconButton(
-                onPressed: state.busy ? null : reconnect,
-                tooltip: 'เชื่อมต่อใหม่',
-                icon: const Icon(Icons.refresh_rounded),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/brand/water.jpg',
+              fit: BoxFit.cover,
+              alignment: Alignment.centerRight,
+              excludeFromSemantics: true,
+              errorBuilder: (_, _, _) =>
+                  const ColoredBox(color: AquaColors.deep),
+            ),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AquaColors.deep.withValues(alpha: .96),
+                    AquaColors.deep.withValues(alpha: .30),
+                  ],
+                ),
               ),
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Pill(
+                  status,
+                  color: AquaColors.lime,
+                  icon: online ? Icons.circle : Icons.wifi_off_rounded,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'ภาพรวมเครื่องฟัก',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.headlineLarge?.copyWith(color: AquaColors.paper),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.tonalIcon(
+                      onPressed: () => _details(context),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: AquaColors.deep,
+                        backgroundColor: AquaColors.lime,
+                      ),
+                      icon: const Icon(Icons.router_outlined, size: 18),
+                      label: const Text('สถานะเครื่อง'),
+                    ),
+                    if (!online)
+                      IconButton(
+                        onPressed: state.busy ? null : reconnect,
+                        tooltip: 'เชื่อมต่อใหม่',
+                        color: AquaColors.paper,
+                        icon: const Icon(Icons.refresh_rounded),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

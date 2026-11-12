@@ -10,6 +10,7 @@ import '../core/controller.dart';
 import '../core/fish_head_analyzer.dart';
 import '../core/models.dart';
 import '../core/ui.dart';
+import '../core/motion.dart';
 import '../core/camera.dart';
 import '../core/usb_preview.dart';
 
@@ -334,11 +335,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF123F50), Color(0xFF082A3B)],
-          ),
+          color: AquaColors.deep,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -352,53 +349,26 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                 border: Border.all(color: Colors.white.withValues(alpha: .15)),
               ),
               child: _busy
-                  ? const SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF79E0D0),
-                        strokeWidth: 2,
-                      ),
+                  ? const AquaLoader(
+                      label: 'กำลังรับภาพ',
+                      compact: true,
+                      color: AquaColors.lime,
                     )
                   : const Icon(
-                      Icons.linked_camera_outlined,
-                      size: 32,
-                      color: Color(0xFF79E0D0),
+                      Icons.center_focus_weak_rounded,
+                      size: 38,
+                      color: AquaColors.lime,
                     ),
             ),
             const SizedBox(height: 16),
             Text(
-              _busy ? 'กำลังรอภาพจากกล้อง' : 'มองเห็นถาดฟักจากที่นี่',
+              _busy ? 'กำลังรับภาพ' : 'ยังไม่มีภาพ',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
               ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'กดถ่ายเพื่อรับภาพใหม่จากกล้องในเครื่อง',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFFBED4DF), fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.crop_free_rounded,
-                  size: 15,
-                  color: Color(0xFF8EB2C3),
-                ),
-                SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    'ภาพนิ่งตามคำสั่ง · ไม่ใช่ภาพสด',
-                    style: TextStyle(color: Color(0xFF8EB2C3), fontSize: 11),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -481,8 +451,13 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                     ),
                   if (_busy)
                     Container(
-                      color: Colors.white.withValues(alpha: .6),
-                      child: const Center(child: CircularProgressIndicator()),
+                      color: AquaColors.deep.withValues(alpha: .76),
+                      child: const Center(
+                        child: AquaLoader(
+                          label: 'กำลังประมวลผล',
+                          color: AquaColors.lime,
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -504,41 +479,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
       ),
     );
   }
-
-  Widget _steps() => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    child: Row(
-      children: ['1  รับภาพ', '2  ตรวจนับ', '3  บันทึก'].asMap().entries.map((
-        entry,
-      ) {
-        final active =
-            entry.key ==
-            (_saved
-                ? 2
-                : _workspace
-                ? 1
-                : 0);
-        return Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            decoration: BoxDecoration(
-              color: active ? const Color(0xFFE0F1F1) : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              entry.value,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: active ? AquaColors.deep : AquaColors.muted,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w400,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    ),
-  );
 
   void _manualCount() => setState(() {
     _workspace = true;
@@ -635,11 +575,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
             (localAI || (!state.connection.demo && !usb && !directCapture)));
     return PageBody(
       children: [
-        const PageTitle(
-          'กล้องและนับลูกปลา',
-          'รับภาพจากเครื่องฟัก แล้วตรวจนับในภาพเดียวกัน',
-        ),
-        _steps(),
+        const PageTitle('นับลูกปลา'),
         Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
@@ -694,19 +630,32 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                   else
                     _preview(),
                   const SizedBox(height: 14),
-                  FilledButton.icon(
-                    key: const ValueKey('device-capture-button'),
-                    onPressed: _busy || demoCamera || camera?.ready != true
-                        ? null
-                        : _capture,
-                    icon: const Icon(Icons.camera_alt_rounded),
-                    label: Text(
-                      usb && _usbLive && !hasImage
-                          ? 'หยุดภาพนี้เพื่อนับ'
-                          : _captureId == null
-                          ? 'ถ่ายภาพจากกล้องในเครื่อง'
-                          : 'ถ่ายภาพใหม่จากกล้องในเครื่อง',
-                    ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton.icon(
+                        key: const ValueKey('device-capture-button'),
+                        onPressed: _busy || demoCamera || camera?.ready != true
+                            ? null
+                            : _capture,
+                        icon: const Icon(Icons.camera_alt_rounded),
+                        label: Text(
+                          usb && _usbLive && !hasImage
+                              ? 'หยุดภาพ'
+                              : _captureId == null
+                              ? 'ถ่ายภาพ'
+                              : 'ถ่ายใหม่',
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _busy
+                            ? null
+                            : () => _pick(ImageSource.gallery),
+                        icon: const Icon(Icons.image_outlined, size: 18),
+                        label: const Text('เลือกภาพ'),
+                      ),
+                    ],
                   ),
                   if (usb && (!_usbLive || hasImage)) ...[
                     const SizedBox(height: 8),
@@ -730,22 +679,17 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                       label: const Text('กลับไปดูภาพสด USB'),
                     ),
                   ],
-                  if (_captureProgress.isNotEmpty) ...[
+                  if (!_busy &&
+                      _captureId == null &&
+                      _captureProgress.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Semantics(
                       liveRegion: true,
-                      child: Notice(
-                        _captureProgress,
-                        warning: !_busy && _captureId == null,
-                      ),
+                      child: Notice(_captureProgress, warning: true),
                     ),
                   ],
                   if (_receivedAt != null) ...[
                     const SizedBox(height: 8),
-                    Text(
-                      'รับภาพเมื่อ ${fullTime(_receivedAt!)}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
                     if (_captureDetails.isNotEmpty)
                       Text(
                         _captureDetails,
@@ -755,27 +699,30 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                   ],
                   if (!hasImage && !_busy && !usb) ...[
                     const SizedBox(height: 12),
-                    Text(
-                      demoCamera
-                          ? 'เชื่อมต่อเครื่องจริงในตั้งค่าเพื่อใช้กล้อง หรือทดลองขั้นตอนนับด้านล่าง'
-                          : camera?.message ?? 'กำลังตรวจสถานะกล้อง…',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Row(
+                    if (!demoCamera &&
+                        camera?.ready != true &&
+                        camera?.message.isNotEmpty == true)
+                      Text(
+                        camera!.message,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        TextButton.icon(
-                          onPressed: () => context.go('/settings'),
-                          icon: const Icon(Icons.tune_rounded, size: 17),
-                          label: const Text('ตั้งค่าการเชื่อมต่อ'),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          tooltip: 'ตรวจสถานะกล้องอีกครั้ง',
-                          onPressed: cameraAsync.isLoading
-                              ? null
-                              : () => ref.invalidate(cameraStatusProvider),
-                          icon: const Icon(Icons.refresh_rounded),
-                        ),
+                        if (camera?.ready != true)
+                          TextButton.icon(
+                            onPressed: () => context.go('/settings'),
+                            icon: const Icon(Icons.qr_code_scanner, size: 17),
+                            label: const Text('เพิ่มกล้อง'),
+                          ),
+                        if (!demoCamera)
+                          IconButton(
+                            tooltip: 'ตรวจสถานะกล้องอีกครั้ง',
+                            onPressed: cameraAsync.isLoading
+                                ? null
+                                : () => ref.invalidate(cameraStatusProvider),
+                            icon: const Icon(Icons.refresh_rounded),
+                          ),
                       ],
                     ),
                   ],
@@ -804,16 +751,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                         icon: const Icon(Icons.touch_app_outlined),
                         label: const Text('นับด้วยมือ'),
                       ),
-                    Text(
-                      _sample
-                          ? 'ภาพตัวอย่าง 48 ตัว ใช้ทดลองขั้นตอน ไม่ใช่ผลจาก AI'
-                          : localAI
-                          ? 'นับบนเครื่อง แล้วตรวจแก้จุดหัวปลาก่อนบันทึก'
-                          : _video
-                          ? 'นับเฉพาะตัวที่เห็นในเฟรมที่เลือก'
-                          : 'ตรวจภาพให้ชัด เห็นถาดครบ และลดเงาสะท้อนก่อนนับ',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
                   ],
                   const SizedBox(height: 8),
                   ExpansionTile(
@@ -822,7 +759,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                     shape: const Border(),
                     collapsedShape: const Border(),
                     title: const Text(
-                      'นำเข้าภาพอื่น (ทางเลือก)',
+                      'แหล่งภาพอื่น',
                       style: TextStyle(fontSize: 13),
                     ),
                     children: [
@@ -839,13 +776,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                               size: 18,
                             ),
                             label: const Text('กล้องมือถือ'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: _busy
-                                ? null
-                                : () => _pick(ImageSource.gallery),
-                            icon: const Icon(Icons.image_outlined, size: 18),
-                            label: const Text('เลือกภาพ'),
                           ),
                           OutlinedButton.icon(
                             onPressed: _busy
@@ -896,7 +826,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _steps(),
                       Row(
                         children: [
                           TextButton.icon(
@@ -1041,15 +970,14 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                                   : (v) => setState(() => _markerRadius = v),
                             ),
                           ),
-                          const Text('เล็ก / ใหญ่'),
                         ],
                       ),
                       Text(
                         _editing
                             ? _erasing
-                                  ? 'แตะจุดที่ต้องการลบ ระบบเลือกจุดที่ใกล้ที่สุด'
-                                  : 'แตะหัวลูกปลาเพื่อเพิ่มจุด จุดที่อยู่ใกล้กันจะไม่ลบกัน'
-                            : 'ใช้สองนิ้วซูม แล้วเลือกเพิ่มจุดหรือลบจุด วงนับคงขนาดบนหน้าจอ',
+                                  ? 'แตะจุดที่ต้องการลบ'
+                                  : 'แตะหัวลูกปลาเพื่อเพิ่มจุด'
+                            : 'ใช้สองนิ้วซูมภาพ',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
@@ -1067,7 +995,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                       ),
                       Text(
                         _sample
-                            ? 'ผลตัวอย่างจำลอง · ไม่ใช่ผลจาก AI'
+                            ? 'ผลจากภาพตัวอย่าง'
                             : _aiCount == null
                             ? 'นับด้วยมือ'
                             : 'AI ก่อนแก้ $_aiCount ตัว · ตรวจแก้ได้',
@@ -1085,11 +1013,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                           ),
                           child: const Text('เริ่มรอบฟัก'),
                         ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'นับเฉพาะตัวที่มองเห็นในภาพ ไม่ใช่จำนวนทั้งรอบฟัก',
-                        style: TextStyle(fontSize: 12, color: AquaColors.muted),
-                      ),
                     ],
                   ),
                 ),

@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../app/theme.dart';
 import '../core/controller.dart';
 import '../core/models.dart';
+import '../core/motion.dart';
 import '../core/pairing.dart';
 import '../core/ui.dart';
 import 'wifi_setup.dart';
@@ -11,7 +14,13 @@ import 'wifi_setup.dart';
 class QrPairingScreen extends ConsumerStatefulWidget {
   final String? expectedKind;
   final Future<String?> Function(BuildContext)? scanCode;
-  const QrPairingScreen({super.key, this.expectedKind, this.scanCode});
+  final bool scanOnOpen;
+  const QrPairingScreen({
+    super.key,
+    this.expectedKind,
+    this.scanCode,
+    this.scanOnOpen = false,
+  });
   @override
   ConsumerState<QrPairingScreen> createState() => _QrPairingScreenState();
 }
@@ -21,6 +30,20 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
   String? _error;
   bool _busy = false;
   final _input = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.scanOnOpen &&
+        (kIsWeb ||
+            defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_scan());
+      });
+    }
+  }
+
   @override
   void dispose() {
     _input.clear();
@@ -140,13 +163,9 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
         .toList();
     final identity = _bundle?.identity;
     return Scaffold(
-      appBar: AppBar(title: const Text('จับคู่บอร์ดด้วย QR')),
+      appBar: AppBar(title: const Text('จับคู่อุปกรณ์')),
       body: PageBody(
         children: [
-          const PageTitle(
-            'บอร์ดแต่ละตัว มี QR ของตัวเอง',
-            'สแกนบัตรที่ได้หลังลงเฟิร์มแวร์ แล้วตั้ง Wi-Fi ให้บอร์ดตัวนั้น',
-          ),
           Surface(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -157,13 +176,9 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                   icon: const Icon(Icons.qr_code_scanner),
                   label: const Text('สแกน QR จากบอร์ด'),
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  'หลังลงเฟิร์มแวร์ โปรแกรมบนคอมจะแสดงบัตร QR ให้สแกนหรือพิมพ์แปะกล่อง เก็บบัตรไว้เป็นส่วนตัว',
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 6),
                 ExpansionTile(
-                  title: const Text('ใช้บนเครื่องจำลอง หรือไม่มีกล้อง'),
+                  title: const Text('วางข้อมูล QR จากบัตร'),
                   tilePadding: EdgeInsets.zero,
                   children: [
                     TextField(
@@ -174,7 +189,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                       enableSuggestions: false,
                       decoration: const InputDecoration(
                         labelText: 'ข้อมูล QR จากบัตรอุปกรณ์',
-                        helperText: 'คัดลอกข้อมูลทั้งหมด ไม่ใช่เฉพาะรหัสจับคู่',
+                        helperText: 'คัดลอกข้อมูล QR ทั้งหมดจากบัตร',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -221,10 +236,6 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                   Text(
                     'ใบรับรองเฉพาะตัว: ${identity.fingerprint.substring(0, 16)}…',
                     style: const TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'ตรวจว่าเป็นบัตรจากบอร์ดของคุณ แอปจะตรวจใบรับรองเฉพาะตัวนี้ทุกครั้งที่เชื่อมต่อ',
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
@@ -332,6 +343,22 @@ class _QrCameraScreenState extends State<QrCameraScreen>
           child: MobileScanner(
             controller: _controller,
             onDetect: _detected,
+            placeholderBuilder: (_) =>
+                const Center(child: AquaLoader(label: 'กำลังเปิดกล้อง')),
+            overlayBuilder: (context, constraints) {
+              final side = (constraints.biggest.shortestSide * .68).clamp(
+                0.0,
+                300.0,
+              );
+              return Center(
+                child: IgnorePointer(
+                  child: SizedBox.square(
+                    dimension: side,
+                    child: const _ScanFrame(),
+                  ),
+                ),
+              );
+            },
             errorBuilder: (context, error) => Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -341,7 +368,7 @@ class _QrCameraScreenState extends State<QrCameraScreen>
                     const Icon(Icons.no_photography_outlined, size: 48),
                     const SizedBox(height: 16),
                     const Text(
-                      'ใช้กล้องสแกนไม่ได้ ตรวจสิทธิ์กล้อง แล้วลองใหม่ หรือย้อนกลับไปวางข้อมูล QR จากบัตร',
+                      'เปิดกล้องไม่ได้ ตรวจสิทธิ์กล้องหรือใช้ข้อมูลจากบัตร',
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
@@ -356,12 +383,61 @@ class _QrCameraScreenState extends State<QrCameraScreen>
         ),
         const Padding(
           padding: EdgeInsets.all(24),
-          child: Text(
-            'เล็ง QR บนบัตรของบอร์ด ไม่ต้องถ่ายหรือส่งภาพไปที่เซิร์ฟเวอร์',
-            textAlign: TextAlign.center,
-          ),
+          child: Text('วาง QR บนบัตรไว้ในกรอบ', textAlign: TextAlign.center),
         ),
       ],
+    ),
+  );
+}
+
+class _ScanFrame extends StatefulWidget {
+  const _ScanFrame();
+
+  @override
+  State<_ScanFrame> createState() => _ScanFrameState();
+}
+
+class _ScanFrameState extends State<_ScanFrame>
+    with SingleTickerProviderStateMixin {
+  late final _sweep = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _sweep.stop();
+    } else if (!_sweep.isAnimating) {
+      _sweep.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _sweep.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      border: Border.all(color: AquaColors.lime, width: 2),
+      borderRadius: BorderRadius.circular(22),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: AnimatedBuilder(
+        animation: _sweep,
+        child: const SizedBox(
+          width: double.infinity,
+          height: 2,
+          child: ColoredBox(color: AquaColors.lime),
+        ),
+        builder: (_, child) =>
+            Align(alignment: Alignment(0, _sweep.value * 2 - 1), child: child),
+      ),
     ),
   );
 }
