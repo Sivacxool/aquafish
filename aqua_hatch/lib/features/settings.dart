@@ -60,7 +60,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   double? _parse(String? value) =>
       double.tryParse((value ?? '').replaceAll(',', '.'));
   Future<void> _openQrPairing() async {
-    await Navigator.of(context).push<bool>(
+    await Navigator.of(context, rootNavigator: true).push<bool>(
       MaterialPageRoute(
         builder: (_) => const QrPairingScreen(scanOnOpen: true),
       ),

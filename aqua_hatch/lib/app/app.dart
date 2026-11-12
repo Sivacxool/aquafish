@@ -174,6 +174,8 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(appControllerProvider);
+    final simulated =
+        state.connection.demo || state.telemetry?.simulated == true;
     return LayoutBuilder(
       builder: (context, constraints) {
         final desktop = constraints.maxWidth >= 1000;
@@ -303,8 +305,12 @@ class AppShell extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                            if (shell.currentIndex != 0 &&
-                                !state.connection.demo)
+                            if (simulated && shell.currentIndex == 1)
+                              const Pill(
+                                'โหมดทดลอง',
+                                icon: Icons.science_outlined,
+                              )
+                            else if (shell.currentIndex != 0 && !simulated)
                               Pill(
                                 state.fresh ? 'ออนไลน์' : 'ออฟไลน์',
                                 color: state.fresh

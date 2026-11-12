@@ -55,6 +55,9 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 350));
         expect(tester.takeException(), isNull);
+        if (label == 'ควบคุม') {
+          expect(find.text('โหมดทดลอง'), findsOneWidget);
+        }
         if (label == 'นับลูกปลา') {
           expect(find.text('ภาพนิ่งตามคำสั่ง · ไม่ใช่ภาพสด'), findsNothing);
           expect(
