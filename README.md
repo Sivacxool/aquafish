@@ -1,15 +1,17 @@
-# Smart Catfish System · AquaHatch 0.22.1
+# Smart Catfish System · AquaHatch 0.22.2
 
 แอป Flutter สำหรับ Android และ iOS ใช้กับบอร์ดควบคุม ETT WROOM32UE และกล้อง ESP32-CAM ของเครื่องฟักไข่ปลาดุก
 
 | ชุดติดตั้ง | ดาวน์โหลด |
 | --- | --- |
-| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-v0.22.1-Android.apk) |
-| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-v0.22.1-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
+| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.22.2/AquaHatch-v0.22.2-Android.apk) |
+| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.22.2/AquaHatch-v0.22.2-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
 | บอร์ด ETT WROOM32UE | [FirstBoot 0.22.1-ett32ue.1](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ETT-WROOM32UE-v0.22.1-ett32ue.1-FirstBoot.zip) |
 | ESP32-CAM + OV3660 | [FirstBoot 0.22.0-camera.1](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ESP32-CAM-v0.22.0-camera.1-FirstBoot.zip) |
 
 ## สิ่งที่เปลี่ยน
+
+- เพิ่มรอบฟักแล้วรอบเดิมยังอยู่ กด **เลือกรอบฟัก** ในหน้าภาพรวมหรือตั้งค่าเพื่อสลับรอบ
 
 - หน้าภาพรวมอ่านอุณหภูมิ DO, pH และระดับน้ำในแผงเดียว หน้ากล้องมีชัตเตอร์หลัก หน้าตั้งค่ามีสแกน QR เป็นจุดเริ่มต้น
 - พื้นเรียบ สีเน้นเดียว ไอคอน Phosphor และลำดับตัวอักษรชัดเจน มีภาพเคลื่อนไหวตอนเปิดแอปและขณะรอคำสั่ง รองรับ Reduce Motion
