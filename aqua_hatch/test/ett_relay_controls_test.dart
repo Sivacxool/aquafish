@@ -52,8 +52,9 @@ class _EttRelayController extends AppController {
         telemetry: reading(manual: payload['mode'] == 'manual'),
       );
     } else {
-      if (payload['output'] == 'pump')
+      if (payload['output'] == 'pump') {
         _pumpEnabled = payload['enabled'] == true;
+      }
       if (payload['output'] == 'cooler') _fan = payload['enabled'] == true;
       state = state.copyWith(telemetry: reading(manual: true, fan: _fan));
     }
