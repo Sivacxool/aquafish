@@ -2,7 +2,7 @@
 
 # บอร์ดใหม่สร้างรหัสเอง แล้วสแกน QR จับคู่
 
-สำหรับ AquaHatch 0.19.0 และบอร์ด ET-ESP32 WROOM 32UE V1 / กล้อง AI Thinker ESP32-CAM
+สำหรับ AquaHatch 0.22.0 และบอร์ด ET-ESP32 WROOM 32UE V1 / กล้อง AI Thinker ESP32-CAM
 
 เฟิร์มแวร์รุ่นนี้ไม่ฝังรหัสจับคู่หรือ private key ประจำเจ้าของในไฟล์แจกจ่าย บอร์ดแต่ละตัวสร้างข้อมูลของตัวเองตอนเปิดครั้งแรกและเก็บใน NVS
 ใช้ไฟล์ ETT ชุดเดียวกันลงบอร์ด ETT หลายตัว หรือไฟล์ CAM ชุดเดียวกันลง CAM หลายตัวได้ โดยแต่ละตัวมีรหัสและใบรับรองแยกกัน
@@ -20,7 +20,7 @@ ETT และ CAM ใช้เฟิร์มแวร์คนละไฟล�
 
 ## 1. ลงเฟิร์มแวร์
 
-1. ดาวน์โหลดและแตก [FirstBoot สำหรับ ETT](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-ETT-WROOM32UE-v0.19.0-ett32ue.3.zip) และ [FirstBoot สำหรับกล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-ESP32-CAM-FirstBoot.zip) แยกกัน
+1. ดาวน์โหลดและแตก [FirstBoot สำหรับ ETT](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0/AquaHatch-ETT-WROOM32UE-v0.22.0-ett32ue.1-FirstBoot.zip) และ [FirstBoot สำหรับกล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0/AquaHatch-ESP32-CAM-v0.22.0-camera.1-FirstBoot.zip) แยกกัน
 2. ปิด Serial Monitor ต่อโปรแกรมเมอร์ของบอร์ด ETT ตาม [คู่มือ ETT](ETT_WROOM32UE_SETUP_TH.md)
 3. เปิด `Install-ETT-WROOM32UE.cmd` กรอกพอร์ตที่ Windows แสดง เช่น COM5 แล้วรอจนลงเสร็จ
 4. โปรแกรมรอบอร์ดสร้างตัวตน จากนั้นรับบัตรผ่าน USB และเปิดไฟล์ `PAIRING_PRIVATE.html` ให้เอง

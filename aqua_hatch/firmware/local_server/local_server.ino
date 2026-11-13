@@ -26,7 +26,7 @@ AquaIdentity boardIdentity;
 #endif
 
 #if defined(AQUAHATCH_ET_WROOM32UE)
-static const char VERSION[] = "0.21.0-ett32ue.1";
+static const char VERSION[] = "0.22.0-ett32ue.1";
 #else
 static const char VERSION[] = "0.17.0-wroom-da.pump.1";
 #endif
@@ -76,6 +76,8 @@ void snapshot(JsonDocument &doc) {
   doc["capabilities"]["ph_calibration"] = !PH_RS485_ENABLED;
 #if defined(AQUAHATCH_ET_WROOM32UE)
   doc["capabilities"]["heater_thermostat"] = true;
+  doc["capabilities"]["hardware_control"] = true;
+  doc["capabilities"]["ett_manual_control"] = true;
 #endif
   configJson(doc["config"].to<JsonObject>());
   JsonObject t = doc["telemetry"].to<JsonObject>();
@@ -253,19 +255,59 @@ esp_err_t api(httpd_req_t *req) {
     if (now < 1735689600 || expires <= now || expires > now + 30)
       return error(req,"410 Gone","คำสั่งหมดอายุหรือนาฬิกายังไม่พร้อม");
     String action = incoming["action"] | "";
-    if (action == "set_mode" || action == "set_output")
+    JsonObject payload = incoming["payload"];
+    String controlMessage;
+    if (action == "set_mode" || action == "set_output") {
+#if defined(AQUAHATCH_ET_WROOM32UE)
+      fill_control::CommandStatus result;
+      if (action == "set_mode") {
+        const String mode = payload["mode"] | "";
+        if (mode != "auto" && mode != "manual")
+          return error(req,"422 Unprocessable Entity","เลือกโหมด auto หรือ manual");
+        if (mode == "manual" && (!payload["duration_seconds"].is<int>() ||
+            payload["duration_seconds"].as<int>() != ett_relays::Policy::ManualMs / 1000))
+          return error(req,"422 Unprocessable Entity","Manual เปิดได้ครั้งละ 5 นาที");
+        result = fill_control::setMode(mode == "manual");
+        controlMessage = mode == "manual" ? "เปิดโหมด Manual 5 นาทีแล้ว" : "กลับโหมดอัตโนมัติแล้ว";
+      } else {
+        const String name = payload["output"] | "";
+        if (!payload["enabled"].is<bool>())
+          return error(req,"422 Unprocessable Entity","ระบุสถานะเปิดหรือปิด");
+        ett_relays::Output output;
+        if (name == "pump") output = ett_relays::Output::pump;
+        else if (name == "heater") output = ett_relays::Output::heater;
+        else if (name == "cooler") output = ett_relays::Output::fan;
+        else return error(req,"422 Unprocessable Entity","เลือกปั๊ม ฮีตเตอร์ หรือพัดลม");
+        ett_relays::Result reason = ett_relays::Result::requiresManual;
+        const bool enabled = payload["enabled"].as<bool>();
+        result = fill_control::setOutput(output, enabled, reason);
+        if (result == fill_control::CommandStatus::rejected)
+          return error(req,"409 Conflict",fill_control::outputError(output, reason));
+        controlMessage = enabled ? "บอร์ดรับคำสั่งเปิดแล้ว" : "บอร์ดรับคำสั่งปิดแล้ว";
+      }
+      if (result == fill_control::CommandStatus::ioFault)
+        return error(req,"503 Service Unavailable","วงจรรีเลย์บนบอร์ดยังไม่พร้อม");
+#else
       return error(req,"409 Conflict","บอร์ดไม่รองรับคำสั่งเปิดปิดเอาต์พุตโดยตรง");
-    if (action != "ping" && action != "set_config" && action != "calibrate_ph" && action != "set_fill")
+#endif
+    } else if (action != "ping" && action != "set_config" &&
+               action != "calibrate_ph" && action != "set_fill") {
       return error(req,"422 Unprocessable Entity","บอร์ดยังไม่รองรับคำสั่งนี้");
-    String fillMessage;
+    }
     if (action == "set_fill") {
-      JsonObject payload = incoming["payload"];
       if (!payload["enabled"].is<bool>())
         return error(req,"422 Unprocessable Entity","ระบุสถานะเปิดหรือปิดการเติมน้ำ");
       const bool enabled = payload["enabled"].as<bool>();
+#if defined(AQUAHATCH_ET_WROOM32UE)
+      const auto result = fill_control::setArmed(enabled);
+      if (result == fill_control::CommandStatus::rejected)
+        return error(req,"409 Conflict","เปลี่ยนเป็นอัตโนมัติก่อนตั้งระบบเติมน้ำ");
+      if (result == fill_control::CommandStatus::ioFault)
+#else
       if (!fill_control::setArmed(enabled))
+#endif
         return error(req,"503 Service Unavailable","วงจรเติมน้ำบนบอร์ดยังไม่พร้อม");
-      fillMessage = enabled ? "เปิดระบบเติมน้ำอัตโนมัติแล้ว" : "ปิดระบบเติมน้ำและหยุดปั๊มแล้ว";
+      controlMessage = enabled ? "เปิดระบบเติมน้ำอัตโนมัติแล้ว" : "ปิดระบบเติมน้ำและหยุดปั๊มแล้ว";
     }
     if (action == "set_config") {
       JsonObject p = incoming["payload"];
@@ -293,7 +335,14 @@ esp_err_t api(httpd_req_t *req) {
     }
     commandCount++;
     JsonDocument response; response["command_id"]=id; response["status"]="applied";
-    response["message"]=action=="set_fill" ? fillMessage : action=="calibrate_ph" ? calibrationMessage : action=="ping" ? "บอร์ดหลักตอบรับคำสั่งจริงแล้ว" : "บอร์ดบันทึกค่าตั้งแล้ว";
+    response["message"] = !controlMessage.isEmpty() ? controlMessage :
+      action == "calibrate_ph" ? calibrationMessage :
+      action == "ping" ? "บอร์ดหลักตอบรับคำสั่งจริงแล้ว" : "บอร์ดบันทึกค่าตั้งแล้ว";
+#if defined(AQUAHATCH_ET_WROOM32UE)
+    JsonDocument status;
+    snapshot(status);
+    response["snapshot"] = status.as<JsonObject>();
+#endif
     response["uptime_ms"]=millis(); response["command_count"]=commandCount;
     String reply; serializeJson(response,reply);
     cache[cacheIndex] = {id,body,reply}; cacheIndex=(cacheIndex+1)%8;

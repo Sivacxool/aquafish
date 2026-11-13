@@ -8,6 +8,7 @@ import '../core/ui.dart';
 import 'wifi_setup.dart';
 import 'camera_connection.dart';
 import 'connection_overview.dart';
+import 'controls.dart' show RelayModeSelector;
 import 'remote_settings.dart';
 import 'ph_calibration.dart';
 import 'qr_pairing.dart';
@@ -356,81 +357,87 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       const SizedBox(height: 24),
       _SettingsGroup(
         title: 'ค่าควบคุม',
-        subtitle: 'อุณหภูมิและช่วง pH',
+        subtitle: 'โหมดและอุณหภูมิ',
         icon: PhosphorIconsRegular.slidersHorizontal,
-        child: Form(
-          key: _settingsForm,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeading(
-                'ค่าตั้งการควบคุม',
-                trailing: TextButton(
-                  onPressed: () =>
-                      setState(() => _loadSettings(state.settings)),
-                  child: const Text(
-                    'โหลดค่าปัจจุบัน',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ),
-              ),
-              LayoutBuilder(
-                builder: (context, c) {
-                  final fields = [
-                    _field(_temperature, 'อุณหภูมิเป้าหมาย', '°C', 20, 35),
-                    _field(_ph, 'pH ต่ำสุด', 'pH', 0, 14),
-                    _field(_phMax, 'pH สูงสุด', 'pH', 0, 14),
-                  ];
-                  final width = c.maxWidth >= 700
-                      ? (c.maxWidth - 16) / 2
-                      : c.maxWidth;
-                  return Wrap(
-                    spacing: 16,
-                    runSpacing: 14,
-                    children: fields
-                        .map((field) => SizedBox(width: width, child: field))
-                        .toList(),
-                  );
-                },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (state.telemetry?.ettControl != null) ...[
+              RelayModeSelector(
+                state: state,
+                controller: ref.read(appControllerProvider.notifier),
               ),
               const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: state.fresh && !state.busy ? _saveSettings : null,
-                icon: const Icon(PhosphorIconsRegular.floppyDisk, size: 18),
-                label: Text(
-                  state.busy ? 'รอเครื่องยืนยัน…' : 'ส่งค่าตั้งไปยังเครื่อง',
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'pH ใช้ตรวจวัดและแจ้งเตือน',
-                style: TextStyle(fontSize: 12, color: AquaColors.muted),
-              ),
             ],
-          ),
+            Form(
+              key: _settingsForm,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SectionHeading(
+                    'ค่าตั้งการควบคุม',
+                    trailing: TextButton(
+                      onPressed: () =>
+                          setState(() => _loadSettings(state.settings)),
+                      child: const Text(
+                        'โหลดค่าปัจจุบัน',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                  LayoutBuilder(
+                    builder: (context, c) {
+                      final fields = [
+                        _field(_temperature, 'อุณหภูมิเป้าหมาย', '°C', 20, 35),
+                        _field(_ph, 'pH ต่ำสุด', 'pH', 0, 14),
+                        _field(_phMax, 'pH สูงสุด', 'pH', 0, 14),
+                      ];
+                      final width = c.maxWidth >= 700
+                          ? (c.maxWidth - 16) / 2
+                          : c.maxWidth;
+                      return Wrap(
+                        spacing: 16,
+                        runSpacing: 14,
+                        children: fields
+                            .map(
+                              (field) => SizedBox(width: width, child: field),
+                            )
+                            .toList(),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: state.fresh && !state.busy
+                        ? _saveSettings
+                        : null,
+                    icon: const Icon(PhosphorIconsRegular.floppyDisk, size: 18),
+                    label: Text(
+                      state.busy
+                          ? 'รอเครื่องยืนยัน…'
+                          : 'ส่งค่าตั้งไปยังเครื่อง',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'pH ใช้ตรวจวัดและแจ้งเตือน',
+                    style: TextStyle(fontSize: 12, color: AquaColors.muted),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
       const SizedBox(height: 24),
       _SettingsGroup(
         title: 'รอบฟัก',
-        subtitle: 'รอบปัจจุบันและการเริ่มรอบใหม่',
+        subtitle: 'รอบปัจจุบันและการเพิ่มรอบฟัก',
         icon: PhosphorIconsRegular.stack,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionHeading(
-              'รอบฟักปัจจุบัน',
-              trailing: OutlinedButton.icon(
-                onPressed: state.busy
-                    ? null
-                    : () => showBatchDialog(
-                        context,
-                        ref.read(appControllerProvider.notifier),
-                      ),
-                icon: const Icon(PhosphorIconsRegular.plus, size: 17),
-                label: const Text('เริ่มรอบใหม่'),
-              ),
-            ),
+            const SectionHeading('รอบปัจจุบัน'),
             Text(
               state.batch?.name ?? 'ยังไม่มีรอบฟัก',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
@@ -446,7 +453,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               TextButton.icon(
-                onPressed: state.busy
+                onPressed: state.batchBusy
                     ? null
                     : () => showDeleteBatchDialog(
                         context,
@@ -461,8 +468,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ],
             const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: state.batchBusy
+                  ? null
+                  : () => showBatchDialog(
+                      context,
+                      ref.read(appControllerProvider.notifier),
+                    ),
+              icon: const Icon(PhosphorIconsRegular.plus, size: 17),
+              label: const Text('เพิ่มรอบฟัก'),
+            ),
+            const SizedBox(height: 12),
             const Text(
-              'ผลนับบันทึกในมือถือสูงสุด 100 รายการ รุ่นนี้ยังไม่ซิงก์ประวัติรอบฟักกับเซิร์ฟเวอร์',
+              'เก็บผลนับบนมือถือสูงสุด 100 รายการ',
               style: TextStyle(fontSize: 12, color: AquaColors.muted),
             ),
           ],
@@ -623,7 +641,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
               Text(
-                '0.21.0',
+                '0.22.0',
                 style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
             ],

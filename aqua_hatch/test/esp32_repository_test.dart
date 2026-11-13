@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -94,6 +95,85 @@ void main() {
       expect(t.isFresh(DateTime.now()), isTrue);
     },
   );
+
+  test('ETT command acknowledgement wins over an older LAN poll', () async {
+    Map<String, dynamic> relaySnapshot({
+      bool manual = false,
+      int remaining = 0,
+      bool capable = true,
+    }) {
+      final data = snapshot();
+      data['capabilities'] = {
+        'hardware_control': capable,
+        'ett_manual_control': capable,
+        'pump_fill': true,
+      };
+      (data['telemetry'] as Map<String, Object?>).addAll({
+        'mode': manual ? 'manual' : 'auto',
+        'hardware_ready': true,
+        'ett_control': {
+          'io_ready': true,
+          'manual_remaining_ms': remaining,
+          'fan_commanded_on': true,
+        },
+      });
+      return data;
+    }
+
+    final oldPoll = Completer<http.Response>();
+    final oldPollStarted = Completer<void>();
+    var getCount = 0;
+    var capable = true;
+    final repo = Esp32Repository(
+      config,
+      'secret',
+      pollInterval: const Duration(days: 1),
+      client: MockClient((request) async {
+        if (request.method == 'GET') {
+          if (++getCount == 2) {
+            oldPollStarted.complete();
+            return oldPoll.future;
+          }
+          return jsonResponse(relaySnapshot(capable: capable));
+        }
+        final body = jsonDecode(request.body) as Map;
+        expect(body['action'], 'set_mode');
+        expect(body['payload'], {'mode': 'manual', 'duration_seconds': 300});
+        return jsonResponse({
+          'command_id': body['command_id'],
+          'status': 'applied',
+          'snapshot': relaySnapshot(manual: true, remaining: 299000),
+        });
+      }),
+    );
+    addTearDown(repo.dispose);
+    final readings = <Telemetry>[];
+    final subscription = repo.telemetry.listen(readings.add);
+    addTearDown(subscription.cancel);
+    await repo.connect();
+    final poll = repo.pollNow();
+    await oldPollStarted.future;
+    final manual = repo.telemetry.firstWhere((t) => t.mode == RunMode.manual);
+    final result = await repo.command('set_mode', {
+      'mode': 'manual',
+      'duration_seconds': 300,
+    });
+    expect(result.applied, isTrue);
+    final reading = await manual;
+    expect(reading.ettControl?.fanCommandedOn, isTrue);
+    expect(reading.hardwareReady, isTrue);
+    expect(reading.manualUntil!.difference(reading.at).inSeconds, 299);
+    oldPoll.complete(jsonResponse(relaySnapshot()));
+    await poll;
+    expect(readings.last.mode, RunMode.manual);
+
+    capable = false;
+    final legacy = repo.telemetry.first;
+    await repo.pollNow();
+    expect((await legacy).ettControl, isNull);
+    expect(readings.last.hardwareReady, isFalse);
+  });
+
   test('commands require matching ACK and carry expiry', () async {
     var wrong = false;
     final repo = Esp32Repository(

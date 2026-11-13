@@ -74,7 +74,7 @@ class AppState {
   final List<CountRecord> counts;
   final List<Telemetry> history;
   final List<DeviceEvent> events;
-  final bool connected, busy;
+  final bool connected, busy, batchBusy;
   final String? error;
   final DateTime now;
   const AppState({
@@ -90,15 +90,27 @@ class AppState {
     this.events = const [],
     this.connected = false,
     this.busy = false,
+    this.batchBusy = false,
     this.error,
   });
   bool get fresh => connected && (telemetry?.isFresh(now) ?? false);
-  bool get canControl => fresh && (telemetry?.hardwareReady ?? false);
+  bool get canControl =>
+      fresh &&
+      (telemetry?.hardwareReady ?? false) &&
+      telemetry?.viaRelay == false &&
+      (!connection.localEsp32 ||
+          (telemetry?.ettControl?.ioReady == true &&
+              telemetry?.simulated == false));
+  bool get manualActive =>
+      fresh &&
+      telemetry?.mode == RunMode.manual &&
+      (telemetry?.manualUntil?.isAfter(now) ?? false);
   bool get canControlFill =>
       fresh &&
       !connection.demo &&
       connection.localEsp32 &&
       telemetry?.fill != null &&
+      !manualActive &&
       telemetry?.viaRelay == false &&
       telemetry?.simulated == false;
   List<String> get alerts => telemetry?.alerts(settings) ?? [];
@@ -113,6 +125,7 @@ class AppState {
     if (telemetry == null) return 'รอข้อมูลจากเครื่อง';
     if (!telemetry!.deviceOnline) return 'เครื่องออฟไลน์';
     if (!fresh) return 'ข้อมูลเครื่องขาดช่วง';
+    if (telemetry?.ettControl != null) return 'บอร์ด ETT ออนไลน์';
     if (telemetry?.fill != null) return 'บอร์ดออนไลน์ · ระบบเติมน้ำ';
     if (connection.localEsp32 && telemetry?.hardwareReady == false) {
       if (telemetry?.temperatureStatus == 'ok' ||
@@ -136,6 +149,7 @@ class AppState {
     List<DeviceEvent>? events,
     bool? connected,
     bool? busy,
+    bool? batchBusy,
     String? error,
     DateTime? now,
     bool clearError = false,
@@ -153,6 +167,7 @@ class AppState {
     events: events ?? this.events,
     connected: connected ?? this.connected,
     busy: busy ?? this.busy,
+    batchBusy: batchBusy ?? this.batchBusy,
     error: clearError ? null : error ?? this.error,
     now: now ?? this.now,
   );
@@ -479,6 +494,8 @@ class AppController extends Notifier<AppState> {
 
   Future<void> pauseForWifiSetup() async {
     _wifiSetupPaused = true;
+    // Invalidates in-flight requests, including their guarded finally blocks.
+    state = state.copyWith(busy: false);
     ++_cameraGeneration;
     _cameraClient?.close();
     _cameraClient = null;
@@ -500,13 +517,21 @@ class AppController extends Notifier<AppState> {
   }
 
   Future<String?> send(String action, Map<String, dynamic> payload) async {
+    if (_wifiSetupPaused) return 'กำลังตั้งค่า Wi-Fi';
     if (state.busy) return 'มีคำสั่งกำลังดำเนินการ';
     if (action == 'set_fill' && !state.canControlFill) {
       return 'เชื่อม Wi-Fi เดียวกับบอร์ดและรอสถานะระบบเติมน้ำ';
     }
-    if ((action == 'set_mode' || action == 'set_output') &&
-        state.telemetry?.hardwareReady == false) {
-      return state.telemetry?.hardwareMessage ?? 'ยังไม่ติดตั้งวงจรควบคุม';
+    if (action == 'set_mode' || action == 'set_output') {
+      if (state.telemetry?.viaRelay == true) {
+        return 'เชื่อม Wi-Fi เดียวกับบอร์ดเพื่อสั่งงาน';
+      }
+      if (!state.canControl) {
+        return state.telemetry?.hardwareMessage ?? 'วงจรควบคุมยังไม่พร้อม';
+      }
+      if (action == 'set_output' && !state.manualActive) {
+        return 'เข้าโหมด Manual ก่อน หรือเวลา 5 นาทีหมดแล้ว';
+      }
     }
     if (!state.connected ||
         !(state.telemetry?.isFresh(DateTime.now()) ?? false)) {
@@ -560,7 +585,7 @@ class AppController extends Notifier<AppState> {
   }
 
   Future<String?> startBatch(String name, int? eggs) async {
-    if (state.busy) return 'รอคำสั่งปัจจุบันเสร็จก่อน';
+    if (state.batchBusy) return 'กำลังบันทึกรอบฟัก';
     if (name.trim().isEmpty) return 'กรุณาตั้งชื่อรอบฟัก';
     if (eggs != null && eggs <= 0) return 'จำนวนไข่ต้องมากกว่า 0';
     final batch = HatchBatch(
@@ -573,7 +598,7 @@ class AppController extends Notifier<AppState> {
   }
 
   Future<String?> deleteBatch(String id) async {
-    if (state.busy) return 'รอคำสั่งปัจจุบันเสร็จก่อน';
+    if (state.batchBusy) return 'กำลังบันทึกรอบฟัก';
     final batch = state.batch;
     if (batch == null || batch.id != id) return 'รอบฟักปัจจุบันเปลี่ยนแล้ว';
     return _updateBatch(null, 'ลบรอบฟัก ${batch.name}');
@@ -581,7 +606,7 @@ class AppController extends Notifier<AppState> {
 
   Future<String?> _updateBatch(HatchBatch? batch, String event) async {
     final config = state.connection;
-    state = state.copyWith(busy: true);
+    state = state.copyWith(batchBusy: true);
     try {
       await _store.saveBatch(batch, config);
       if (!_disposed &&
@@ -593,7 +618,7 @@ class AppController extends Notifier<AppState> {
     } catch (e) {
       return _message(e);
     } finally {
-      if (!_disposed) state = state.copyWith(busy: false);
+      if (!_disposed) state = state.copyWith(batchBusy: false);
     }
   }
 

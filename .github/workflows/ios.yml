@@ -49,6 +49,8 @@ jobs:
         run: |
           c++ -std=c++17 -Wall -Wextra -Werror ../tools/test_fill_policy.cpp -o build/ios-delivery/test-fill-policy
           build/ios-delivery/test-fill-policy
+          c++ -std=c++17 -Wall -Wextra -Werror ../tools/test_ett_relay_policy.cpp -o build/ios-delivery/test-ett-relays
+          build/ios-delivery/test-ett-relays
       - name: Verify main S3 certificate with Apple trust policy
         run: |
           set -o pipefail

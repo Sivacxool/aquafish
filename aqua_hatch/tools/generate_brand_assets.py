@@ -31,8 +31,27 @@ def mark(pixels, transparent=False):
     draw.ellipse((*point(-12.7,-4.7),*point(-9.3,-1.3)), fill=DEEP)
     return image.resize((pixels,pixels),Image.Resampling.LANCZOS)
 
-for density,pixels in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)]:
-    mark(pixels).save(ROOT/f'android/app/src/main/res/mipmap-{density}/ic_launcher.png')
+def android_icon(pixels, *, round_icon=False):
+    size = pixels * 4
+    icon = mark(size).convert('RGBA')
+    mask = Image.new('L', (size, size))
+    draw = ImageDraw.Draw(mask)
+    bounds = (0, 0, size - 1, size - 1)
+    if round_icon:
+        draw.ellipse(bounds, fill=255)
+    else:
+        draw.rounded_rectangle(bounds, radius=round(size * .23), fill=255)
+    icon.putalpha(mask)
+    return icon.resize((pixels, pixels), Image.Resampling.LANCZOS)
+
+
+for density, pixels in [
+    ('mdpi', 48), ('hdpi', 72), ('xhdpi', 96),
+    ('xxhdpi', 144), ('xxxhdpi', 192),
+]:
+    mipmap = ROOT / f'android/app/src/main/res/mipmap-{density}'
+    android_icon(pixels).save(mipmap / 'ic_launcher.png')
+    android_icon(pixels, round_icon=True).save(mipmap / 'ic_launcher_round.png')
 icons=ROOT/'ios/Runner/Assets.xcassets/AppIcon.appiconset'
 for entry in json.loads((icons/'Contents.json').read_text())['images']:
     pixels=round(float(entry['size'].split('x')[0])*float(entry['scale'][:-1]))

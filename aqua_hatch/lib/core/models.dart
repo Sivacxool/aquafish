@@ -214,6 +214,27 @@ class HeaterStatus {
   };
 }
 
+class EttControlStatus {
+  final bool ioReady;
+  final bool? fanCommandedOn;
+  const EttControlStatus({required this.ioReady, this.fanCommandedOn});
+
+  static EttControlStatus? parse(Object? value) {
+    if (value is! Map || value['io_ready'] is! bool) return null;
+    final ready = value['io_ready'] == true;
+    final fan = value['fan_commanded_on'];
+    return EttControlStatus(
+      ioReady: ready,
+      fanCommandedOn: ready && fan is bool ? fan : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'io_ready': ioReady,
+    'fan_commanded_on': fanCommandedOn,
+  };
+}
+
 class Telemetry {
   final PhSensorInfo phSensor;
   final DateTime at;
@@ -223,6 +244,7 @@ class Telemetry {
   final bool? waterLevelOk;
   final FillStatus? fill;
   final HeaterStatus? heater;
+  final EttControlStatus? ettControl;
   final bool phCalibrated;
   final DateTime? phCalibratedAt;
   final int? wifiRssi;
@@ -248,6 +270,7 @@ class Telemetry {
     this.waterLevelOk,
     this.fill,
     this.heater,
+    this.ettControl,
     this.phCalibrated = false,
     this.phCalibratedAt,
     this.wifiRssi,
@@ -306,6 +329,7 @@ class Telemetry {
     'water_level_ok': waterLevelOk,
     if (fill != null) 'fill': fill!.toJson(),
     if (heater != null) 'heater': heater!.toJson(),
+    if (ettControl != null) 'ett_control': ettControl!.toJson(),
     'simulated': simulated,
     if (viaRelay) 'via_relay': true,
     'device_online': deviceOnline,
@@ -360,6 +384,7 @@ class Telemetry {
           : null,
       fill: FillStatus.parse(j['fill']),
       heater: HeaterStatus.parse(j['heater']),
+      ettControl: EttControlStatus.parse(j['ett_control']),
       simulated: j['simulated'] == true,
       viaRelay: j['via_relay'] == true,
       deviceOnline: j['device_online'] != false,
@@ -369,9 +394,9 @@ class Telemetry {
       outputs: (j['outputs'] as Map? ?? {}).map(
         (k, v) => MapEntry(k.toString(), v == true),
       ),
-      manualUntil: j['manual_until'] == null
-          ? null
-          : DateTime.parse(j['manual_until'] as String).toLocal(),
+      manualUntil: DateTime.tryParse(
+        j['manual_until']?.toString() ?? '',
+      )?.toLocal(),
     );
   }
 }

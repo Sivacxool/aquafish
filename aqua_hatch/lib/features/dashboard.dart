@@ -276,13 +276,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               SectionHeading(
                 'รอบฟัก',
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (state.batch != null)
-                      IconButton(
+                trailing: state.batch == null
+                    ? null
+                    : IconButton(
                         tooltip: 'ลบรอบฟัก',
-                        onPressed: state.busy
+                        onPressed: state.batchBusy
                             ? null
                             : () => showDeleteBatchDialog(
                                 context,
@@ -291,15 +289,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               ),
                         icon: const Icon(PhosphorIconsRegular.trash),
                       ),
-                    IconButton(
-                      tooltip: 'เริ่มรอบฟักใหม่',
-                      onPressed: state.busy
-                          ? null
-                          : () => showBatchDialog(context, controller),
-                      icon: const Icon(PhosphorIconsRegular.plus),
-                    ),
-                  ],
-                ),
               ),
               Text(
                 state.batch?.name ?? 'เริ่มรอบแรกของคุณ',
@@ -310,6 +299,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   elapsed(state.batch!.startedAt, state.now),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                key: const ValueKey('add-hatch-batch'),
+                onPressed: state.batchBusy
+                    ? null
+                    : () => showBatchDialog(context, controller),
+                icon: const Icon(PhosphorIconsRegular.plus),
+                label: const Text('เพิ่มรอบฟัก'),
+              ),
             ],
           ),
         ),

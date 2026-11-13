@@ -618,92 +618,124 @@ Future<void> showBatchDialog(
   BuildContext context,
   AppController controller,
 ) async {
-  final name = TextEditingController();
-  final eggs = TextEditingController();
-  final form = GlobalKey<FormState>();
-  bool busy = false;
-  await showDialog<void>(
+  final saved = await showDialog<bool>(
     context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (dialogContext, setState) => AlertDialog(
-        title: const Text('เริ่มรอบฟักใหม่'),
-        content: SizedBox(
-          width: 380,
-          child: Form(
-            key: form,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: name,
-                  maxLength: 60,
-                  decoration: const InputDecoration(
-                    labelText: 'ชื่อรอบฟัก',
-                    hintText: 'เช่น รอบฟัก 01',
-                  ),
-                  validator: (v) => v == null || v.trim().isEmpty
-                      ? 'กรุณาตั้งชื่อรอบฟัก'
-                      : null,
+    barrierDismissible: false,
+    builder: (_) => _BatchDialog(controller: controller),
+  );
+  if (saved == true && context.mounted) {
+    showFeedback(context, null, success: 'เริ่มรอบฟักใหม่แล้ว');
+  }
+}
+
+class _BatchDialog extends StatefulWidget {
+  const _BatchDialog({required this.controller});
+
+  final AppController controller;
+
+  @override
+  State<_BatchDialog> createState() => _BatchDialogState();
+}
+
+class _BatchDialogState extends State<_BatchDialog> {
+  final _name = TextEditingController();
+  final _eggs = TextEditingController();
+  final _form = GlobalKey<FormState>();
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _eggs.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving || _form.currentState?.validate() != true) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final error = await widget.controller.startBatch(
+      _name.text,
+      int.tryParse(_eggs.text.trim()),
+    );
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+    setState(() {
+      _saving = false;
+      _error = error;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_saving,
+    child: AlertDialog(
+      scrollable: true,
+      title: const Text('เริ่มรอบฟักใหม่'),
+      content: SizedBox(
+        width: 380,
+        child: Form(
+          key: _form,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _name,
+                enabled: !_saving,
+                maxLength: 60,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'ชื่อรอบฟัก',
+                  hintText: 'เช่น รอบฟัก 01',
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: eggs,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'จำนวนไข่เริ่มต้น (ไม่บังคับ)',
-                  ),
-                  validator: (v) => v == null || v.trim().isEmpty
-                      ? null
-                      : int.tryParse(v) == null || int.parse(v) <= 0
+                validator: (value) =>
+                    (value ?? '').trim().isEmpty ? 'กรุณาตั้งชื่อรอบฟัก' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _eggs,
+                enabled: !_saving,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  labelText: 'จำนวนไข่ (ไม่บังคับ)',
+                ),
+                validator: (value) {
+                  final text = (value ?? '').trim();
+                  return text.isNotEmpty && (int.tryParse(text) ?? 0) <= 0
                       ? 'ใส่จำนวนเต็มที่มากกว่า 0'
-                      : null,
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'ประวัติของรอบเดิมยังคงอยู่ ผลนับใหม่จะผูกกับรอบนี้',
-                  style: TextStyle(fontSize: 12, color: AquaColors.muted),
+                      : null;
+                },
+                onFieldSubmitted: (_) => _save(),
+              ),
+              if (_error case final error?) ...[
+                const SizedBox(height: 12),
+                Text(
+                  error,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ],
-            ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: busy ? null : () => Navigator.pop(dialogContext),
-            child: const Text('ยกเลิก'),
-          ),
-          FilledButton(
-            onPressed: busy
-                ? null
-                : () async {
-                    if (form.currentState?.validate() != true) return;
-                    setState(() => busy = true);
-                    final error = await controller.startBatch(
-                      name.text,
-                      int.tryParse(eggs.text),
-                    );
-                    if (!dialogContext.mounted) return;
-                    if (error == null) {
-                      Navigator.pop(dialogContext);
-                      showFeedback(
-                        context,
-                        null,
-                        success: 'เริ่มรอบฟักใหม่แล้ว',
-                      );
-                    } else {
-                      setState(() => busy = false);
-                      showFeedback(dialogContext, error);
-                    }
-                  },
-            child: Text(busy ? 'กำลังบันทึก…' : 'เริ่มรอบฟัก'),
-          ),
-        ],
       ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('ยกเลิก'),
+        ),
+        FilledButton(
+          key: const ValueKey('save-hatch-batch'),
+          onPressed: _saving ? null : _save,
+          child: Text(_saving ? 'กำลังบันทึก…' : 'เริ่มรอบฟัก'),
+        ),
+      ],
     ),
   );
-  // Dispose after the closing route animation releases its text fields.
-  Future<void>.delayed(const Duration(milliseconds: 350), () {
-    name.dispose();
-    eggs.dispose();
-  });
 }

@@ -1060,10 +1060,12 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                       ),
                       if (state.batch == null)
                         TextButton(
-                          onPressed: () => showBatchDialog(
-                            context,
-                            ref.read(appControllerProvider.notifier),
-                          ),
+                          onPressed: state.batchBusy
+                              ? null
+                              : () => showBatchDialog(
+                                  context,
+                                  ref.read(appControllerProvider.notifier),
+                                ),
                           child: const Text('เริ่มรอบฟัก'),
                         ),
                     ],
