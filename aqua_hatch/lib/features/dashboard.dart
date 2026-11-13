@@ -300,13 +300,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               const SizedBox(height: 12),
-              OutlinedButton.icon(
-                key: const ValueKey('add-hatch-batch'),
-                onPressed: state.batchBusy
-                    ? null
-                    : () => showBatchDialog(context, controller),
-                icon: const Icon(PhosphorIconsRegular.plus),
-                label: const Text('เพิ่มรอบฟัก'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    key: const ValueKey('add-hatch-batch'),
+                    onPressed: state.batchBusy
+                        ? null
+                        : () => showBatchDialog(context, controller),
+                    icon: const Icon(PhosphorIconsRegular.plus),
+                    label: const Text('เพิ่มรอบฟัก'),
+                  ),
+                  if (state.hatchRounds.length > 1)
+                    TextButton(
+                      onPressed: state.batchBusy
+                          ? null
+                          : () => showBatchPicker(context, state, controller),
+                      child: const Text('เลือกรอบฟัก'),
+                    ),
+                ],
               ),
             ],
           ),

@@ -583,6 +583,53 @@ class PageBody extends StatelessWidget {
   );
 }
 
+Future<void> showBatchPicker(
+  BuildContext context,
+  AppState state,
+  AppController controller,
+) async {
+  final id = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('เลือกรอบฟัก'),
+      content: SizedBox(
+        width: 380,
+        child: ListView.builder(
+          shrinkWrap: true,
+          itemCount: state.hatchRounds.length,
+          itemBuilder: (context, index) {
+            final round = state.hatchRounds[index];
+            final selected = round.id == state.batch?.id;
+            return ListTile(
+              title: Text(round.name),
+              subtitle: Text(
+                '${fullTime(round.startedAt)}'
+                '${round.eggs == null ? '' : ' · ไข่ ${round.eggs} ฟอง'}',
+              ),
+              selected: selected,
+              trailing: selected
+                  ? const Icon(PhosphorIconsRegular.check)
+                  : null,
+              onTap: () => Navigator.pop(context, round.id),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('ปิด'),
+        ),
+      ],
+    ),
+  );
+  if (id == null || id == state.batch?.id || !context.mounted) return;
+  final error = await controller.selectBatch(id);
+  if (context.mounted) {
+    showFeedback(context, error, success: 'เปลี่ยนรอบฟักแล้ว');
+  }
+}
+
 Future<void> showDeleteBatchDialog(
   BuildContext context,
   AppController controller,

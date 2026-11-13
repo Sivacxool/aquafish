@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:aqua_hatch/app/app.dart';
 import 'package:aqua_hatch/core/controller.dart';
 import 'package:aqua_hatch/core/local_store.dart';
@@ -46,21 +48,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.byType(AlertDialog), findsNothing);
-    expect(LocalStore(prefs).batch?.name, 'รอบทดสอบจอเล็ก');
-    expect(LocalStore(prefs).batch?.eggs, 120);
+    final store = LocalStore(prefs);
+    final active = store.hatchRounds(store.connection).active;
+    expect(active?.name, 'รอบทดสอบจอเล็ก');
+    expect(active?.eggs, 120);
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('a new local round can replace a round while board is busy', (
+  testWidgets('adding a round preserves and can reselect the legacy round', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({});
-    final store = LocalStore(await SharedPreferences.getInstance());
     final startedAt = DateTime(2026, 10, 1);
-    await store.saveBatch(
-      HatchBatch(id: 'old', name: 'รอบเดิม', startedAt: startedAt),
-      store.connection,
-    );
+    SharedPreferences.setMockInitialValues({
+      'batch_v2:demo': jsonEncode(
+        HatchBatch(
+          id: 'old',
+          name: 'รอบเดิม',
+          startedAt: startedAt,
+          eggs: 90,
+        ).toJson(),
+      ),
+    });
+    final store = LocalStore(await SharedPreferences.getInstance());
     await store.saveCounts([
       CountRecord(
         id: 'count-1',
@@ -91,7 +100,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
     expect(container.read(appControllerProvider).busy, isTrue);
-    expect(store.batch?.name, 'รอบใหม่');
+    final saved = store.hatchRounds(store.connection);
+    expect(saved.active?.name, 'รอบใหม่');
+    expect(saved.rounds.map((round) => round.name), ['รอบใหม่', 'รอบเดิม']);
+
+    final picker = find.widgetWithText(TextButton, 'เลือกรอบฟัก');
+    await tester.ensureVisible(picker);
+    await tester.tap(picker);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'รอบเดิม'));
+    await tester.pumpAndSettle();
+
+    await store.preferences.reload();
+    final restored = store.hatchRounds(store.connection);
+    expect(restored.active?.id, 'old');
+    expect(restored.active?.startedAt, startedAt);
+    expect(restored.active?.eggs, 90);
+    expect(restored.rounds.length, 2);
+    expect(
+      await container.read(appControllerProvider.notifier).deleteBatch('old'),
+      isNull,
+    );
+    expect(store.hatchRounds(store.connection).active?.name, 'รอบใหม่');
     expect(store.counts.single.batchId, 'old');
     expect(store.counts.single.count, 42);
     await tester.pumpWidget(const SizedBox());

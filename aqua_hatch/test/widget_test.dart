@@ -120,7 +120,7 @@ void main() {
     await tester.tap(find.text('ยกเลิก'));
     await tester.pumpAndSettle();
     expect(delete, findsOneWidget);
-    expect(store.batchCleared, isFalse);
+    expect(store.hatchRounds(store.connection).active, isNotNull);
 
     await tester.tap(delete);
     await tester.pumpAndSettle();
@@ -128,7 +128,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('เริ่มรอบแรกของคุณ'), findsOneWidget);
     expect(delete, findsNothing);
-    expect(store.batchCleared, isTrue);
+    expect(store.hatchRounds(store.connection).rounds, isEmpty);
     expect(store.counts.single.count, 12);
     expect(store.counts.single.batchId, 'demo-batch');
 

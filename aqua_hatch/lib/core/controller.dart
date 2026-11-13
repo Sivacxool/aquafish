@@ -71,6 +71,7 @@ class AppState {
   final DeviceSettings settings;
   final Telemetry? telemetry;
   final HatchBatch? batch;
+  final List<HatchBatch> hatchRounds;
   final List<CountRecord> counts;
   final List<Telemetry> history;
   final List<DeviceEvent> events;
@@ -85,6 +86,7 @@ class AppState {
     required this.now,
     this.telemetry,
     this.batch,
+    this.hatchRounds = const [],
     this.counts = const [],
     this.history = const [],
     this.events = const [],
@@ -144,6 +146,7 @@ class AppState {
     DeviceSettings? settings,
     Telemetry? telemetry,
     HatchBatch? batch,
+    List<HatchBatch>? hatchRounds,
     List<CountRecord>? counts,
     List<Telemetry>? history,
     List<DeviceEvent>? events,
@@ -162,6 +165,7 @@ class AppState {
     settings: settings ?? this.settings,
     telemetry: clearTelemetry ? null : telemetry ?? this.telemetry,
     batch: clearBatch ? null : batch ?? this.batch,
+    hatchRounds: hatchRounds ?? this.hatchRounds,
     counts: counts ?? this.counts,
     history: history ?? this.history,
     events: events ?? this.events,
@@ -241,6 +245,7 @@ class AppController extends Notifier<AppState> {
       }
       if (!_disposed) await _start(config);
     });
+    final hatch = store.hatchRounds(config);
     return AppState(
       connection: config,
       cameraConnection: store.cameraConnection,
@@ -248,18 +253,8 @@ class AppController extends Notifier<AppState> {
       settings: store.settings,
       now: DateTime.now(),
       counts: store.counts,
-      batch:
-          store.batch ??
-          (config.demo && !store.batchCleared
-              ? HatchBatch(
-                  id: 'demo-batch',
-                  name: 'รอบฟักตัวอย่าง 01',
-                  startedAt: DateTime.now().subtract(
-                    const Duration(hours: 6, minutes: 24),
-                  ),
-                  eggs: 1200,
-                )
-              : null),
+      batch: hatch.active,
+      hatchRounds: hatch.rounds,
     );
   }
 
@@ -317,8 +312,14 @@ class AppController extends Notifier<AppState> {
     await _subscription?.cancel();
     await _repository?.dispose();
     if (_disposed || generation != _generation) return;
+    final hatch = _store.scope(config) == _store.scope(state.connection)
+        ? null
+        : _store.hatchRounds(config);
     state = state.copyWith(
       connection: config,
+      batch: hatch?.active,
+      clearBatch: hatch != null && hatch.active == null,
+      hatchRounds: hatch?.rounds,
       connected: false,
       clearTelemetry: true,
       history: _store.history(config),
@@ -453,12 +454,6 @@ class AppController extends Notifier<AppState> {
       }
       await _store.saveConnection(config);
       _token = accessToken;
-      if (_store.scope(config) != _store.scope(state.connection)) {
-        state = state.copyWith(
-          batch: _store.batch,
-          clearBatch: _store.batch == null,
-        );
-      }
       _wifiSetupPaused = false;
       await _start(config);
       if (state.error == null) await _store.rememberPairedDevice(config);
@@ -594,25 +589,54 @@ class AppController extends Notifier<AppState> {
       startedAt: DateTime.now(),
       eggs: eggs,
     );
-    return _updateBatch(batch, 'เริ่มรอบฟัก ${batch.name}');
+    return _updateRounds(
+      [batch, ...state.hatchRounds],
+      batch,
+      event: 'เริ่มรอบฟัก ${batch.name}',
+    );
+  }
+
+  Future<String?> selectBatch(String id) async {
+    if (state.batchBusy) return 'กำลังบันทึกรอบฟัก';
+    final batch = state.hatchRounds
+        .where((round) => round.id == id)
+        .firstOrNull;
+    if (batch == null) return 'ไม่พบรอบฟักนี้';
+    if (state.batch?.id == id) return null;
+    return _updateRounds(state.hatchRounds, batch);
   }
 
   Future<String?> deleteBatch(String id) async {
     if (state.batchBusy) return 'กำลังบันทึกรอบฟัก';
     final batch = state.batch;
     if (batch == null || batch.id != id) return 'รอบฟักปัจจุบันเปลี่ยนแล้ว';
-    return _updateBatch(null, 'ลบรอบฟัก ${batch.name}');
+    final remaining = state.hatchRounds
+        .where((round) => round.id != id)
+        .toList();
+    return _updateRounds(
+      remaining,
+      remaining.firstOrNull,
+      event: 'ลบรอบฟัก ${batch.name}',
+    );
   }
 
-  Future<String?> _updateBatch(HatchBatch? batch, String event) async {
+  Future<String?> _updateRounds(
+    List<HatchBatch> rounds,
+    HatchBatch? active, {
+    String? event,
+  }) async {
     final config = state.connection;
     state = state.copyWith(batchBusy: true);
     try {
-      await _store.saveBatch(batch, config);
+      await _store.saveHatchRounds(config, rounds, active);
       if (!_disposed &&
           _store.scope(state.connection) == _store.scope(config)) {
-        state = state.copyWith(batch: batch, clearBatch: batch == null);
-        _event(event);
+        state = state.copyWith(
+          batch: active,
+          clearBatch: active == null,
+          hatchRounds: rounds,
+        );
+        if (event != null) _event(event);
       }
       return null;
     } catch (e) {

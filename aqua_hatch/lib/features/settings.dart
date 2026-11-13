@@ -478,6 +478,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               icon: const Icon(PhosphorIconsRegular.plus, size: 17),
               label: const Text('เพิ่มรอบฟัก'),
             ),
+            if (state.hatchRounds.length > 1)
+              TextButton(
+                onPressed: state.batchBusy
+                    ? null
+                    : () => showBatchPicker(
+                        context,
+                        state,
+                        ref.read(appControllerProvider.notifier),
+                      ),
+                child: const Text('เลือกรอบฟัก'),
+              ),
             const SizedBox(height: 12),
             const Text(
               'เก็บผลนับบนมือถือสูงสุด 100 รายการ',

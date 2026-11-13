@@ -52,10 +52,40 @@ class LocalStore {
     }
   }
 
-  HatchBatch? get batch => _read(_batchKey(connection), HatchBatch.fromJson);
-  bool get batchCleared =>
-      preferences.getString(_batchKey(connection)) == 'null';
-  String _batchKey(ConnectionConfig config) => 'batch_v2:${scope(config)}';
+  String _roundsKey(ConnectionConfig config) => 'rounds_v1:${scope(config)}';
+
+  ({List<HatchBatch> rounds, HatchBatch? active}) hatchRounds(
+    ConnectionConfig config,
+  ) {
+    final saved = _read(_roundsKey(config), (data) {
+      final rounds = (data['rounds'] as List<dynamic>)
+          .map((item) => HatchBatch.fromJson(item as Map<String, dynamic>))
+          .toList(growable: false);
+      final activeId = data['active_id'] as String?;
+      return (
+        rounds: rounds,
+        active: rounds.where((round) => round.id == activeId).firstOrNull,
+      );
+    });
+    if (saved != null) return saved;
+
+    final legacyKey = 'batch_v2:${scope(config)}';
+    final legacy = _read(legacyKey, HatchBatch.fromJson);
+    final active =
+        legacy ??
+        (config.demo && !preferences.containsKey(legacyKey)
+            ? HatchBatch(
+                id: 'demo-batch',
+                name: 'รอบฟักตัวอย่าง 01',
+                startedAt: DateTime.now().subtract(
+                  const Duration(hours: 6, minutes: 24),
+                ),
+                eggs: 1200,
+              )
+            : null);
+    return (rounds: [?active], active: active);
+  }
+
   List<CountRecord> get counts {
     try {
       return (jsonDecode(preferences.getString('counts') ?? '[]') as List)
@@ -103,8 +133,14 @@ class LocalStore {
       _write('connection', config.toJson());
   Future<void> saveSettings(DeviceSettings settings) =>
       _write('settings', settings.toJson());
-  Future<void> saveBatch(HatchBatch? batch, ConnectionConfig config) =>
-      _write(_batchKey(config), batch?.toJson());
+  Future<void> saveHatchRounds(
+    ConnectionConfig config,
+    List<HatchBatch> rounds,
+    HatchBatch? active,
+  ) => _write(_roundsKey(config), {
+    'rounds': rounds.map((round) => round.toJson()).toList(),
+    'active_id': active?.id,
+  });
   Future<void> saveCounts(List<CountRecord> counts) =>
       _write('counts', counts.take(100).map((e) => e.toJson()).toList());
 }
