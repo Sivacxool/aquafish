@@ -151,7 +151,7 @@ bool isPrivateIpv4(String host) {
 
 class FillStatus {
   final bool armed, requested, running, timedOut;
-  final int limitSeconds;
+  final int? limitSeconds;
   const FillStatus({
     required this.armed,
     required this.requested,
@@ -171,8 +171,8 @@ class FillStatus {
         requested is! bool ||
         running is! bool ||
         timedOut is! bool ||
-        limit is! int ||
-        limit <= 0) {
+        !value.containsKey('limit_seconds') ||
+        (limit == null ? timedOut : limit is! int || limit <= 0)) {
       return null;
     }
     return FillStatus(
@@ -180,7 +180,7 @@ class FillStatus {
       requested: requested,
       running: running,
       timedOut: timedOut,
-      limitSeconds: limit,
+      limitSeconds: limit as int?,
     );
   }
 

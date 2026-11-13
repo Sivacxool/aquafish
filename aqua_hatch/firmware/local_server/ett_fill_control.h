@@ -11,6 +11,7 @@ constexpr int FloatPin = 13;
 constexpr uint32_t RelayRefreshMs = 250;
 
 ett_relays::Policy policy;
+ett_relays::ThermalRelayDelay thermalDelay;
 SemaphoreHandle_t policyLock = nullptr;
 std::atomic<bool> ready{false};
 std::atomic<float> temperatureTarget{NAN};
@@ -29,6 +30,7 @@ bool writeRelays(uint8_t outputs) {
   if (Wire.endTransmission() != 0) return false;
   lastOutputs = outputs;
   lastWriteAt = millis();
+  thermalDelay.written(outputs, lastWriteAt);
   return true;
 }
 
@@ -38,10 +40,11 @@ void updatePolicy(uint32_t now) {
 }
 
 bool applyOutputs() {
-  const uint8_t outputs = policy.portValue();
+  const uint8_t outputs = thermalDelay.portValue(policy.portValue(), millis());
   if (outputs == lastOutputs && millis() - lastWriteAt < RelayRefreshMs) return true;
   if (writeRelays(outputs)) return true;
   ready = false;
+  thermalDelay = {};
   policy.resetAfterIoFault();
   return false;
 }
@@ -75,23 +78,6 @@ void setTemperatureTarget(float target) {
 
 enum class CommandStatus { applied, ioFault, rejected };
 
-CommandStatus setArmed(bool enabled) {
-  if (policyLock == nullptr) return CommandStatus::ioFault;
-  xSemaphoreTake(policyLock, portMAX_DELAY);
-  bool available = ready;
-  bool accepted = false;
-  if (available) {
-    const uint32_t now = millis();
-    updatePolicy(now);
-    accepted = policy.armAutoFill(enabled);
-    if (accepted) updatePolicy(now);
-    available = applyOutputs();
-  }
-  xSemaphoreGive(policyLock);
-  if (!available) return CommandStatus::ioFault;
-  return accepted ? CommandStatus::applied : CommandStatus::rejected;
-}
-
 CommandStatus setMode(bool manual) {
   if (policyLock == nullptr) return CommandStatus::ioFault;
   xSemaphoreTake(policyLock, portMAX_DELAY);
@@ -123,18 +109,16 @@ CommandStatus setOutput(ett_relays::Output output, bool enabled, ett_relays::Res
   return reason == ett_relays::Result::applied ? CommandStatus::applied : CommandStatus::rejected;
 }
 
-const char *outputError(ett_relays::Output output, ett_relays::Result reason) {
+const char *outputError(ett_relays::Result reason) {
   switch (reason) {
     case ett_relays::Result::requiresManual:
       return "เข้าโหมด Manual ก่อน หรือเวลา 5 นาทีหมดแล้ว";
     case ett_relays::Result::floatOpen:
-      return output == ett_relays::Output::pump
-        ? "ลูกลอยสั่งหยุดเติมน้ำ จึงเปิดปั๊มไม่ได้"
-        : "รอระดับน้ำถึงจุดเติมและสัญญาณลูกลอยนิ่งก่อนเปิดฮีตเตอร์";
+      return "ลูกลอยสั่งหยุดเติมน้ำ จึงเปิดปั๊มไม่ได้";
     case ett_relays::Result::noTemperature:
       return "รอค่าอุณหภูมิที่ใช้ได้จาก DS18B20";
     case ett_relays::Result::heaterLimit:
-      return "อุณหภูมิถึงขีดจำกัดของฮีตเตอร์ในโหมด Manual";
+      return "อุณหภูมิถึง 35 °C จึงหยุดฮีตเตอร์";
     case ett_relays::Result::opposingOutput:
       return "ปิดฮีตเตอร์หรือพัดลมที่กำลังทำงานก่อน";
     default:
@@ -146,7 +130,8 @@ void append(JsonObject telemetry, bool diagnostics = false) {
   const bool locked = policyLock != nullptr;
   if (locked) xSemaphoreTake(policyLock, portMAX_DELAY);
   const bool available = locked && ready;
-  const FillPolicy current = policy.fill;
+  const bool fillEnabled = available && policy.fillEnabled();
+  const bool needsWater = available && policy.needsWater();
   const uint32_t remaining = available ? policy.remainingMs(millis()) : 0;
   const bool pumpOn = available && relayOn(ett_relays::PumpBit);
   const bool heaterOn = available && relayOn(ett_relays::HeaterBit);
@@ -172,15 +157,15 @@ void append(JsonObject telemetry, bool diagnostics = false) {
 
   if (!available && !diagnostics) return;
   JsonObject fill = telemetry["fill"].to<JsonObject>();
-  fill["armed"] = current.armed;
-  fill["requested"] = current.requested;
+  fill["armed"] = fillEnabled;
+  fill["requested"] = needsWater;
   fill["running"] = pumpOn;
-  fill["timed_out"] = current.timedOut;
-  fill["limit_seconds"] = FillPolicy::LimitMs / 1000;
+  fill["timed_out"] = false;
+  fill["limit_seconds"] = nullptr;
   if (diagnostics) {
     fill["io_ready"] = available;
     fill["relay_commanded_on"] = pumpOn;
-    if (available) fill["float_level"] = current.requested ? LOW : HIGH;
+    if (available) fill["float_level"] = needsWater ? LOW : HIGH;
     fill["float_gpio"] = FloatPin;
     fill["relay_pcf_bit"] = ett_relays::PumpBit;
     fill["pcf_address"] = ExpanderAddress;

@@ -10,6 +10,9 @@ class _EttRelayController extends AppController {
   final bool remote;
   final commands = <(String, Map<String, dynamic>)>[];
   late final DateTime _start;
+  bool _needsWater = true;
+  bool _pumpEnabled = true;
+  bool _fan = false;
 
   Telemetry reading({bool manual = false, bool fan = false}) => Telemetry(
     at: _start,
@@ -19,12 +22,12 @@ class _EttRelayController extends AppController {
     mode: manual ? RunMode.manual : RunMode.automatic,
     manualUntil: manual ? _start.add(const Duration(minutes: 5)) : null,
     ettControl: EttControlStatus(ioReady: true, fanCommandedOn: fan),
-    fill: const FillStatus(
-      armed: false,
-      requested: true,
-      running: false,
+    fill: FillStatus(
+      armed: _pumpEnabled,
+      requested: _needsWater,
+      running: _needsWater && _pumpEnabled,
       timedOut: false,
-      limitSeconds: 60,
+      limitSeconds: null,
     ),
     heater: const HeaterStatus(ready: true, commandedOn: false),
   );
@@ -48,12 +51,18 @@ class _EttRelayController extends AppController {
       state = state.copyWith(
         telemetry: reading(manual: payload['mode'] == 'manual'),
       );
-    } else if (payload['output'] == 'cooler') {
-      state = state.copyWith(
-        telemetry: reading(manual: true, fan: payload['enabled'] == true),
-      );
+    } else {
+      if (payload['output'] == 'pump')
+        _pumpEnabled = payload['enabled'] == true;
+      if (payload['output'] == 'cooler') _fan = payload['enabled'] == true;
+      state = state.copyWith(telemetry: reading(manual: true, fan: _fan));
     }
     return null;
+  }
+
+  void floatCutsPump() {
+    _needsWater = false;
+    state = state.copyWith(telemetry: reading(manual: true, fan: _fan));
   }
 
   void expire() {
@@ -79,11 +88,14 @@ void main() {
         );
         final mode = find.byType(SegmentedButton<bool>);
         final fan = find.byKey(const ValueKey('manual-output-cooler'));
+        final pump = find.byKey(const ValueKey('manual-output-pump'));
         expect(
           tester.widget<SegmentedButton<bool>>(mode).onSelectionChanged == null,
           remote,
         );
         expect(find.text('RY2'), findsOneWidget);
+        expect(find.text('RY1 · ตามลูกลอย'), findsOneWidget);
+        expect(find.text('เปิดเติมน้ำอัตโนมัติ'), findsNothing);
         if (remote) {
           expect(tester.widget<Switch>(fan).value, isTrue);
           expect(tester.widget<Switch>(fan).onChanged, isNull);
@@ -105,10 +117,23 @@ void main() {
             find.byKey(const ValueKey('manual-output-heater')),
             findsOneWidget,
           );
-          expect(
-            find.byKey(const ValueKey('manual-output-pump')),
-            findsOneWidget,
-          );
+          expect(tester.widget<Switch>(pump).value, isTrue);
+          expect(tester.widget<Switch>(pump).onChanged, isNotNull);
+          await tester.tap(pump);
+          await tester.pumpAndSettle();
+          expect(controller.commands.last.$2, {
+            'output': 'pump',
+            'enabled': false,
+          });
+          expect(find.text('RY1 · พักปั๊ม'), findsOneWidget);
+          expect(tester.widget<Switch>(pump).value, isFalse);
+          await tester.tap(pump);
+          await tester.pumpAndSettle();
+          expect(controller.commands.last.$2, {
+            'output': 'pump',
+            'enabled': true,
+          });
+          expect(tester.widget<Switch>(pump).value, isTrue);
           await tester.ensureVisible(fan);
           await tester.tap(fan);
           await tester.pumpAndSettle();
@@ -118,6 +143,13 @@ void main() {
             'enabled': true,
           });
           expect(tester.widget<Switch>(fan).value, isTrue);
+          controller.floatCutsPump();
+          await tester.pumpAndSettle();
+          expect(find.text('RY1 · ลูกลอยตัด'), findsOneWidget);
+          expect(tester.widget<Switch>(pump).value, isFalse);
+          expect(tester.widget<Switch>(pump).onChanged, isNull);
+          expect(tester.widget<Switch>(fan).value, isTrue);
+          expect(tester.widget<Switch>(fan).onChanged, isNotNull);
           controller.expire();
           await tester.pumpAndSettle();
           expect(fan, findsNothing);

@@ -111,6 +111,13 @@ void main() {
       (data['telemetry'] as Map<String, Object?>).addAll({
         'mode': manual ? 'manual' : 'auto',
         'hardware_ready': true,
+        'fill': {
+          'armed': true,
+          'requested': true,
+          'running': true,
+          'timed_out': false,
+          'limit_seconds': capable ? null : 60,
+        },
         'ett_control': {
           'io_ready': true,
           'manual_remaining_ms': remaining,
@@ -162,6 +169,9 @@ void main() {
     final reading = await manual;
     expect(reading.ettControl?.fanCommandedOn, isTrue);
     expect(reading.hardwareReady, isTrue);
+    expect(reading.fill?.running, isTrue);
+    expect(reading.fill?.limitSeconds, isNull);
+    expect(Telemetry.fromJson(reading.toJson()).fill?.running, isTrue);
     expect(reading.manualUntil!.difference(reading.at).inSeconds, 299);
     oldPoll.complete(jsonResponse(relaySnapshot()));
     await poll;
@@ -170,7 +180,9 @@ void main() {
     capable = false;
     final legacy = repo.telemetry.first;
     await repo.pollNow();
-    expect((await legacy).ettControl, isNull);
+    final oldReading = await legacy;
+    expect(oldReading.ettControl, isNull);
+    expect(oldReading.fill?.limitSeconds, 60);
     expect(readings.last.hardwareReady, isFalse);
   });
 

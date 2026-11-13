@@ -111,16 +111,15 @@ Firmware ต้องตรวจวันหมดอายุและ command
 
 ## รีเลย์ ETT WROOM32UE ผ่าน HTTPS ในเครือข่ายภายใน
 
-เฟิร์มแวร์ ETT 0.22.0-ett32ue.1 ประกาศ `capabilities.ett_manual_control=true` และส่ง `telemetry.ett_control` ที่มี `io_ready`, `manual_remaining_ms` และ `fan_commanded_on` ค่าหลังสุดมีเมื่อบัสรีเลย์พร้อม ค่า `manual_remaining_ms` นับจากนาฬิกาบอร์ด รายงาน 0 ในโหมดอัตโนมัติ
+เฟิร์มแวร์ ETT 0.22.1-ett32ue.1 ประกาศ `capabilities.ett_manual_control=true` และส่ง `telemetry.ett_control` ที่มี `io_ready`, `manual_remaining_ms` และ `fan_commanded_on` ค่าหลังสุดมีเมื่อบัสรีเลย์พร้อม ค่า `manual_remaining_ms` นับจากนาฬิกาบอร์ด รายงาน 0 ในโหมดอัตโนมัติ ค่า `telemetry.fill.limit_seconds=null` ระบุว่าปั๊มเดินตามลูกลอยโดยไม่มีตัวจับเวลาตัด 60 วินาที
 
 ส่งคำสั่งที่ `POST /api/v1/devices/{device_id}/commands` ด้วย Bearer token, `command_id` และ `expires_at_unix` เป็นวินาทีตามนาฬิกาบอร์ด
 
 | action | payload | ผล |
 | --- | --- | --- |
-| `set_mode` | `{"mode":"manual","duration_seconds":300}` | เข้า Manual 5 นาที ปิดรีเลย์ก่อน การขอ Manual ซ้ำในช่วงเดิมไม่ต่อเวลา |
+| `set_mode` | `{"mode":"manual","duration_seconds":300}` | เข้า Manual 5 นาที ปั๊มเดินตามลูกลอยต่อ ฮีตเตอร์และพัดลมเริ่มจากปิด การขอ Manual ซ้ำในช่วงเดิมไม่ต่อเวลา |
 | `set_mode` | `{"mode":"auto"}` | กลับสู่อัตโนมัติ |
-| `set_output` | `{"output":"cooler","enabled":true}` | เปิดพัดลม RY2 ใน Manual ใช้ `heater` สำหรับ RY0 และ `pump` สำหรับ RY1 |
-| `set_fill` | `{"enabled":true}` | เปิดระบบเติมน้ำใน Auto |
+| `set_output` | `{"output":"cooler","enabled":true}` | เปิดพัดลม RY2 ใน Manual ใช้ `heater` สำหรับ RY0 และ `pump` เพื่อพักหรือเดินปั๊ม RY1 ตามลูกลอย |
 | `set_config` | `{"temperature_target":28,"ph_minimum":6.5,"ph_maximum":8.5}` | ตั้งอุณหภูมิเป้าหมายและช่วงแจ้งเตือน pH |
 
 คำสั่งที่ใช้ได้ส่ง ACK พร้อม `snapshot` ล่าสุด การปฏิเสธจากโหมดหรือเงื่อนไขเซนเซอร์ใช้ HTTP 409 วงจรรีเลย์ไม่พร้อมใช้ HTTP 503 บริการดูจากนอกบ้านส่งสถานะโดยอ่านอย่างเดียว

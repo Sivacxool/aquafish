@@ -26,7 +26,7 @@ AquaIdentity boardIdentity;
 #endif
 
 #if defined(AQUAHATCH_ET_WROOM32UE)
-static const char VERSION[] = "0.22.0-ett32ue.1";
+static const char VERSION[] = "0.22.1-ett32ue.1";
 #else
 static const char VERSION[] = "0.17.0-wroom-da.pump.1";
 #endif
@@ -282,7 +282,7 @@ esp_err_t api(httpd_req_t *req) {
         const bool enabled = payload["enabled"].as<bool>();
         result = fill_control::setOutput(output, enabled, reason);
         if (result == fill_control::CommandStatus::rejected)
-          return error(req,"409 Conflict",fill_control::outputError(output, reason));
+          return error(req,"409 Conflict",fill_control::outputError(reason));
         controlMessage = enabled ? "บอร์ดรับคำสั่งเปิดแล้ว" : "บอร์ดรับคำสั่งปิดแล้ว";
       }
       if (result == fill_control::CommandStatus::ioFault)
@@ -297,17 +297,14 @@ esp_err_t api(httpd_req_t *req) {
     if (action == "set_fill") {
       if (!payload["enabled"].is<bool>())
         return error(req,"422 Unprocessable Entity","ระบุสถานะเปิดหรือปิดการเติมน้ำ");
-      const bool enabled = payload["enabled"].as<bool>();
 #if defined(AQUAHATCH_ET_WROOM32UE)
-      const auto result = fill_control::setArmed(enabled);
-      if (result == fill_control::CommandStatus::rejected)
-        return error(req,"409 Conflict","เปลี่ยนเป็นอัตโนมัติก่อนตั้งระบบเติมน้ำ");
-      if (result == fill_control::CommandStatus::ioFault)
+      return error(req,"409 Conflict","ปั๊มทำงานตามลูกลอย ใช้ Manual เพื่อพักปั๊ม");
 #else
+      const bool enabled = payload["enabled"].as<bool>();
       if (!fill_control::setArmed(enabled))
-#endif
         return error(req,"503 Service Unavailable","วงจรเติมน้ำบนบอร์ดยังไม่พร้อม");
       controlMessage = enabled ? "เปิดระบบเติมน้ำอัตโนมัติแล้ว" : "ปิดระบบเติมน้ำและหยุดปั๊มแล้ว";
+#endif
     }
     if (action == "set_config") {
       JsonObject p = incoming["payload"];

@@ -19,6 +19,7 @@ class ControlsScreen extends ConsumerWidget {
     final controller = ref.read(appControllerProvider.notifier);
     final data = state.telemetry;
     if (data?.ettControl != null) {
+      final floatOnly = data?.fill?.limitSeconds == null;
       return PageBody(
         children: [
           const PageTitle('ควบคุมเครื่อง'),
@@ -26,7 +27,7 @@ class ControlsScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           _RelayOutputs(state: state, controller: controller, ett: true),
           const SizedBox(height: 16),
-          if (!state.manualActive) ...[
+          if (!state.manualActive && !floatOnly) ...[
             _FillControls(
               state: state,
               fill: data?.fill,
@@ -93,8 +94,10 @@ class RelayModeSelector extends StatelessWidget {
           title: const Text('ควบคุมเอง 5 นาที?'),
           content: state.telemetry?.ettControl == null
               ? null
-              : const Text(
-                  'บอร์ดจะปิดรีเลย์เมื่อเข้า Manual จากนั้นเลือกเปิดอุปกรณ์ทีละตัวได้',
+              : Text(
+                  state.telemetry?.fill?.limitSeconds == null
+                      ? 'ปั๊มเดินตามลูกลอยต่อ ฮีตเตอร์กับพัดลมเริ่มจากปิด'
+                      : 'บอร์ดจะปิดรีเลย์เมื่อเข้า Manual',
                 ),
           actions: [
             TextButton(
@@ -202,6 +205,15 @@ class _RelayOutputs extends StatelessWidget {
         state.fresh &&
         (ett ? data.ettControl?.ioReady == true : data.hardwareReady);
     final canSwitch = manual && state.canControl && !state.busy;
+    final fill = data.fill;
+    final floatOnly = ett && fill?.limitSeconds == null;
+    final String? pumpStatus = !floatOnly || !ready || fill == null
+        ? null
+        : !fill.requested
+        ? 'ลูกลอยตัด'
+        : fill.armed
+        ? 'ตามลูกลอย'
+        : 'พักปั๊ม';
     final rows = [
       (
         PhosphorIconsRegular.waves,
@@ -209,7 +221,7 @@ class _RelayOutputs extends StatelessWidget {
         'pump',
         ett ? 'RY1' : null,
         ett
-            ? (manual ? data.fill?.armed : data.fill?.running)
+            ? (manual && fill?.requested == true ? fill?.armed : fill?.running)
             : data.output('pump'),
       ),
       (
@@ -248,11 +260,8 @@ class _RelayOutputs extends StatelessWidget {
               subtitle: relay == null
                   ? null
                   : Text(
-                      manual &&
-                              output == 'pump' &&
-                              data.fill?.armed == true &&
-                              data.fill?.running == false
-                          ? '$relay · รอเริ่มปั๊ม'
+                      output == 'pump' && pumpStatus != null
+                          ? '$relay · $pumpStatus'
                           : relay,
                     ),
               trailing: manual
@@ -261,7 +270,12 @@ class _RelayOutputs extends StatelessWidget {
                       child: Switch.adaptive(
                         key: ValueKey('manual-output-$output'),
                         value: active == true,
-                        onChanged: canSwitch && active != null
+                        onChanged:
+                            canSwitch &&
+                                active != null &&
+                                (!ett ||
+                                    output != 'pump' ||
+                                    fill?.requested == true)
                             ? (value) async {
                                 final error = await controller.send(
                                   'set_output',
@@ -289,10 +303,10 @@ class _RelayOutputs extends StatelessWidget {
                           : AquaColors.muted,
                     ),
             ),
-          if (ett && manual && data.fill?.timedOut == true)
+          if (ett && manual && fill?.timedOut == true)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Text('ปั๊มหยุดเมื่อครบ ${data.fill!.limitSeconds} วินาที'),
+              child: Text('ปั๊มหยุดเมื่อครบ ${fill!.limitSeconds} วินาที'),
             ),
         ],
       ),

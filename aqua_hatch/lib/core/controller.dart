@@ -109,7 +109,7 @@ class AppState {
       fresh &&
       !connection.demo &&
       connection.localEsp32 &&
-      telemetry?.fill != null &&
+      telemetry?.fill?.limitSeconds != null &&
       !manualActive &&
       telemetry?.viaRelay == false &&
       telemetry?.simulated == false;

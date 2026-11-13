@@ -1,19 +1,20 @@
-# Smart Catfish System · AquaHatch 0.22.0
+# Smart Catfish System · AquaHatch 0.22.1
 
 แอป Flutter สำหรับ Android และ iOS ใช้กับบอร์ดควบคุม ETT WROOM32UE และกล้อง ESP32-CAM ของเครื่องฟักไข่ปลาดุก
 
 | ชุดติดตั้ง | ดาวน์โหลด |
 | --- | --- |
-| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0/AquaHatch-v0.22.0-Android.apk) |
-| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0/AquaHatch-v0.22.0-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
-| บอร์ด ETT WROOM32UE | [FirstBoot 0.22.0-ett32ue.1](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0/AquaHatch-ETT-WROOM32UE-v0.22.0-ett32ue.1-FirstBoot.zip) |
-| ESP32-CAM + OV3660 | [FirstBoot 0.22.0-camera.1](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0/AquaHatch-ESP32-CAM-v0.22.0-camera.1-FirstBoot.zip) |
+| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-v0.22.1-Android.apk) |
+| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-v0.22.1-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
+| บอร์ด ETT WROOM32UE | [FirstBoot 0.22.1-ett32ue.1](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ETT-WROOM32UE-v0.22.1-ett32ue.1-FirstBoot.zip) |
+| ESP32-CAM + OV3660 | [FirstBoot 0.22.0-camera.1](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ESP32-CAM-v0.22.0-camera.1-FirstBoot.zip) |
 
 ## สิ่งที่เปลี่ยน
 
 - หน้าภาพรวมอ่านอุณหภูมิ DO, pH และระดับน้ำในแผงเดียว หน้ากล้องมีชัตเตอร์หลัก หน้าตั้งค่ามีสแกน QR เป็นจุดเริ่มต้น
 - พื้นเรียบ สีเน้นเดียว ไอคอน Phosphor และลำดับตัวอักษรชัดเจน มีภาพเคลื่อนไหวตอนเปิดแอปและขณะรอคำสั่ง รองรับ Reduce Motion
-- เลือกอัตโนมัติหรือ Manual 5 นาทีในหน้าควบคุมและค่าควบคุม ปั๊มเติมน้ำอยู่ RY1 ฮีตเตอร์อยู่ RY0 พัดลมลดอุณหภูมิน้ำอยู่ RY2 ต้องใช้เฟิร์มแวร์ ETT 0.22.0-ett32ue.1
+- ปั๊ม RY1 เดินตามลูกลอยตั้งแต่บอร์ดพร้อม พอน้ำถึงระดับจึงหยุด และเริ่มใหม่เมื่อน้ำลด
+- ฮีตเตอร์ RY0 และพัดลม RY2 ทำงานตามอุณหภูมิใน Auto หรือสั่งแยกจากแอปใน Manual 5 นาที ลูกลอยควบคุมปั๊มอย่างเดียว และบอร์ดสั่งฮีตเตอร์กับพัดลมทีละตัว
 - เพิ่มรอบฟักได้จากภาพรวมและตั้งค่า แม้เครื่องออฟไลน์ ปรับไอคอน Android ให้รองรับรูปทรงของ Launcher
 - ชื่อ Wi-Fi ตั้งค่าใหม่ `Smart Catfish System-B-XXXXXX` สำหรับบอร์ด และ `Smart Catfish System-C-XXXXXX` สำหรับกล้อง แต่ละตัวใช้ท้าย MAC ของตนเอง
 - รหัสจับคู่ CA และชื่อ TLS เดิมยังใช้ได้ เมื่ออัปเกรดโดยไม่ล้าง NVS แอปยังอ่าน QR ของเฟิร์มแวร์รุ่นเดิมได้
@@ -24,7 +25,7 @@
 2. เปิด **ตั้งค่า → สแกน QR เพื่อเพิ่มอุปกรณ์** สแกนบัตรของแต่ละตัว แล้วตั้ง Wi-Fi 2.4 GHz ตามขั้นตอน
 3. บอร์ดและกล้องใช้ Wi-Fi เดียวกันได้ แต่มี IP และ QR แยกกัน บอร์ดที่อัปเดตจาก QR เก่าใช้ตัวเลือก **อัปเดตเฟิร์มแวร์แล้ว? ใช้ชื่อ Wi-Fi ใหม่** ในหน้าตั้ง Wi-Fi หรืออ่านบัตร QR ใหม่ด้วย Read-QR
 4. ตรวจค่าบอร์ดใน **ภาพรวม** แล้วกด **เพิ่มรอบฟัก** จากนั้นไป **นับลูกปลา** เพื่อถ่ายภาพ วิเคราะห์ และแก้จุดนับก่อนบันทึก
-5. ใช้ Wi-Fi เดียวกับบอร์ด เปิด **ควบคุม** แล้วเลือก **อัตโนมัติ** หรือ **Manual 5 นาที** บอร์ดนับเวลาและกลับสู่อัตโนมัติเมื่อครบกำหนด
+5. อัปเดตบอร์ด ETT เป็น 0.22.1-ett32ue.1 ใช้ Wi-Fi เดียวกับบอร์ดเพื่อเข้า **ควบคุม → Manual 5 นาที** เมื่อหมดเวลาบอร์ดกลับเป็น Auto และกลับมาเดินปั๊มตามลูกลอย
 
 ชุด ETT นี้สืบทอดผัง `.5`: DS18B20 GPIO32, RS485 TX27/RX26, ลูกลอย GPIO13, RY0 ฮีตเตอร์ RY1 ปั๊ม และ RY2 พัดลม หัว pH RS485 MI-Water-PH-T แทน PH-4502C/ADS1115 ในโปรไฟล์ ETT เท่านั้น คำสั่งรีเลย์ใช้เครือข่ายภายใน การดูข้อมูล/รับภาพจากนอกบ้านใช้ Cloudflare ที่ตั้งไว้
 
