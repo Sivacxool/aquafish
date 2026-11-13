@@ -25,6 +25,9 @@ Future<void> mountApp(
   final font = FontLoader('NotoSansThai')
     ..addFont(rootBundle.load('assets/fonts/NotoSansThai.ttf'));
   await font.load();
+  await (FontLoader(
+    'PhosphorRegular',
+  )..addFont(rootBundle.load('assets/fonts/Phosphor.ttf'))).load();
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -48,7 +51,7 @@ void main() {
     'mobile dashboard and all four routes render without layout errors',
     (tester) async {
       await mountApp(tester);
-      expect(find.text('ภาพรวมเครื่องฟัก'), findsOneWidget);
+      expect(find.text('ฟาร์มของคุณ'), findsOneWidget);
       expect(tester.takeException(), isNull);
       for (final label in ['ควบคุม', 'นับลูกปลา', 'ตั้งค่า', 'ภาพรวม']) {
         await tester.tap(find.text(label).last);
@@ -79,7 +82,7 @@ void main() {
     tester,
   ) async {
     await mountApp(tester, size: const Size(1440, 1024));
-    expect(find.text('พื้นที่ทำงาน'), findsOneWidget);
+    expect(find.byType(NavigationRail), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('นับลูกปลา').first);
     await tester.pump(const Duration(milliseconds: 350));
@@ -123,7 +126,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'ลบรอบฟัก'));
     await tester.pumpAndSettle();
-    expect(find.text('ยังไม่มีรอบฟัก'), findsOneWidget);
+    expect(find.text('เริ่มรอบแรกของคุณ'), findsOneWidget);
     expect(delete, findsNothing);
     expect(store.batchCleared, isTrue);
     expect(store.counts.single.count, 12);
@@ -132,7 +135,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
     await mountApp(tester, preferences: preferences);
-    expect(find.text('ยังไม่มีรอบฟัก'), findsOneWidget);
+    expect(find.text('เริ่มรอบแรกของคุณ'), findsOneWidget);
     expect(delete, findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());

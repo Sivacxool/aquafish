@@ -23,6 +23,17 @@ struct Sample {
   uint8_t detected = 0;
 } latest;
 
+Sample latestSample() {
+  portENTER_CRITICAL(&guard);
+  const Sample copy = latest;
+  portEXIT_CRITICAL(&guard);
+  return copy;
+}
+
+bool isStale(const Sample &sample) {
+  return isfinite(sample.value) && millis() - sample.acquiredMs > 10000;
+}
+
 void fail(const char *status, uint8_t detected) {
   portENTER_CRITICAL(&guard);
   latest.value = NAN;
@@ -95,11 +106,14 @@ void tick() {
     converting = true;
   }
 }
+float currentCelsius() {
+  const Sample copy = latestSample();
+  return isStale(copy) ? NAN : copy.value;
+}
+
 void append(JsonObject telemetry) {
-  portENTER_CRITICAL(&guard);
-  Sample copy = latest;
-  portEXIT_CRITICAL(&guard);
-  const bool stale = isfinite(copy.value) && millis() - copy.acquiredMs > 10000;
+  const Sample copy = latestSample();
+  const bool stale = isStale(copy);
   telemetry["temperature_c"] = nullptr;
   if (isfinite(copy.value) && !stale) telemetry["temperature_c"] = copy.value;
   telemetry["temperature_status"] = stale ? "stale" : copy.status;

@@ -107,8 +107,8 @@ void main() {
     final navTop = tester.getRect(find.byType(NavigationBar)).top;
     for (final label in [
       'อุณหภูมิน้ำ',
-      'ออกซิเจนละลายน้ำ (DO)',
-      'ค่า pH',
+      'ออกซิเจน · DO',
+      'ความเป็นกรด–ด่าง',
       'ระดับน้ำ',
     ]) {
       expect(
@@ -157,7 +157,7 @@ void main() {
   );
 
   testWidgets(
-    'settings groups retain typed values and validate inverted pH at the field',
+    'settings detail retains draft while scrolling and validates inverted pH',
     (tester) async {
       await mountApp(tester);
       await tester.tap(find.text('ตั้งค่า').last);
@@ -178,10 +178,8 @@ void main() {
       expect(find.text('ต้องมากกว่า pH ต่ำสุด'), findsOneWidget);
       await tester.ensureVisible(controlGroup);
       await tester.pump();
-      await tester.tap(controlGroup);
-      await tester.pumpAndSettle();
-      await tester.tap(controlGroup);
-      await tester.pumpAndSettle();
+      await tester.ensureVisible(maxPh);
+      await tester.pump();
       expect(tester.widget<TextFormField>(maxPh).controller!.text, '6.0');
       await closeApp(tester);
     },

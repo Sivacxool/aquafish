@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -10,6 +11,7 @@ import '../features/controls.dart';
 import '../features/counting.dart';
 import '../features/settings.dart';
 import 'theme.dart';
+import 'brand.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -86,7 +88,7 @@ class _AquaHatchAppState extends ConsumerState<AquaHatchApp> {
 
   @override
   Widget build(BuildContext context) => MaterialApp.router(
-    title: 'Aqua Hatch · เครื่องฟักไข่ปลาดุก',
+    title: 'Smart Catfish System',
     debugShowCheckedModeBanner: false,
     theme: buildTheme(),
     locale: const Locale('th', 'TH'),
@@ -101,10 +103,10 @@ class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
   static const labels = ['ภาพรวม', 'ควบคุมเครื่อง', 'นับลูกปลา', 'ตั้งค่า'];
   static const icons = [
-    Icons.space_dashboard_outlined,
-    Icons.tune_rounded,
-    Icons.center_focus_strong_rounded,
-    Icons.settings_outlined,
+    PhosphorIconsRegular.squaresFour,
+    PhosphorIconsRegular.slidersHorizontal,
+    PhosphorIconsRegular.scan,
+    PhosphorIconsRegular.gearSix,
   ];
   void _notifications(BuildContext context, AppState state) {
     final events = state.events.take(200).toList();
@@ -133,7 +135,7 @@ class AppShell extends ConsumerWidget {
                     IconButton(
                       tooltip: 'ปิดการแจ้งเตือน',
                       onPressed: () => Navigator.of(sheetContext).pop(),
-                      icon: const Icon(Icons.close_rounded),
+                      icon: const Icon(PhosphorIconsRegular.x),
                     ),
                   ],
                 ),
@@ -151,8 +153,8 @@ class AppShell extends ConsumerWidget {
                           contentPadding: EdgeInsets.zero,
                           leading: Icon(
                             event.warning
-                                ? Icons.warning_amber_rounded
-                                : Icons.check_circle_outline_rounded,
+                                ? PhosphorIconsRegular.warning
+                                : PhosphorIconsRegular.checkCircle,
                             color: event.warning
                                 ? AquaColors.orange
                                 : AquaColors.teal,
@@ -176,147 +178,59 @@ class AppShell extends ConsumerWidget {
     final state = ref.watch(appControllerProvider);
     final simulated =
         state.connection.demo || state.telemetry?.simulated == true;
+    final reduced = MediaQuery.disableAnimationsOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final desktop = constraints.maxWidth >= 1000;
         return Scaffold(
-          body: Row(
-            children: [
-              if (desktop)
-                SizedBox(
-                  width: 240,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: AquaColors.paper,
-                      border: Border(right: BorderSide(color: AquaColors.line)),
-                    ),
-                    child: SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 10),
-                            const Row(
-                              children: [
-                                FishIllustration(size: 47),
-                                SizedBox(width: 12),
-                                Text(
-                                  'AquaHatch',
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 42),
-                            const Text(
-                              'พื้นที่ทำงาน',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AquaColors.muted,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ...List.generate(
-                              4,
-                              (i) => Padding(
-                                padding: const EdgeInsets.only(bottom: 9),
-                                child: Material(
-                                  color: shell.currentIndex == i
-                                      ? AquaColors.lime
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(13),
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(13),
-                                    onTap: () => shell.goBranch(i),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 15,
-                                        vertical: 15,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            icons[i],
-                                            size: 21,
-                                            color: shell.currentIndex == i
-                                                ? AquaColors.blue
-                                                : AquaColors.muted,
-                                          ),
-                                          const SizedBox(width: 13),
-                                          Text(
-                                            labels[i],
-                                            style: TextStyle(
-                                              fontWeight:
-                                                  shell.currentIndex == i
-                                                  ? FontWeight.w700
-                                                  : FontWeight.w500,
-                                              color: shell.currentIndex == i
-                                                  ? AquaColors.blue
-                                                  : AquaColors.muted,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+          body: SafeArea(
+            bottom: false,
+            child: Row(
+              children: [
+                if (desktop)
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: NavigationRail(
+                      backgroundColor: AquaColors.sage,
+                      extended: true,
+                      leading: const Padding(
+                        padding: EdgeInsets.all(20),
+                        child: CatfishMark(size: 70, color: AquaColors.blue),
+                      ),
+                      selectedIndex: shell.currentIndex,
+                      onDestinationSelected: (i) => shell.goBranch(i),
+                      destinations: List.generate(
+                        4,
+                        (i) => NavigationRailDestination(
+                          icon: Icon(icons[i]),
+                          label: Text(labels[i]),
                         ),
                       ),
                     ),
                   ),
-                ),
-              Expanded(
-                child: SafeArea(
-                  bottom: false,
+                Expanded(
                   child: Column(
                     children: [
-                      Container(
-                        height: 60,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: desktop ? 32 : 20,
-                        ),
-                        decoration: const BoxDecoration(
-                          color: AquaColors.paper,
-                          border: Border(
-                            bottom: BorderSide(color: AquaColors.line),
-                          ),
-                        ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 4, 12, 0),
                         child: Row(
                           children: [
-                            if (!desktop) ...[
-                              const FishIllustration(size: 32),
-                              const SizedBox(width: 10),
-                            ],
+                            const CatfishMark(size: 36, color: AquaColors.blue),
+                            const SizedBox(width: 8),
                             const Expanded(
                               child: Text(
-                                'AquaHatch',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                'Smart Catfish',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 19,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  letterSpacing: -.5,
                                 ),
                               ),
                             ),
-                            if (simulated && shell.currentIndex == 1)
+                            if (simulated)
                               const Pill(
                                 'โหมดทดลอง',
-                                icon: Icons.science_outlined,
-                              )
-                            else if (shell.currentIndex != 0 && !simulated)
-                              Pill(
-                                state.fresh ? 'ออนไลน์' : 'ออฟไลน์',
-                                color: state.fresh
-                                    ? AquaColors.teal
-                                    : AquaColors.orange,
-                                icon: Icons.circle,
+                                icon: PhosphorIconsRegular.flask,
                               ),
                             IconButton(
                               tooltip: 'กิจกรรมและการแจ้งเตือน',
@@ -330,43 +244,76 @@ class AppShell extends ConsumerWidget {
                                 isLabelVisible: state.events.any(
                                   (e) => e.warning && !e.acknowledged,
                                 ),
-                                label: Text(
-                                  state.events
-                                      .where(
-                                        (e) => e.warning && !e.acknowledged,
-                                      )
-                                      .length
-                                      .toString(),
-                                ),
-                                child: const Icon(
-                                  Icons.notifications_none_rounded,
-                                  color: AquaColors.navy,
-                                ),
+                                child: const Icon(PhosphorIconsRegular.bell),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Expanded(child: shell),
+                      Expanded(
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(begin: reduced ? 1 : 0, end: 1),
+                          duration: reduced ? Duration.zero : AquaMotion.move,
+                          curve: AquaMotion.curve,
+                          child: shell,
+                          builder: (context, value, child) => Opacity(
+                            opacity: value,
+                            child: Transform.translate(
+                              offset: Offset(0, 8 * (1 - value)),
+                              child: child,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           bottomNavigationBar: desktop
               ? null
-              : NavigationBar(
-                  height: MediaQuery.textScalerOf(
-                    context,
-                  ).scale(68).clamp(68, 132),
-                  selectedIndex: shell.currentIndex,
-                  onDestinationSelected: (i) => shell.goBranch(i),
-                  destinations: List.generate(
-                    4,
-                    (i) => NavigationDestination(
-                      icon: Icon(icons[i]),
-                      label: i == 1 ? 'ควบคุม' : labels[i],
+              : SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: NavigationBarTheme(
+                        data: NavigationBarThemeData(
+                          backgroundColor: AquaColors.paper,
+                          indicatorColor: AquaColors.lime,
+                          iconTheme: WidgetStateProperty.resolveWith(
+                            (states) => IconThemeData(
+                              color: states.contains(WidgetState.selected)
+                                  ? AquaColors.deep
+                                  : AquaColors.muted,
+                            ),
+                          ),
+                          labelTextStyle: const WidgetStatePropertyAll(
+                            TextStyle(
+                              fontFamily: 'NotoSansThai',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AquaColors.navy,
+                            ),
+                          ),
+                        ),
+                        child: NavigationBar(
+                          height: MediaQuery.textScalerOf(
+                            context,
+                          ).scale(66).clamp(66, 120),
+                          selectedIndex: shell.currentIndex,
+                          onDestinationSelected: (i) => shell.goBranch(i),
+                          destinations: List.generate(
+                            4,
+                            (i) => NavigationDestination(
+                              icon: Icon(icons[i]),
+                              label: i == 1 ? 'ควบคุม' : labels[i],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

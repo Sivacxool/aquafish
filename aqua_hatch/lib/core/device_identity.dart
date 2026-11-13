@@ -14,6 +14,8 @@ class DeviceIdentity {
   Uint8List get caBytes => base64Url.decode(base64Url.normalize(caDer));
   String get fingerprint => sha256.convert(caBytes).toString();
   String get stableKey => '$kind:$deviceId:$fingerprint';
+  String get currentSetupSsid =>
+      'Smart Catfish System-${kind == 's3' ? 'B' : 'C'}-${deviceId.substring(deviceId.length - 6).toUpperCase()}';
   String get caPem {
     final encoded = base64.encode(caBytes);
     final lines = [
@@ -34,7 +36,11 @@ class DeviceIdentity {
     }
     final expected =
         'AquaHatch-${kind == 's3' ? 'S3' : 'CAM'}-${match.group(1)!.substring(6).toUpperCase()}';
-    if (setupSsid != expected) return 'ชื่อ Wi-Fi ใน QR ไม่ตรงกับบอร์ด';
+    final current =
+        'Smart Catfish System-${kind == 's3' ? 'B' : 'C'}-${match.group(1)!.substring(6).toUpperCase()}';
+    if (setupSsid != expected && setupSsid != current) {
+      return 'ชื่อ Wi-Fi ใน QR ไม่ตรงกับบอร์ด';
+    }
     if (caDer.length < 200 ||
         caDer.length > 2048 ||
         !RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(caDer)) {

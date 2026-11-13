@@ -17,7 +17,7 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
-    final subscription = container.listen(appControllerProvider, (_, _) {});
+      final subscription = container.listen(appControllerProvider, (_, _) {});
       addTearDown(subscription.close);
       final controller = container.read(appControllerProvider.notifier);
       await controller.pauseForWifiSetup();

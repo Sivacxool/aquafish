@@ -1,8 +1,10 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../app/theme.dart';
+import '../app/brand.dart';
 import '../core/controller.dart';
 import '../core/models.dart';
 import '../core/motion.dart';
@@ -50,7 +52,7 @@ class ControlsScreen extends ConsumerWidget {
     final controller = ref.read(appControllerProvider.notifier);
     final data = state.telemetry;
     final fill = data?.fill;
-    if (fill != null) {
+    if (fill != null || state.connection.localEsp32) {
       return _FillControls(state: state, fill: fill, controller: controller);
     }
     final manual = data?.mode == RunMode.manual;
@@ -92,7 +94,7 @@ class ControlsScreen extends ConsumerWidget {
                       ? Semantics(
                           key: const ValueKey('manual-mode-remaining'),
                           label: 'กลับสู่อัตโนมัติใน $time',
-                          child: Pill(time, icon: Icons.timer_outlined),
+                          child: Pill(time, icon: PhosphorIconsRegular.timer),
                         )
                       : null,
                 ),
@@ -109,17 +111,21 @@ class ControlsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           const SectionHeading('อุปกรณ์'),
           Surface(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Column(
               children: [
                 for (final entry in [
-                  (Icons.water_rounded, 'ปั๊มน้ำ', 'pump'),
-                  (Icons.thermostat_rounded, 'ฮีตเตอร์', 'heater'),
-                  (Icons.ac_unit_rounded, 'ทำความเย็น', 'cooler'),
-                  (Icons.sync_rounded, 'หมุนเวียนไข่', 'tumbler'),
+                  (PhosphorIconsRegular.waves, 'ปั๊มน้ำ', 'pump'),
+                  (PhosphorIconsRegular.thermometer, 'ฮีตเตอร์', 'heater'),
+                  (PhosphorIconsRegular.snowflake, 'ทำความเย็น', 'cooler'),
+                  (
+                    PhosphorIconsRegular.arrowsClockwise,
+                    'หมุนเวียนไข่',
+                    'tumbler',
+                  ),
                 ])
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -172,10 +178,12 @@ class _FillControls extends StatelessWidget {
   });
 
   final AppState state;
-  final FillStatus fill;
+  final FillStatus? fill;
   final AppController controller;
 
   Future<void> _setFill(BuildContext context) async {
+    final fill = this.fill;
+    if (fill == null) return;
     final enabled = !fill.armed;
     if (enabled) {
       final confirmed = await showDialog<bool>(
@@ -210,12 +218,12 @@ class _FillControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final motion = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 250);
-    final active = state.fresh && fill.running;
+    final fill = this.fill;
+    final active = state.fresh && fill?.running == true;
     final status = !state.fresh
         ? 'ออฟไลน์'
+        : fill == null
+        ? 'ไม่พร้อม'
         : active
         ? 'สั่งเปิดปั๊ม'
         : fill.armed
@@ -224,85 +232,276 @@ class _FillControls extends StatelessWidget {
     return PageBody(
       children: [
         const PageTitle('ควบคุมเครื่อง'),
+        if (state.telemetry?.heater != null) ...[
+          _Thermostat(state: state, controller: controller),
+          const SizedBox(height: 16),
+        ],
         AnimatedContainer(
-          duration: motion,
-          width: double.infinity,
-          padding: const EdgeInsets.all(22),
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 350),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: active ? AquaColors.lime : AquaColors.sage,
-            borderRadius: BorderRadius.circular(26),
+            color: active ? AquaColors.deep : AquaColors.paper,
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(
-                Icons.water_drop_outlined,
-                size: 35,
-                color: AquaColors.blue,
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AquaColors.sage,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      PhosphorIconsRegular.drop,
+                      color: AquaColors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ปั๊มเติมน้ำ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                            color: active ? AquaColors.paper : AquaColors.deep,
+                          ),
+                        ),
+                        Text(
+                          'RY1',
+                          style: TextStyle(
+                            color: active ? AquaColors.lime : AquaColors.muted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    PhosphorIconsRegular.power,
+                    size: 30,
+                    color: active ? AquaColors.lime : AquaColors.muted,
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              const Text('ปั๊มเติมน้ำ'),
-              AnimatedSwitcher(
-                duration: motion,
-                child: Text(
-                  status,
-                  key: ValueKey(status),
-                  style: Theme.of(context).textTheme.headlineMedium,
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: Align(
+                        key: ValueKey(status),
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          status,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            color: active ? AquaColors.paper : AquaColors.deep,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    state.fresh ? fill?.waterLabel ?? 'รอลูกลอย' : 'รอข้อมูล',
+                    style: TextStyle(
+                      color: active ? AquaColors.lime : AquaColors.blue,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: state.canControlFill && !state.busy
+                    ? () => _setFill(context)
+                    : null,
+                style: active
+                    ? FilledButton.styleFrom(
+                        backgroundColor: AquaColors.lime,
+                        foregroundColor: AquaColors.deep,
+                      )
+                    : null,
+                icon: state.busy
+                    ? const AquaLoader(label: 'กำลังส่งคำสั่ง', compact: true)
+                    : Icon(
+                        fill?.armed == true
+                            ? PhosphorIconsRegular.stop
+                            : PhosphorIconsRegular.play,
+                      ),
+                label: Text(
+                  state.busy
+                      ? 'กำลังส่งคำสั่ง'
+                      : fill?.armed == true
+                      ? 'หยุดระบบเติมน้ำ'
+                      : 'เปิดเติมน้ำอัตโนมัติ',
                 ),
               ),
+              if (fill?.timedOut == true) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'หยุดเมื่อครบ ${fill!.limitSeconds} วินาที',
+                  style: const TextStyle(color: AquaColors.orange),
+                ),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        Surface(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.waves_rounded, color: AquaColors.blue),
-            title: const Text('ระดับน้ำ'),
-            trailing: Pill(
-              state.fresh ? fill.waterLabel : 'รอข้อมูล',
-              color: state.fresh && !fill.requested
-                  ? AquaColors.orange
-                  : AquaColors.blue,
+        if (!state.canControlFill) ...[
+          const SizedBox(height: 16),
+          Notice(
+            state.telemetry?.viaRelay == true
+                ? 'เชื่อม Wi-Fi ของเครื่องเพื่อสั่งงาน'
+                : state.fresh
+                ? 'รอวงจรควบคุมพร้อม'
+                : 'เชื่อมต่อเครื่องเพื่อสั่งงาน',
+            action: TextButton(
+              onPressed: () => context.go('/settings'),
+              child: const Text('เชื่อมต่อ'),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        if (!state.canControlFill)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 12),
-            child: Notice('ใช้ Wi-Fi เดียวกับบอร์ดเพื่อสั่งงาน'),
-          ),
-        if (fill.timedOut)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Notice(
-              'ปั๊มหยุดเมื่อครบ ${fill.limitSeconds} วินาที',
-              warning: true,
-            ),
-          ),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: state.canControlFill && !state.busy
-                ? () => _setFill(context)
-                : null,
-            icon: state.busy
-                ? const AquaLoader(label: 'กำลังส่งคำสั่ง', compact: true)
-                : Icon(
-                    fill.armed ? Icons.stop_rounded : Icons.play_arrow_rounded,
-                  ),
-            label: Text(
-              state.busy
-                  ? 'กำลังส่งคำสั่ง'
-                  : fill.armed
-                  ? 'หยุดระบบเติมน้ำ'
-                  : 'เปิดเติมน้ำอัตโนมัติ',
-            ),
-          ),
-        ),
+        ],
       ],
+    );
+  }
+}
+
+class _Thermostat extends StatefulWidget {
+  const _Thermostat({required this.state, required this.controller});
+  final AppState state;
+  final AppController controller;
+  @override
+  State<_Thermostat> createState() => _ThermostatState();
+}
+
+class _ThermostatState extends State<_Thermostat> {
+  late double _target = widget.state.settings.temperatureTarget;
+  bool _dirty = false;
+  @override
+  void didUpdateWidget(_Thermostat oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_dirty) _target = widget.state.settings.temperatureTarget;
+  }
+
+  Future<void> _save() async {
+    final settings = widget.state.settings;
+    final error = await widget.controller.saveSettings(
+      DeviceSettings(
+        temperatureTarget: _target,
+        phMinimum: settings.phMinimum,
+        phMaximum: settings.phMaximum,
+      ),
+    );
+    if (!mounted) return;
+    if (error == null) setState(() => _dirty = false);
+    showFeedback(context, error, success: 'บอร์ดยืนยันอุณหภูมิแล้ว');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final heater = state.telemetry!.heater!;
+    final canSet =
+        state.fresh &&
+        !state.busy &&
+        state.telemetry?.viaRelay == false &&
+        heater.ready;
+    final status = !state.fresh
+        ? 'ออฟไลน์'
+        : !heater.ready
+        ? 'วงจรไม่พร้อม'
+        : state.telemetry?.temperature == null
+        ? 'รอหัววัด'
+        : heater.commandedOn == true
+        ? 'สั่งเปิด'
+        : heater.commandedOn == false
+        ? 'สั่งปิด'
+        : 'รอข้อมูล';
+    void adjust(double delta) => setState(() {
+      _target = ((_target + delta) * 2).round().clamp(40, 70) / 2;
+      _dirty = true;
+    });
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AquaColors.paper,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(
+                PhosphorIconsRegular.thermometer,
+                color: AquaColors.blue,
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'ฮีตเตอร์',
+                  style: TextStyle(
+                    color: AquaColors.navy,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(status, style: const TextStyle(color: AquaColors.blue)),
+            ],
+          ),
+          DialValue(
+            value: number(_target),
+            unit: '°C',
+            caption: 'อุณหภูมิเป้าหมาย',
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton.filledTonal(
+                tooltip: 'ลดอุณหภูมิ',
+                onPressed: canSet && _target > 20 ? () => adjust(-.5) : null,
+                icon: const Icon(PhosphorIconsRegular.minus),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'ขณะนี้ ${number(state.telemetry?.temperature)} °C',
+                  style: const TextStyle(color: AquaColors.blue),
+                ),
+              ),
+              IconButton.filledTonal(
+                tooltip: 'เพิ่มอุณหภูมิ',
+                onPressed: canSet && _target < 35 ? () => adjust(.5) : null,
+                icon: const Icon(PhosphorIconsRegular.plus),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_dirty)
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: canSet ? _save : null,
+                icon: const Icon(PhosphorIconsRegular.check),
+                label: const Text('บันทึกอุณหภูมิ'),
+              ),
+            )
+          else
+            const Text(
+              'อัตโนมัติ · RY0',
+              style: TextStyle(color: AquaColors.blue, fontSize: 12),
+            ),
+        ],
+      ),
     );
   }
 }

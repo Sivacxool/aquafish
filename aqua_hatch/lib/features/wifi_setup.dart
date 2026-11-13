@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -54,6 +55,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
   int _stage = 0;
   final _scroll = ScrollController();
   bool _showPassword = false, _showPairing = false;
+  bool _useCurrentSetupName = false;
 
   @override
   void initState() {
@@ -193,7 +195,9 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
       ? 'วิธีเปลี่ยน Wi-Fi บน iPhone'
       : 'เปิดหน้าตั้งค่า Wi-Fi';
   String get _setupSsid =>
-      _initial.identity?.setupSsid ??
+      (_useCurrentSetupName
+          ? _initial.identity?.currentSetupSsid
+          : _initial.identity?.setupSsid) ??
       (widget.camera ? cameraSetupNetworkName : setupNetworkName);
 
   Future<void> _openSettings() async {
@@ -441,7 +445,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
   Widget _button(
     String label,
     VoidCallback? action, {
-    IconData icon = Icons.arrow_forward_rounded,
+    IconData icon = PhosphorIconsRegular.arrowRight,
   }) => FilledButton.icon(
     onPressed: action,
     icon: Icon(icon, size: 20),
@@ -487,7 +491,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
       labelText: 'รหัสจับคู่$_deviceName',
       helperText: 'จากบัตรประจำเครื่อง · ไม่ใช่รหัส Wi-Fi บ้าน',
       helperMaxLines: 2,
-      prefixIcon: const Icon(Icons.key_rounded),
+      prefixIcon: const Icon(PhosphorIconsRegular.key),
     ),
   );
 
@@ -514,7 +518,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
               widget.pairing != null
                   ? 'อ่านรหัสจาก QR แล้ว ไม่ต้องกรอกซ้ำ'
                   : 'มีรหัสจับคู่ที่บันทึกไว้แล้ว ไม่ต้องกรอกใหม่',
-              icon: Icons.verified_user_outlined,
+              icon: PhosphorIconsRegular.sealCheck,
             ),
             TextButton(
               onPressed: _busy
@@ -570,6 +574,21 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
                     color: AquaColors.blue,
                   ),
                 ),
+                if (_initial.identity != null &&
+                    _initial.identity!.setupSsid !=
+                        _initial.identity!.currentSetupSsid)
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => setState(
+                            () => _useCurrentSetupName = !_useCurrentSetupName,
+                          ),
+                    child: Text(
+                      _useCurrentSetupName
+                          ? 'ใช้ชื่อ Wi-Fi รุ่นเดิม'
+                          : 'อัปเดตเฟิร์มแวร์แล้ว? ใช้ชื่อ Wi-Fi ใหม่',
+                    ),
+                  ),
                 const Divider(height: 24),
                 const Text(
                   'รหัส Wi-Fi ของอุปกรณ์',
@@ -593,8 +612,8 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
                           setState(() => _showApPassword = !_showApPassword),
                       icon: Icon(
                         _showApPassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
+                            ? PhosphorIconsRegular.eyeSlash
+                            : PhosphorIconsRegular.eye,
                       ),
                     ),
                     IconButton(
@@ -610,7 +629,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.copy_rounded),
+                      icon: const Icon(PhosphorIconsRegular.copy),
                     ),
                   ],
                 ),
@@ -625,13 +644,13 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
           _button(
             _wifiSettingsLabel,
             _busy ? null : _openSettings,
-            icon: Icons.open_in_new_rounded,
+            icon: PhosphorIconsRegular.arrowSquareOut,
           ),
           const SizedBox(height: 18),
           _instruction('2', 'เชื่อมแล้ว กลับมาแอปและกดตรวจ$_deviceName'),
           OutlinedButton.icon(
             onPressed: _busy ? null : _connectSetup,
-            icon: const Icon(Icons.search_rounded),
+            icon: const Icon(PhosphorIconsRegular.magnifyingGlass),
             label: Text(
               'เชื่อม Wi-Fi $_deviceNameแล้ว ตรวจ$_deviceName',
               textAlign: TextAlign.center,
@@ -679,7 +698,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Wi-Fi บ้าน',
-                prefixIcon: Icon(Icons.wifi_rounded),
+                prefixIcon: Icon(PhosphorIconsRegular.wifiHigh),
               ),
               items: [
                 for (final n in _status?.networks ?? <BoardNetwork>[])
@@ -708,7 +727,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               onPressed: _busy ? null : () => _run(_scanInternal),
-              icon: const Icon(Icons.refresh_rounded, size: 18),
+              icon: const Icon(PhosphorIconsRegular.arrowClockwise, size: 18),
               label: const Text('ค้นหา Wi-Fi อีกครั้ง'),
             ),
           ),
@@ -770,8 +789,8 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
                       setState(() => _showPassword = !_showPassword),
                   icon: Icon(
                     _showPassword
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
+                        ? PhosphorIconsRegular.eyeSlash
+                        : PhosphorIconsRegular.eye,
                   ),
                 ),
               ),
@@ -780,7 +799,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
           _button(
             'ส่ง Wi-Fi ให้$_deviceName',
             _busy ? null : _submit,
-            icon: Icons.wifi_rounded,
+            icon: PhosphorIconsRegular.wifiHigh,
           ),
         ];
       case 3:
@@ -811,13 +830,13 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
         return [
           ConnectionHint(
             '$_deviceNameเชื่อมกับ $_target แล้ว',
-            icon: Icons.wifi_rounded,
+            icon: PhosphorIconsRegular.wifiHigh,
           ),
           const SizedBox(height: 20),
           _instruction('1', 'กลับไปเชื่อม Wi-Fi $_target บนมือถือ'),
           OutlinedButton.icon(
             onPressed: _busy ? null : _openSettings,
-            icon: const Icon(Icons.wifi_rounded),
+            icon: const Icon(PhosphorIconsRegular.wifiHigh),
             label: const Text('กลับไปเชื่อม Wi-Fi บ้าน'),
           ),
           const SizedBox(height: 18),
@@ -825,7 +844,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
           _button(
             'ยืนยันและเข้าใช้งาน',
             _busy ? null : _finish,
-            icon: Icons.verified_user_outlined,
+            icon: PhosphorIconsRegular.sealCheck,
           ),
           const SizedBox(height: 12),
           const Text(
@@ -854,13 +873,13 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
           const SizedBox(height: 18),
           ConnectionHint(
             'Wi-Fi: $_target\nที่อยู่: $_lanIp',
-            icon: Icons.link_rounded,
+            icon: PhosphorIconsRegular.link,
           ),
           const SizedBox(height: 20),
           _button(
             'เสร็จสิ้น',
             _busy ? null : () => Navigator.of(context).pop(true),
-            icon: Icons.check_rounded,
+            icon: PhosphorIconsRegular.check,
           ),
         ];
     }
@@ -912,8 +931,8 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
                       busy: _busy,
                       complete: _completed,
                       icon: widget.camera
-                          ? Icons.photo_camera_outlined
-                          : Icons.router_rounded,
+                          ? PhosphorIconsRegular.camera
+                          : PhosphorIconsRegular.wifiHigh,
                     ),
                     const SizedBox(height: 24),
                     if (_busy) ...[
@@ -921,7 +940,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
                         liveRegion: true,
                         child: ConnectionHint(
                           _activity,
-                          icon: Icons.sync_rounded,
+                          icon: PhosphorIconsRegular.arrowsClockwise,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -970,7 +989,10 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
                             _stage--;
                             _error = null;
                           }),
-                          icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                          icon: const Icon(
+                            PhosphorIconsRegular.arrowLeft,
+                            size: 18,
+                          ),
                           label: const Text('ย้อนกลับหนึ่งขั้น'),
                         ),
                       ),

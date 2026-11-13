@@ -1,5 +1,6 @@
 class PhSensorInfo {
   final bool supported, stable;
+  final bool externalCalibration;
   final String status;
   final double? adcVoltage, neutralVoltage, acidVoltage;
   final double neutralPh, acidPh;
@@ -7,6 +8,7 @@ class PhSensorInfo {
   const PhSensorInfo({
     this.supported = false,
     this.stable = false,
+    this.externalCalibration = false,
     this.status = 'unavailable',
     this.adcVoltage,
     this.neutralVoltage,
@@ -21,6 +23,11 @@ class PhSensorInfo {
         ? j['ph_calibration'] as Map
         : const {};
     return PhSensorInfo(
+      externalCalibration:
+          j['ph_source'] == 'rs485' ||
+          (j['sensors'] is Map &&
+              (j['sensors'] as Map)['ph'] is Map &&
+              ((j['sensors'] as Map)['ph'] as Map)['protocol'] == 'Modbus RTU'),
       supported: j['ph_status'] is String,
       status: j['ph_status'] is String
           ? j['ph_status'] as String
@@ -37,7 +44,12 @@ class PhSensorInfo {
     );
   }
   String get message => switch (status) {
-    'ok' => 'อ่าน pH ที่สอบเทียบแล้ว',
+    'ok' =>
+      externalCalibration ? 'pH จากหัววัด RS485' : 'อ่าน pH ที่สอบเทียบแล้ว',
+    'converting' => 'รอหัววัด pH',
+    'timeout' => 'หัววัด pH ไม่ตอบกลับ',
+    'crc_error' || 'invalid_response' => 'ข้อมูล RS485 ไม่สมบูรณ์',
+    'wrong_device' || 'modbus_exception' => 'ตรวจการตั้งค่าหัววัด RS485',
     'not_calibrated' =>
       neutralVoltage != null && acidVoltage == null
           ? 'บันทึกจุดแรกแล้ว รอน้ำยา pH 4'
@@ -50,11 +62,12 @@ class PhSensorInfo {
     'read_error' ||
     'conversion_timeout' ||
     'config_mismatch' => 'อ่าน ADS1115 ไม่สำเร็จ ตรวจสาย I²C',
-    _ => 'ต้องเชื่อม S3 ที่ใช้เฟิร์มแวร์รองรับ pH',
+    _ => 'รอข้อมูลจากหัววัด pH',
   };
   Map<String, dynamic> toJson() => supported
       ? {
           'ph_status': status,
+          if (externalCalibration) 'ph_source': 'rs485',
           'ph_adc_voltage': adcVoltage,
           'ph_stable': stable,
           'ph_sampled_at': sampledAt?.toUtc().toIso8601String(),

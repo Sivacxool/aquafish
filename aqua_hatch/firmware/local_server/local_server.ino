@@ -26,7 +26,7 @@ AquaIdentity boardIdentity;
 #endif
 
 #if defined(AQUAHATCH_ET_WROOM32UE)
-static const char VERSION[] = "0.19.0-ett32ue.3";
+static const char VERSION[] = "0.21.0-ett32ue.1";
 #else
 static const char VERSION[] = "0.17.0-wroom-da.pump.1";
 #endif
@@ -72,6 +72,11 @@ void snapshot(JsonDocument &doc) {
   doc["capabilities"]["temperature"] = true;
   doc["capabilities"]["dissolved_oxygen"] = oxygen_sensor::enabled();
   doc["capabilities"]["ph"] = true;
+  doc["board_profile"] = BOARD_PROFILE;
+  doc["capabilities"]["ph_calibration"] = !PH_RS485_ENABLED;
+#if defined(AQUAHATCH_ET_WROOM32UE)
+  doc["capabilities"]["heater_thermostat"] = true;
+#endif
   configJson(doc["config"].to<JsonObject>());
   JsonObject t = doc["telemetry"].to<JsonObject>();
   t["timestamp"] = nowIso(); t["firmware_version"] = VERSION;
@@ -81,9 +86,13 @@ void snapshot(JsonDocument &doc) {
   t["water_level_ok"] = nullptr;
   t["simulated"] = false;
   t["device_online"] = true; t["hardware_ready"] = false;
+#if defined(AQUAHATCH_ET_WROOM32UE)
+  t["hardware_message"] = "อ่าน DS18B20 / DO และ pH ผ่าน RS485";
+#else
   t["hardware_message"] = oxygen_sensor::enabled()
     ? "อ่าน DS18B20 / DO / pH ADS1115"
     : "อ่าน DS18B20 / pH ADS1115 · DO ยังไม่เปิดใช้ · ยังไม่เปิดวงจรควบคุม";
+#endif
   t["wifi_rssi"] = WiFi.RSSI(); t["mode"] = "setup";
   t["outputs"].to<JsonObject>();
   fill_control::append(t);
@@ -245,7 +254,7 @@ esp_err_t api(httpd_req_t *req) {
       return error(req,"410 Gone","คำสั่งหมดอายุหรือนาฬิกายังไม่พร้อม");
     String action = incoming["action"] | "";
     if (action == "set_mode" || action == "set_output")
-      return error(req,"409 Conflict","ยังไม่กำหนดวงจรและ GPIO จึงยังเปิดอุปกรณ์จริงไม่ได้");
+      return error(req,"409 Conflict","บอร์ดไม่รองรับคำสั่งเปิดปิดเอาต์พุตโดยตรง");
     if (action != "ping" && action != "set_config" && action != "calibrate_ph" && action != "set_fill")
       return error(req,"422 Unprocessable Entity","บอร์ดยังไม่รองรับคำสั่งนี้");
     String fillMessage;
@@ -270,6 +279,9 @@ esp_err_t api(httpd_req_t *req) {
       if (prefs.putString("config",stored) != stored.length())
         return error(req,"500 Internal Server Error","บันทึกค่าบนบอร์ดไม่สำเร็จ");
       temperatureTarget=t; phMinimum=low; phMaximum=high;
+#if defined(AQUAHATCH_ET_WROOM32UE)
+      fill_control::setTemperatureTarget(t);
+#endif
     }
     String calibrationMessage;
     if(action=="calibrate_ph") {
@@ -350,7 +362,9 @@ void setup() {
   provisioning::apName=boardIdentity.setupSsid();
   temperature_sensor::begin();
   oxygen_sensor::begin();
+#if !defined(AQUAHATCH_ET_WROOM32UE)
   ph_sensor::begin();
+#endif
   prefs.begin("aquahatch",false);
   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
     lastDisconnectReason = info.wifi_sta_disconnected.reason; disconnectCount++;
@@ -364,6 +378,9 @@ void setup() {
     temperatureTarget=stored["temperature_target"] | 28.0f;
     phMinimum=stored["ph_minimum"] | 6.5f; phMaximum=stored["ph_maximum"] | 8.5f;
   }
+#if defined(AQUAHATCH_ET_WROOM32UE)
+  fill_control::setTemperatureTarget(temperatureTarget);
+#endif
   WiFi.persistent(false); WiFi.setHostname(boardIdentity.mdnsName().c_str()); WiFi.mode(WIFI_AP_STA);
   WiFi.setAutoReconnect(true); provisioning::begin();
   String ssid,password; provisioning::loadSaved(ssid,password);
@@ -373,7 +390,9 @@ void setup() {
 void loop() {
   temperature_sensor::tick();
   oxygen_sensor::tick();
+#if !defined(AQUAHATCH_ET_WROOM32UE)
   ph_sensor::tick();
+#endif
   provisioning::tick();
   while (Serial.available()) {
     char c=Serial.read();

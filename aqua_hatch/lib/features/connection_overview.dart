@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'package:flutter/material.dart';
 import '../app/theme.dart';
 import '../core/controller.dart';
@@ -26,7 +27,7 @@ class ConnectionOverview extends StatelessWidget {
           : boardSaved
           ? 'ติดต่อไม่ได้'
           : 'ตั้งค่า Wi-Fi',
-      icon: Icons.memory_rounded,
+      icon: PhosphorIconsRegular.cpu,
       onPressed: onBoard,
     );
     final camera = _DeviceTile(
@@ -37,7 +38,7 @@ class ConnectionOverview extends StatelessWidget {
           : state.cameraConnection != null
           ? 'จับคู่แล้ว'
           : 'เพิ่มกล้อง',
-      icon: Icons.photo_camera_outlined,
+      icon: PhosphorIconsRegular.camera,
       onPressed: onCamera,
     );
 
@@ -45,7 +46,9 @@ class ConnectionOverview extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         LayoutBuilder(
-          builder: (context, constraints) => constraints.maxWidth >= 640
+          builder: (context, constraints) =>
+              constraints.maxWidth >= 310 &&
+                  MediaQuery.textScalerOf(context).scale(14) < 20
               ? Row(
                   children: [
                     Expanded(child: board),
@@ -91,18 +94,42 @@ class _DeviceTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Card(
-    margin: EdgeInsets.zero,
-    child: ListTile(
+  Widget build(BuildContext context) => Material(
+    color: AquaColors.paper,
+    borderRadius: BorderRadius.circular(16),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
       onTap: onPressed,
-      leading: CircleAvatar(
-        backgroundColor: const Color(0xFFE7F3F2),
-        foregroundColor: AquaColors.teal,
-        child: Icon(icon),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 24, color: AquaColors.blue),
+                const Spacer(),
+                const Icon(
+                  PhosphorIconsRegular.arrowUpRight,
+                  size: 18,
+                  color: AquaColors.muted,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              status,
+              style: const TextStyle(color: AquaColors.muted, fontSize: 12),
+            ),
+          ],
+        ),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-      subtitle: Text(status),
-      trailing: const Icon(Icons.chevron_right_rounded),
     ),
   );
 }

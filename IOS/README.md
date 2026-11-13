@@ -1,5 +1,7 @@
-# AquaHatch สำหรับ iPhone
+# Smart Catfish System 0.21.0 · IOS
 
-[ดาวน์โหลด IPA 0.19.0](https://github.com/Sivacxool/aquafish/releases/download/v0.19.0/AquaHatch-v0.19.0-FishFryAI-iOS-unsigned.ipa) สำหรับ iPhone arm64 ที่ใช้ iOS 16 ขึ้นไป เซ็นและติดตั้งผ่าน Sideloadly ตาม [คู่มือ iPhone](../IOS_INSTALL_TH.md)
+[IPA unsigned สำหรับ iPhone iOS 16 ขึ้นไป](https://github.com/Sivacxool/aquafish/releases/download/v0.21.0-preview/AquaHatch-v0.21.0-Redesign-iOS-unsigned.ipa)
 
-[วิธีใช้จากนอกบ้าน](../REMOTE_SETUP_TH.md) · [เฟิร์มแวร์และ QR](../FIRST_BOOT_PAIRING_TH.md)
+รุ่น preview ติดตั้งทับแอปเดิม ไม่ใช่แอปคู่ขนาน ต้องเซ็นด้วย Sideloadly ก่อนติดตั้ง [วิธีติดตั้ง](../IOS_INSTALL_TH.md)
+
+[เฟิร์มแวร์และ QR](../README.md) · [วิธีดูจากนอกบ้าน](../REMOTE_SETUP_TH.md)

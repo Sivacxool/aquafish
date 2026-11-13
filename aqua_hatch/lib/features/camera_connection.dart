@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/controller.dart';
@@ -97,7 +98,7 @@ class _CameraConnectionScreenState
                   if (camera?.identity == null)
                     TextButton.icon(
                       onPressed: disabled ? null : _pair,
-                      icon: const Icon(Icons.qr_code_scanner),
+                      icon: const Icon(PhosphorIconsRegular.scan),
                       label: const Text('สแกน QR กล้อง'),
                     ),
                   const SizedBox(height: 8),

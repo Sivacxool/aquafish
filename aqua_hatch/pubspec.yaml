@@ -1,7 +1,7 @@
 name: aqua_hatch
 description: แอปภาษาไทยสำหรับเครื่องฟักไข่ปลาดุกอัจฉริยะ
 publish_to: 'none'
-version: 0.20.0+2022
+version: 0.21.0+2023
 
 environment:
   sdk: ^3.12.0
@@ -41,3 +41,6 @@ flutter:
     - family: NotoSansThai
       fonts:
         - asset: assets/fonts/NotoSansThai.ttf
+    - family: PhosphorRegular
+      fonts:
+        - asset: assets/fonts/Phosphor.ttf

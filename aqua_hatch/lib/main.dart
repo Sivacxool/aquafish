@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'app/app.dart';
-import 'core/controller.dart';
-import 'core/local_store.dart';
+import 'package:flutter/services.dart';
+import 'app/bootstrap.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  final preferences = await SharedPreferences.getInstance();
-  runApp(
-    ProviderScope(
-      overrides: [
-        localStoreProvider.overrideWithValue(LocalStore(preferences)),
-      ],
-      child: const AquaHatchApp(),
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Color(0xFFF1F7F6),
+      systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
+  runApp(const AppBootstrap());
 }

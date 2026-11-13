@@ -18,9 +18,9 @@ inline uint16_t crc16(const uint8_t *data, size_t length) {
   }
   return crc;
 }
-inline void request(uint8_t address, uint8_t (&frame)[8]) {
+inline void request(uint8_t address, uint8_t (&frame)[8], uint8_t registers = 6) {
   frame[0] = address; frame[1] = 3; frame[2] = 0; frame[3] = 0;
-  frame[4] = 0; frame[5] = 6;
+  frame[4] = 0; frame[5] = registers;
   uint16_t crc = crc16(frame, 6);
   frame[6] = crc & 0xff; frame[7] = crc >> 8;
 }

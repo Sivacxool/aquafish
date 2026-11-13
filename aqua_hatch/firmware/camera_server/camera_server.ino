@@ -20,7 +20,7 @@ AquaIdentity boardIdentity;
 #include "camera_pins.h"
 #include "camera_quality.h"
 
-static const char VERSION[]="0.16.1-camera.1";
+static const char VERSION[]="0.21.0-camera.1";
 Preferences prefs;
 httpd_handle_t server=nullptr;
 bool tlsReady=false,wasConnected=false,cameraReady=false,cameraActive=false;

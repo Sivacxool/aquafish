@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -173,7 +174,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                 FilledButton.icon(
                   key: const ValueKey('scan-device-qr'),
                   onPressed: _busy ? null : _scan,
-                  icon: const Icon(Icons.qr_code_scanner),
+                  icon: const Icon(PhosphorIconsRegular.scan),
                   label: const Text('สแกน QR จากบอร์ด'),
                 ),
                 const SizedBox(height: 6),
@@ -195,7 +196,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
                       onPressed: _busy ? null : () => _parse(_input.text),
-                      icon: const Icon(Icons.qr_code),
+                      icon: const Icon(PhosphorIconsRegular.qrCode),
                       label: const Text('ตรวจข้อมูล QR'),
                     ),
                   ],
@@ -241,7 +242,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                   FilledButton.icon(
                     key: const ValueKey('confirm-device-qr'),
                     onPressed: _continue,
-                    icon: const Icon(Icons.verified_user_outlined),
+                    icon: const Icon(PhosphorIconsRegular.sealCheck),
                     label: const Text('ใช้บอร์ดนี้และตั้ง Wi-Fi'),
                   ),
                 ],
@@ -266,12 +267,12 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(
                       c.identity!.kind == 's3'
-                          ? Icons.memory
-                          : Icons.camera_alt_outlined,
+                          ? PhosphorIconsRegular.cpu
+                          : PhosphorIconsRegular.camera,
                     ),
                     title: Text(c.deviceId),
                     subtitle: Text(c.baseUrl),
-                    trailing: const Icon(Icons.chevron_right),
+                    trailing: const Icon(PhosphorIconsRegular.caretRight),
                     onTap: () => _openSaved(c),
                   ),
                 ),
@@ -365,7 +366,7 @@ class _QrCameraScreenState extends State<QrCameraScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.no_photography_outlined, size: 48),
+                    const Icon(PhosphorIconsRegular.cameraSlash, size: 48),
                     const SizedBox(height: 16),
                     const Text(
                       'เปิดกล้องไม่ได้ ตรวจสิทธิ์กล้องหรือใช้ข้อมูลจากบัตร',

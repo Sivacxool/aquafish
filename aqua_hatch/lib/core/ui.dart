@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -36,7 +37,7 @@ class Surface extends StatelessWidget {
   const Surface({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(18),
+    this.padding = const EdgeInsets.all(16),
   });
   @override
   Widget build(BuildContext context) => Card(
@@ -71,10 +72,10 @@ class Pill extends StatelessWidget {
   const Pill(this.label, {super.key, this.color = AquaColors.teal, this.icon});
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
       color: color.withValues(alpha: .09),
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(6),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -133,7 +134,7 @@ class Notice extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            warning ? Icons.info_outline_rounded : Icons.water_drop_outlined,
+            warning ? PhosphorIconsRegular.info : PhosphorIconsRegular.drop,
             color: color,
             size: 20,
           ),
@@ -189,8 +190,8 @@ class MetricCard extends StatelessWidget {
               const Spacer(),
               Icon(
                 warning
-                    ? Icons.warning_amber_rounded
-                    : Icons.check_circle_outline_rounded,
+                    ? PhosphorIconsRegular.warning
+                    : PhosphorIconsRegular.checkCircle,
                 color: warning ? AquaColors.orange : AquaColors.teal,
                 size: 18,
               ),
@@ -318,7 +319,7 @@ class _IncubatorPainter extends CustomPainter {
       Paint()..color = Colors.black.withValues(alpha: .1),
     );
     final border = Paint()
-      ..color = const Color(0xFFA0D8E8)
+      ..color = AquaColors.lime
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     final jar = RRect.fromRectAndRadius(
@@ -332,7 +333,7 @@ class _IncubatorPainter extends CustomPainter {
       const Rect.fromLTWH(50, 66, 127, 92),
       Paint()
         ..shader = const LinearGradient(
-          colors: [Color(0xFF67C9DF), Color(0xFF1587AC)],
+          colors: [AquaColors.teal, AquaColors.deep],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ).createShader(const Rect.fromLTWH(50, 66, 127, 92)),
@@ -355,7 +356,7 @@ class _IncubatorPainter extends CustomPainter {
       canvas.drawCircle(
         Offset(71 + (i % 8) * 12, 107 - (i ~/ 8) * 8),
         2.3,
-        Paint()..color = const Color(0xFFF4DCA9),
+        Paint()..color = AquaColors.lime,
       );
     }
     canvas.restore();
@@ -402,7 +403,7 @@ class _IncubatorPainter extends CustomPainter {
     canvas.drawCircle(
       const Offset(148, 156),
       3,
-      Paint()..color = const Color(0xFF50DFB7),
+      Paint()..color = AquaColors.lime,
     );
     canvas.restore();
   }

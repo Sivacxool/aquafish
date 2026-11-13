@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -70,7 +71,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     if (!state.connection.demo)
                       OutlinedButton.icon(
                         onPressed: _loading ? null : _refresh,
-                        icon: const Icon(Icons.refresh),
+                        icon: const Icon(PhosphorIconsRegular.arrowClockwise),
                         label: Text(
                           _loading ? 'กำลังโหลด…' : 'โหลดจากเซิร์ฟเวอร์',
                         ),
@@ -93,7 +94,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                 );
                               }
                             },
-                      icon: const Icon(Icons.copy_all_outlined),
+                      icon: const Icon(PhosphorIconsRegular.copy),
                       label: const Text('คัดลอก CSV'),
                     ),
                   ],
@@ -114,8 +115,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   return ListTile(
                     leading: Icon(
                       t.simulated
-                          ? Icons.science_outlined
-                          : Icons.water_drop_outlined,
+                          ? PhosphorIconsRegular.flask
+                          : PhosphorIconsRegular.drop,
                     ),
                     title: Text(
                       '${fullTime(t.at)}${t.simulated ? ' · จำลอง' : ''}',

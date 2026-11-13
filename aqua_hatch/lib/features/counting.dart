@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../app/theme.dart';
+import '../app/brand.dart';
 import '../core/controller.dart';
 import '../core/fish_head_analyzer.dart';
 import '../core/models.dart';
@@ -333,7 +335,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
       return Container(
         key: const ValueKey('camera-empty-preview'),
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
           color: AquaColors.deep,
           borderRadius: BorderRadius.circular(20),
@@ -342,7 +344,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: .06),
@@ -354,15 +356,11 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                       compact: true,
                       color: AquaColors.lime,
                     )
-                  : const Icon(
-                      Icons.center_focus_weak_rounded,
-                      size: 38,
-                      color: AquaColors.lime,
-                    ),
+                  : const CatfishMark(size: 70),
             ),
             const SizedBox(height: 16),
             Text(
-              _busy ? 'กำลังรับภาพ' : 'ยังไม่มีภาพ',
+              _busy ? 'กำลังรับภาพ' : 'พร้อมเก็บภาพลูกปลา',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
@@ -388,7 +386,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
-                Icons.video_file_outlined,
+                PhosphorIconsRegular.fileVideo,
                 size: 44,
                 color: AquaColors.blue,
               ),
@@ -575,238 +573,285 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
             (localAI || (!state.connection.demo && !usb && !directCapture)));
     return PageBody(
       children: [
-        const PageTitle('นับลูกปลา'),
-        Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: Surface(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+        Row(
+          children: [
+            const Expanded(child: PageTitle('นับลูกปลา')),
+            IconButton(
+              tooltip: 'ประวัติผลนับ',
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                showDragHandle: true,
+                isScrollControlled: true,
+                builder: (context) => SafeArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: _history(state),
+                  ),
+                ),
+              ),
+              icon: const Icon(PhosphorIconsRegular.clockCounterClockwise),
+            ),
+          ],
+        ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AquaColors.deep,
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          usb ? 'กล้อง USB ผ่านคอม' : 'กล้องในเครื่อง',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      Pill(
-                        demoCamera
-                            ? 'โหมดทดลอง'
-                            : camera?.ready == true
-                            ? 'พร้อมถ่าย'
-                            : 'ยังไม่เชื่อมต่อ',
-                        color: camera?.ready == true
-                            ? AquaColors.teal
-                            : AquaColors.muted,
-                        icon: camera?.ready == true
-                            ? Icons.check_circle_outline_rounded
-                            : Icons.wifi_off_rounded,
-                      ),
-                    ],
+                  const Icon(
+                    PhosphorIconsRegular.camera,
+                    size: 18,
+                    color: AquaColors.lime,
                   ),
-                  const SizedBox(height: 12),
-                  if (camera?.description.isNotEmpty == true) ...[
-                    Text(
-                      camera!.description,
-                      style: const TextStyle(color: AquaColors.muted),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      usb ? 'กล้อง USB' : 'ESP32-CAM',
+                      style: const TextStyle(
+                        color: AquaColors.paper,
+                        fontSize: 13,
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (usb && _usbLive && !hasImage)
-                    UsbLivePreview(onFrame: (frame) => _usbLastFrame = frame)
-                  else if (hasImage)
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 300),
-                        child: _preview(),
-                      ),
-                    )
-                  else
-                    _preview(),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      FilledButton.icon(
-                        key: const ValueKey('device-capture-button'),
-                        onPressed: _busy || demoCamera || camera?.ready != true
-                            ? null
-                            : _capture,
-                        icon: const Icon(Icons.camera_alt_rounded),
-                        label: Text(
-                          usb && _usbLive && !hasImage
-                              ? 'หยุดภาพ'
-                              : _captureId == null
-                              ? 'ถ่ายภาพ'
-                              : 'ถ่ายใหม่',
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _busy
-                            ? null
-                            : () => _pick(ImageSource.gallery),
-                        icon: const Icon(Icons.image_outlined, size: 18),
-                        label: const Text('เลือกภาพ'),
-                      ),
-                    ],
                   ),
-                  if (usb && (!_usbLive || hasImage)) ...[
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      key: const ValueKey('usb-resume-preview'),
-                      onPressed: _busy
-                          ? null
-                          : () => setState(() {
-                              ++_imageGeneration;
-                              _bytes = null;
-                              _captureId = null;
-                              _receivedAt = null;
-                              _sample = false;
-                              _video = false;
-                              _captureProgress = '';
-                              _usbLastFrame = null;
-                              _reset();
-                              _usbLive = true;
-                            }),
-                      icon: const Icon(Icons.videocam_outlined),
-                      label: const Text('กลับไปดูภาพสด USB'),
+                  Text(
+                    demoCamera
+                        ? 'ยังไม่เพิ่มกล้อง'
+                        : camera?.ready == true
+                        ? 'พร้อมถ่าย'
+                        : cameraAsync.isLoading
+                        ? 'กำลังเชื่อมต่อ'
+                        : 'ออฟไลน์',
+                    style: const TextStyle(
+                      color: AquaColors.lime,
+                      fontSize: 12,
                     ),
-                  ],
-                  if (!_busy &&
-                      _captureId == null &&
-                      _captureProgress.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Semantics(
-                      liveRegion: true,
-                      child: Notice(_captureProgress, warning: true),
-                    ),
-                  ],
-                  if (_receivedAt != null) ...[
-                    const SizedBox(height: 8),
-                    if (_captureDetails.isNotEmpty)
-                      Text(
-                        _captureDetails,
-                        key: const ValueKey('camera-photo-details'),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                  ],
-                  if (!hasImage && !_busy && !usb) ...[
-                    const SizedBox(height: 12),
-                    if (!demoCamera &&
-                        camera?.ready != true &&
-                        camera?.message.isNotEmpty == true)
-                      Text(
-                        camera!.message,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        if (camera?.ready != true)
-                          TextButton.icon(
-                            onPressed: () => context.go('/settings'),
-                            icon: const Icon(Icons.qr_code_scanner, size: 17),
-                            label: const Text('เพิ่มกล้อง'),
-                          ),
-                        if (!demoCamera)
-                          IconButton(
-                            tooltip: 'ตรวจสถานะกล้องอีกครั้ง',
-                            onPressed: cameraAsync.isLoading
-                                ? null
-                                : () => ref.invalidate(cameraStatusProvider),
-                            icon: const Icon(Icons.refresh_rounded),
-                          ),
-                      ],
-                    ),
-                  ],
-                  if (hasImage) ...[
-                    const SizedBox(height: 14),
-                    FilledButton.tonalIcon(
-                      onPressed: _busy || !canAI ? null : _analyze,
-                      icon: Icon(
-                        _busy
-                            ? Icons.hourglass_top_rounded
-                            : Icons.auto_awesome_rounded,
-                      ),
-                      label: Text(
-                        _busy
-                            ? 'กำลังประมวลผล…'
-                            : _sample
-                            ? 'ลองนับภาพตัวอย่าง'
-                            : !canAI
-                            ? 'AI ยังไม่พร้อมใช้งาน'
-                            : 'วิเคราะห์ด้วย AI',
-                      ),
-                    ),
-                    if (!_video)
-                      TextButton.icon(
-                        onPressed: _busy ? null : _manualCount,
-                        icon: const Icon(Icons.touch_app_outlined),
-                        label: const Text('นับด้วยมือ'),
-                      ),
-                  ],
-                  const SizedBox(height: 8),
-                  ExpansionTile(
-                    key: const PageStorageKey('count-import-options'),
-                    tilePadding: EdgeInsets.zero,
-                    shape: const Border(),
-                    collapsedShape: const Border(),
-                    title: const Text(
-                      'แหล่งภาพอื่น',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: _busy
-                                ? null
-                                : () => _pick(ImageSource.camera),
-                            icon: const Icon(
-                              Icons.photo_camera_outlined,
-                              size: 18,
-                            ),
-                            label: const Text('กล้องมือถือ'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: _busy
-                                ? null
-                                : () => _pick(ImageSource.gallery, video: true),
-                            icon: const Icon(
-                              Icons.video_library_outlined,
-                              size: 18,
-                            ),
-                            label: const Text('เลือกคลิป'),
-                          ),
-                        ],
-                      ),
-                    ],
                   ),
-                  TextButton(
-                    onPressed: _busy ? null : _useSample,
-                    child: const Text('ใช้ภาพตัวอย่าง'),
-                  ),
-                  if (_hasResult)
-                    TextButton(
-                      onPressed: () => setState(() => _workspace = true),
-                      child: const Text('กลับไปตรวจผลนับ'),
-                    ),
                 ],
+              ),
+              if (camera?.description.isNotEmpty == true)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    camera!.description,
+                    style: const TextStyle(
+                      color: AquaColors.lime,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 14),
+              if (usb && _usbLive && !hasImage)
+                UsbLivePreview(onFrame: (frame) => _usbLastFrame = frame)
+              else if (hasImage)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 390),
+                  child: _preview(),
+                )
+              else
+                SizedBox(
+                  height: MediaQuery.sizeOf(context).height < 700 ? 235 : 300,
+                  child: Center(child: _preview()),
+                ),
+              if (_receivedAt != null && _captureDetails.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    _captureDetails,
+                    key: const ValueKey('camera-photo-details'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AquaColors.lime,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _CaptureAction(
+                    icon: PhosphorIconsRegular.image,
+                    label: 'เลือกภาพ',
+                    onTap: _busy ? null : () => _pick(ImageSource.gallery),
+                  ),
+                  Column(
+                    children: [
+                      Semantics(
+                        label: 'ถ่ายภาพ',
+                        button: true,
+                        child: SizedBox.square(
+                          dimension: 74,
+                          child: OutlinedButton(
+                            key: const ValueKey('device-capture-button'),
+                            onPressed:
+                                _busy || demoCamera || camera?.ready != true
+                                ? null
+                                : _capture,
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.all(5),
+                              side: const BorderSide(
+                                color: AquaColors.lime,
+                                width: 2,
+                              ),
+                              shape: const CircleBorder(),
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: camera?.ready == true
+                                    ? AquaColors.lime
+                                    : AquaColors.lime.withValues(alpha: .22),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  PhosphorIconsRegular.camera,
+                                  color: camera?.ready == true
+                                      ? AquaColors.deep
+                                      : AquaColors.lime,
+                                  size: 28,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        usb && _usbLive && !hasImage
+                            ? 'หยุดภาพ'
+                            : _captureId == null
+                            ? 'ถ่ายภาพ'
+                            : 'ถ่ายใหม่',
+                        style: const TextStyle(
+                          color: AquaColors.paper,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  _CaptureAction(
+                    icon: PhosphorIconsRegular.scan,
+                    label: 'เพิ่มกล้อง',
+                    onTap: _busy ? null : () => context.go('/settings'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+        if (!_busy && _captureId == null && _captureProgress.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Semantics(
+            liveRegion: true,
+            child: Notice(_captureProgress, warning: true),
+          ),
+        ],
+        if (hasImage) ...[
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _busy || !canAI ? null : _analyze,
+              icon: const Icon(PhosphorIconsRegular.scan),
+              label: Text(
+                _busy
+                    ? 'กำลังประมวลผล…'
+                    : _sample
+                    ? 'ลองนับภาพตัวอย่าง'
+                    : !canAI
+                    ? 'AI ยังไม่พร้อมใช้งาน'
+                    : 'วิเคราะห์ด้วย AI',
               ),
             ),
           ),
+          if (!_video)
+            Center(
+              child: TextButton.icon(
+                onPressed: _busy ? null : _manualCount,
+                icon: const Icon(PhosphorIconsRegular.handTap),
+                label: const Text('นับด้วยมือ'),
+              ),
+            ),
+        ],
+        if (usb && (!_usbLive || hasImage)) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            key: const ValueKey('usb-resume-preview'),
+            onPressed: _busy
+                ? null
+                : () => setState(() {
+                    ++_imageGeneration;
+                    _bytes = null;
+                    _captureId = null;
+                    _receivedAt = null;
+                    _sample = false;
+                    _video = false;
+                    _captureProgress = '';
+                    _usbLastFrame = null;
+                    _reset();
+                    _usbLive = true;
+                  }),
+            icon: const Icon(PhosphorIconsRegular.videoCamera),
+            label: const Text('กลับไปดูภาพสด USB'),
+          ),
+        ],
+        const SizedBox(height: 16),
+        ExpansionTile(
+          key: const PageStorageKey('count-import-options'),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+          shape: const Border(),
+          collapsedShape: const Border(),
+          title: const Text('แหล่งภาพอื่น', style: TextStyle(fontSize: 13)),
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _pick(ImageSource.camera),
+                  icon: const Icon(PhosphorIconsRegular.camera, size: 18),
+                  label: const Text('กล้องมือถือ'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _busy
+                      ? null
+                      : () => _pick(ImageSource.gallery, video: true),
+                  icon: const Icon(PhosphorIconsRegular.filmStrip, size: 18),
+                  label: const Text('เลือกคลิป'),
+                ),
+              ],
+            ),
+          ],
         ),
-        const SizedBox(height: 18),
-        _history(state),
+        Center(
+          child: TextButton(
+            onPressed: _busy ? null : _useSample,
+            child: const Text('ใช้ภาพตัวอย่าง'),
+          ),
+        ),
+        if (!demoCamera && camera?.ready != true && !hasImage)
+          Center(
+            child: TextButton.icon(
+              onPressed: cameraAsync.isLoading
+                  ? null
+                  : () => ref.invalidate(cameraStatusProvider),
+              icon: const Icon(PhosphorIconsRegular.arrowClockwise),
+              label: const Text('ตรวจสถานะกล้องอีกครั้ง'),
+            ),
+          ),
+        if (_hasResult)
+          TextButton(
+            onPressed: () => setState(() => _workspace = true),
+            child: const Text('กลับไปตรวจผลนับ'),
+          ),
       ],
     );
   }
@@ -832,7 +877,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                             onPressed: _busy
                                 ? null
                                 : () => setState(() => _workspace = false),
-                            icon: const Icon(Icons.arrow_back_rounded),
+                            icon: const Icon(PhosphorIconsRegular.arrowLeft),
                             label: const Text('เลือกภาพ'),
                           ),
                           Expanded(
@@ -883,18 +928,24 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                             segments: const [
                               ButtonSegment(
                                 value: 'move',
-                                icon: Icon(Icons.zoom_in_rounded, size: 18),
+                                icon: Icon(
+                                  PhosphorIconsRegular.magnifyingGlassPlus,
+                                  size: 18,
+                                ),
                                 label: Text('ซูม'),
                               ),
                               ButtonSegment(
                                 value: 'add',
-                                icon: Icon(Icons.add_circle_outline, size: 18),
+                                icon: Icon(
+                                  PhosphorIconsRegular.plusCircle,
+                                  size: 18,
+                                ),
                                 label: Text('เพิ่มจุด'),
                               ),
                               ButtonSegment(
                                 value: 'remove',
                                 icon: Icon(
-                                  Icons.remove_circle_outline,
+                                  PhosphorIconsRegular.minusCircle,
                                   size: 18,
                                 ),
                                 label: Text('ลบจุด'),
@@ -923,12 +974,14 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                                     _reviewed = false;
                                     _saved = false;
                                   }),
-                            icon: const Icon(Icons.undo_rounded),
+                            icon: const Icon(
+                              PhosphorIconsRegular.arrowCounterClockwise,
+                            ),
                           ),
                           PopupMenuButton<String>(
                             tooltip: 'เครื่องมือเพิ่มเติม',
                             enabled: !_busy,
-                            icon: const Icon(Icons.more_horiz_rounded),
+                            icon: const Icon(PhosphorIconsRegular.dotsThree),
                             itemBuilder: (_) => [
                               const PopupMenuItem(
                                 value: 'zoom',
@@ -1044,7 +1097,9 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                         ? _save
                         : null,
                     icon: Icon(
-                      _saved ? Icons.check_circle_outline : Icons.save_outlined,
+                      _saved
+                          ? PhosphorIconsRegular.checkCircle
+                          : PhosphorIconsRegular.floppyDisk,
                     ),
                     label: Text(
                       _saved
@@ -1217,4 +1272,37 @@ class _PointsPainter extends CustomPainter {
       old.points != points ||
       old.radius != radius ||
       old.strokeWidth != strokeWidth;
+}
+
+class _CaptureAction extends StatelessWidget {
+  const _CaptureAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: onTap == null ? AquaColors.muted : AquaColors.lime,
+            size: 24,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(color: AquaColors.paper, fontSize: 12),
+          ),
+        ],
+      ),
+    ),
+  );
 }

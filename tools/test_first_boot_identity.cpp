@@ -15,7 +15,8 @@ int main(int argc,char **argv){
   AquaIdentity first;assert(first.begin("s3"));assert(mockWriteCount==1);
   const String token=first.token(),root=mockNvs["aqua_ident:record_v1"],host=first.hostname();
   assert(token.length()==64&&first.deviceId()=="s3-aabbccddee01");
-  assert(first.setupSsid()=="AquaHatch-S3-DDEE01");
+  assert(first.setupSsid()=="Smart Catfish System-B-DDEE01");
+  assert(first.setupSsid().length() <= 32);
   AquaIdentity restarted;assert(restarted.begin("s3"));assert(restarted.token()==token&&restarted.hostname()==host&&mockWriteCount==1);
   JsonDocument publicCard;restarted.pairing(publicCard);assert(publicCard["type"]=="pairing");
   assert(publicCard["payload"]["token"]==token);assert(publicCard["payload"]["ca"].is<String>());
@@ -37,7 +38,8 @@ int main(int argc,char **argv){
   AquaIdentity corrupt;assert(!corrupt.begin("s3"));assert(mockWriteCount==writes);
   mockNvs.clear();mockMac[5]=2;AquaIdentity other;assert(other.begin("s3"));assert(other.token()!=token&&other.deviceId()=="s3-aabbccddee02");
   JsonDocument otherCard;other.pairing(otherCard);assert(otherCard["payload"]["ca"]!=publicCard["payload"]["ca"]);
-  mockNvs.clear();mockMac[5]=3;AquaIdentity camera;assert(camera.begin("camera"));assert(camera.deviceId()=="cam-aabbccddee03");assert(camera.setupSsid()=="AquaHatch-CAM-DDEE03");
+  mockNvs.clear();mockMac[5]=3;AquaIdentity camera;assert(camera.begin("camera"));assert(camera.deviceId()=="cam-aabbccddee03");assert(camera.setupSsid()=="Smart Catfish System-C-DDEE03");
+  assert(camera.setupSsid().length() <= 32);
   mockNvs.clear();mockFailWrites=true;AquaIdentity failure;assert(!failure.begin("s3"));assert(mockNvs.empty());
   mbedtls_ctr_drbg_free(&hostRandom);mbedtls_entropy_free(&entropy);
   std::cout<<"PASS actual identity source with simulated NVS/hardware: first boot, distinct boards, restart persistence, atomic failure, corruption, renewal\n";

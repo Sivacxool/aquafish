@@ -193,6 +193,27 @@ class FillStatus {
   };
 }
 
+class HeaterStatus {
+  final bool ready;
+  final bool? commandedOn;
+  const HeaterStatus({required this.ready, required this.commandedOn});
+  static HeaterStatus? parse(Object? raw) {
+    if (raw is! Map || raw['io_ready'] is! bool) return null;
+    final ready = raw['io_ready'] == true;
+    return HeaterStatus(
+      ready: ready,
+      commandedOn: ready && raw['relay_commanded_on'] is bool
+          ? raw['relay_commanded_on'] as bool
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'io_ready': ready,
+    'relay_commanded_on': commandedOn,
+  };
+}
+
 class Telemetry {
   final PhSensorInfo phSensor;
   final DateTime at;
@@ -201,6 +222,7 @@ class Telemetry {
   final DateTime? temperatureSampledAt, dissolvedOxygenSampledAt;
   final bool? waterLevelOk;
   final FillStatus? fill;
+  final HeaterStatus? heater;
   final bool phCalibrated;
   final DateTime? phCalibratedAt;
   final int? wifiRssi;
@@ -225,6 +247,7 @@ class Telemetry {
     this.ph,
     this.waterLevelOk,
     this.fill,
+    this.heater,
     this.phCalibrated = false,
     this.phCalibratedAt,
     this.wifiRssi,
@@ -252,7 +275,7 @@ class Telemetry {
     }
     if (ph == null) {
       result.add(phSensor.supported ? phSensor.message : 'อ่านค่า pH ไม่ได้');
-    } else if (!phCalibrated) {
+    } else if (!phCalibrated && !phSensor.externalCalibration) {
       result.add('เซนเซอร์ pH ยังไม่ยืนยันการสอบเทียบ');
     } else if (ph! < settings.phMinimum || ph! > settings.phMaximum) {
       result.add('pH อยู่นอกช่วงที่ตั้งไว้');
@@ -282,6 +305,7 @@ class Telemetry {
     'firmware_version': firmwareVersion,
     'water_level_ok': waterLevelOk,
     if (fill != null) 'fill': fill!.toJson(),
+    if (heater != null) 'heater': heater!.toJson(),
     'simulated': simulated,
     if (viaRelay) 'via_relay': true,
     'device_online': deviceOnline,
@@ -335,6 +359,7 @@ class Telemetry {
           ? j['water_level_ok'] as bool
           : null,
       fill: FillStatus.parse(j['fill']),
+      heater: HeaterStatus.parse(j['heater']),
       simulated: j['simulated'] == true,
       viaRelay: j['via_relay'] == true,
       deviceOnline: j['device_online'] != false,

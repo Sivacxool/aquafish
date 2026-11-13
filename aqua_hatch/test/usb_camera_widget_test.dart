@@ -56,7 +56,7 @@ void main() {
       preview.input.add(fixture.captured());
       await tester.pump();
       final button = find.byKey(const ValueKey('device-capture-button'));
-      expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
+      expect(tester.widget<OutlinedButton>(button).onPressed, isNotNull);
       await tester.ensureVisible(button);
       await tester.tap(button);
       await tester.pump();

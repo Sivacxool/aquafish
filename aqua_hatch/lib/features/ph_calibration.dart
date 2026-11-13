@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/controller.dart';
@@ -53,6 +54,33 @@ class _PhCalibrationScreenState extends ConsumerState<PhCalibrationScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(appControllerProvider), t = state.telemetry;
     final info = t?.phSensor ?? const PhSensorInfo();
+    if (info.externalCalibration) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('หัววัด pH')),
+        body: PageBody(
+          children: [
+            const PageTitle('pH · RS485'),
+            Surface(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    number(state.fresh ? t?.ph : null),
+                    style: Theme.of(context).textTheme.headlineLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(state.fresh ? info.message : 'รอข้อมูลล่าสุด'),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'สอบเทียบด้วยน้ำยามาตรฐานที่กล่องหัววัด ตามคู่มือของรุ่นที่ใช้ แอปอ่านผลจาก RS485 โดยตรง',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     final live =
         state.connected &&
         !state.connection.demo &&
@@ -126,7 +154,7 @@ class _PhCalibrationScreenState extends ConsumerState<PhCalibrationScreen> {
                 FilledButton.icon(
                   key: const ValueKey('ph-calibrate-neutral'),
                   onPressed: ready ? () => _capture(_neutral, true) : null,
-                  icon: const Icon(Icons.science_outlined),
+                  icon: const Icon(PhosphorIconsRegular.flask),
                   label: Text(
                     'เริ่มสอบเทียบ · pH ${_neutral.toStringAsFixed(2)}',
                   ),
@@ -160,7 +188,7 @@ class _PhCalibrationScreenState extends ConsumerState<PhCalibrationScreen> {
                   onPressed: ready && firstSaved
                       ? () => _capture(_acid, false)
                       : null,
-                  icon: const Icon(Icons.check_circle_outline),
+                  icon: const Icon(PhosphorIconsRegular.checkCircle),
                   label: Text('บันทึกจุด pH ${_acid.toStringAsFixed(2)}'),
                 ),
                 const Text(

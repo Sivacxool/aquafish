@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../app/theme.dart';
@@ -11,7 +12,7 @@ class ConnectionSignal extends StatefulWidget {
     super.key,
     this.active = false,
     this.complete = false,
-    this.icon = Icons.router_rounded,
+    this.icon = PhosphorIconsRegular.wifiHigh,
     this.size = 100,
   });
   @override
@@ -69,7 +70,7 @@ class _ConnectionSignalState extends State<ConnectionSignal>
           height: widget.size * .54,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(widget.size * .18),
-            color: widget.complete ? const Color(0xFFBDF4DB) : Colors.white,
+            color: widget.complete ? AquaColors.lime : Colors.white,
             boxShadow: const [
               BoxShadow(
                 color: Color(0x22001D35),
@@ -81,7 +82,7 @@ class _ConnectionSignalState extends State<ConnectionSignal>
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
             child: Icon(
-              widget.complete ? Icons.check_rounded : widget.icon,
+              widget.complete ? PhosphorIconsRegular.check : widget.icon,
               key: ValueKey(widget.complete),
               size: widget.size * .29,
               color: AquaColors.blue,
@@ -116,7 +117,7 @@ class _SignalRings extends CustomPainter {
       canvas.drawCircle(
         center + Offset(math.cos(a), math.sin(a)) * (size.width * .4),
         3,
-        Paint()..color = const Color(0xFF92ECD9),
+        Paint()..color = AquaColors.lime,
       );
     }
   }
@@ -139,7 +140,7 @@ class ConnectionJourneyHeader extends StatelessWidget {
     required this.device,
     this.busy = false,
     this.complete = false,
-    this.icon = Icons.router_rounded,
+    this.icon = PhosphorIconsRegular.wifiHigh,
   });
   @override
   Widget build(BuildContext context) => Column(
@@ -148,11 +149,7 @@ class ConnectionJourneyHeader extends StatelessWidget {
       Container(
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF103F58), Color(0xFF087D86)],
-          ),
+          color: AquaColors.deep,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
@@ -166,7 +163,7 @@ class ConnectionJourneyHeader extends StatelessWidget {
                 Text(
                   device,
                   style: const TextStyle(
-                    color: Color(0xFFBBE8E8),
+                    color: AquaColors.lime,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -253,7 +250,7 @@ class ConnectionJourneyHeader extends StatelessWidget {
                         child: Center(
                           child: done
                               ? const Icon(
-                                  Icons.check_rounded,
+                                  PhosphorIconsRegular.check,
                                   color: Colors.white,
                                   size: 18,
                                 )
@@ -309,7 +306,7 @@ class ConnectionHint extends StatelessWidget {
   const ConnectionHint(
     this.text, {
     super.key,
-    this.icon = Icons.info_outline_rounded,
+    this.icon = PhosphorIconsRegular.info,
     this.error = false,
   });
   @override
@@ -326,7 +323,7 @@ class ConnectionHint extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            error ? Icons.error_outline_rounded : icon,
+            error ? PhosphorIconsRegular.warningCircle : icon,
             color: color,
             size: 21,
           ),
@@ -377,7 +374,7 @@ class _ConnectionPreviewScreenState extends State<ConnectionPreviewScreen> {
                 children: [
                   const ConnectionHint(
                     'ตัวอย่างขั้นตอน • ไม่เชื่อมต่อหรือเปลี่ยนค่าอุปกรณ์',
-                    icon: Icons.play_circle_outline_rounded,
+                    icon: PhosphorIconsRegular.playCircle,
                   ),
                   const SizedBox(height: 16),
                   ConnectionJourneyHeader(
@@ -401,10 +398,10 @@ class _ConnectionPreviewScreenState extends State<ConnectionPreviewScreen> {
                           children: [
                             Icon(
                               [
-                                Icons.power_rounded,
-                                Icons.wifi_find_rounded,
-                                Icons.home_rounded,
-                                Icons.sync_rounded,
+                                PhosphorIconsRegular.plug,
+                                PhosphorIconsRegular.wifiHigh,
+                                PhosphorIconsRegular.house,
+                                PhosphorIconsRegular.arrowsClockwise,
                               ][_step],
                               color: AquaColors.blue,
                               size: 38,
@@ -433,8 +430,8 @@ class _ConnectionPreviewScreenState extends State<ConnectionPreviewScreen> {
                         : Navigator.of(context).pop(),
                     icon: Icon(
                       _step < 3
-                          ? Icons.arrow_forward_rounded
-                          : Icons.check_rounded,
+                          ? PhosphorIconsRegular.arrowRight
+                          : PhosphorIconsRegular.check,
                     ),
                     label: Text(_step < 3 ? 'ดูขั้นตอนถัดไป' : 'เข้าใจแล้ว'),
                   ),

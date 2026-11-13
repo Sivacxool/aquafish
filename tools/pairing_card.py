@@ -26,7 +26,8 @@ def validate(payload,expected_kind=None):
     if not isinstance(payload['id'],str) or not re.fullmatch(prefix+r'-[0-9a-f]{12}',payload['id']):raise ValueError('Invalid board identity')
     if payload['host']!='aquahatch-'+payload['id']+'.local':raise ValueError('Unexpected TLS hostname')
     ssid='AquaHatch-'+('S3' if kind=='s3' else 'CAM')+'-'+payload['id'][-6:].upper()
-    if payload['ssid']!=ssid:raise ValueError('Unexpected setup network')
+    current='Smart Catfish System-'+('B' if kind=='s3' else 'C')+'-'+payload['id'][-6:].upper()
+    if payload['ssid'] not in (ssid,current):raise ValueError('Unexpected setup network')
     if not isinstance(payload['token'],str) or not re.fullmatch(r'[0-9a-f]{64}',payload['token']):raise ValueError('Invalid pairing secret')
     ca=payload['ca']
     if not isinstance(ca,str) or not 200<=len(ca)<=2048 or not re.fullmatch(r'[A-Za-z0-9_-]+',ca):raise ValueError('Invalid pairing CA')

@@ -131,6 +131,9 @@ void main() {
     final font = FontLoader('NotoSansThai')
       ..addFont(rootBundle.load('assets/fonts/NotoSansThai.ttf'));
     await font.load();
+    await (FontLoader(
+      'PhosphorRegular',
+    )..addFont(rootBundle.load('assets/fonts/Phosphor.ttf'))).load();
     final icons = FontLoader('MaterialIcons')
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await icons.load();

@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../app/theme.dart';
@@ -82,26 +80,18 @@ class _Ripples extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = size.shortestSide / 2;
-    canvas.drawCircle(center, radius * .17, Paint()..color = color);
-    for (final offset in [0.0, .5]) {
-      final t = (phase.value + offset) % 1;
-      canvas.drawCircle(
-        center,
-        radius * (.3 + .64 * t),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.4
-          ..color = color.withValues(alpha: .65 * (1 - t)),
+    final bar = size.width / 7;
+    for (var i = 0; i < 3; i++) {
+      final progress = (phase.value + i / 3) % 1;
+      final opacity = .25 + .75 * (1 - (progress * 2 - 1).abs());
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH((i * 2 + 1) * bar, size.height / 2 - bar, bar, bar * 2),
+          const Radius.circular(2),
+        ),
+        Paint()..color = color.withValues(alpha: opacity),
       );
     }
-    final angle = phase.value * math.pi * 2 - math.pi / 2;
-    canvas.drawCircle(
-      center + Offset(math.cos(angle), math.sin(angle)) * (radius * .72),
-      radius * .09,
-      Paint()..color = color,
-    );
   }
 
   @override

@@ -1,3 +1,4 @@
+#if !defined(AQUAHATCH_ET_WROOM32UE)
 #include "sensor_ph.h"
 #include "sensor_config.h"
 #include "ph_filter.h"
@@ -160,3 +161,4 @@ void append(JsonObject t) {
   sensor["channel"]="A0";sensor["adc_detected"]=current.detected;sensor["divider_ratio"]=0.5;
 }
 }
+#endif

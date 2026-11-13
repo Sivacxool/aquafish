@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/theme.dart';
@@ -12,7 +13,8 @@ import 'ph_calibration.dart';
 import 'qr_pairing.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.section});
+  final String? section;
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -151,64 +153,431 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _loadSettings(next.settings);
       }
     });
-    return PageBody(
-      children: [
-        const PageTitle('ตั้งค่า'),
-        SizedBox(
-          width: double.infinity,
-          child: Material(
-            color: AquaColors.deep,
-            borderRadius: BorderRadius.circular(24),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              key: const ValueKey('add-device-by-qr'),
-              onTap: state.busy ? null : _openQrPairing,
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: AquaColors.lime,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.qr_code_scanner_rounded,
-                        color: AquaColors.deep,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'สแกน QR เพื่อเพิ่มอุปกรณ์',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(color: AquaColors.paper),
-                          ),
-                          const Text(
-                            'บอร์ดควบคุมหรือกล้อง',
-                            style: TextStyle(color: AquaColors.lime),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_rounded,
-                      color: AquaColors.lime,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+    final content = <Widget>[
+      _SettingsGroup(
+        title: 'ดูจากนอกบ้าน',
+        subtitle:
+            state.connection.relayOrigin != null ||
+                state.cameraConnection?.relayOrigin != null
+            ? 'เปิดใช้งานแล้ว'
+            : 'ผ่านอินเทอร์เน็ต',
+        icon: PhosphorIconsRegular.globe,
+        child: const RemoteSettings(),
+      ),
+      const SizedBox(height: 12),
+      Card(
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: 8,
+          ),
+          leading: const Icon(
+            PhosphorIconsRegular.camera,
+            color: AquaColors.blue,
+          ),
+          title: const Text(
+            'กล้อง: IP และ USB',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          trailing: const Icon(PhosphorIconsRegular.caretRight),
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(builder: (_) => const CameraConnectionScreen()),
           ),
         ),
-        const SizedBox(height: 22),
-        const SectionHeading('อุปกรณ์'),
+      ),
+      const SizedBox(height: 12),
+      _SettingsGroup(
+        title: 'ตั้งค่าบอร์ดขั้นสูง',
+        subtitle: 'IP และเซิร์ฟเวอร์ของบอร์ด',
+        icon: PhosphorIconsRegular.wifiHigh,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeading(
+              'การเชื่อมต่อ',
+              trailing: Pill(
+                state.connection.demo
+                    ? 'ทดลอง'
+                    : state.fresh
+                    ? 'ออนไลน์'
+                    : 'ออฟไลน์',
+                color: state.fresh ? AquaColors.teal : AquaColors.orange,
+              ),
+            ),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(
+                  value: true,
+                  label: Text('เครื่องจำลอง'),
+                  icon: Icon(PhosphorIconsRegular.flask),
+                ),
+                ButtonSegment(
+                  value: false,
+                  label: Text('เครื่องจริง'),
+                  icon: Icon(PhosphorIconsRegular.wifiHigh),
+                ),
+              ],
+              selected: {_demo},
+              onSelectionChanged: _connecting || state.busy
+                  ? null
+                  : (values) => setState(() => _demo = values.first),
+            ),
+            const SizedBox(height: 20),
+            if (!_demo) ...[
+              DropdownButtonFormField<bool>(
+                initialValue: _localEsp32,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'เชื่อมต่อผ่าน'),
+                items: const [
+                  DropdownMenuItem(
+                    value: false,
+                    child: Text('เซิร์ฟเวอร์ของบอร์ด'),
+                  ),
+                  DropdownMenuItem(value: true, child: Text('ESP32 ในบ้าน')),
+                ],
+                onChanged: _connecting || state.busy
+                    ? null
+                    : (value) => setState(() => _localEsp32 = value ?? false),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const PageStorageKey('connection-url'),
+                controller: _url,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(
+                  labelText: _localEsp32 ? 'URL บอร์ด' : 'URL เซิร์ฟเวอร์',
+                  hintText: _localEsp32
+                      ? 'https://192.168.1.50'
+                      : 'https://incubator.example.com',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const PageStorageKey('connection-device'),
+                controller: _device,
+                decoration: const InputDecoration(
+                  labelText: 'รหัสเครื่อง',
+                  hintText: 'incubator-01',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const PageStorageKey('connection-token'),
+                controller: _token,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(
+                  labelText: 'รหัสเข้าถึงเซิร์ฟเวอร์',
+                  helperText: 'เว้นว่างเพื่อใช้รหัสเดิมของเครื่องนี้',
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (!_localEsp32) const Notice('เซิร์ฟเวอร์ภายนอกใช้ HTTPS'),
+              TextButton.icon(
+                onPressed: state.busy
+                    ? null
+                    : () async {
+                        final error = await ref
+                            .read(appControllerProvider.notifier)
+                            .forgetCredentials();
+                        if (context.mounted) {
+                          showFeedback(
+                            context,
+                            error,
+                            success: 'ลบรหัสที่บันทึกแล้ว',
+                          );
+                        }
+                      },
+                icon: const Icon(PhosphorIconsRegular.signOut),
+                label: const Text('ลบรหัสที่บันทึก'),
+              ),
+            ],
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _connecting || state.busy ? null : _connect,
+              icon: const Icon(PhosphorIconsRegular.link, size: 18),
+              label: Text(
+                _connecting ? 'กำลังเชื่อมต่อ…' : 'บันทึกและเชื่อมต่อ',
+              ),
+            ),
+            if (state.connection.localEsp32 && state.fresh) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: state.busy
+                    ? null
+                    : () async {
+                        final error = await ref
+                            .read(appControllerProvider.notifier)
+                            .send('ping', {});
+                        if (context.mounted) {
+                          showFeedback(
+                            context,
+                            error,
+                            success: 'บอร์ดหลักตอบรับคำสั่งจริงแล้ว',
+                          );
+                        }
+                      },
+                icon: const Icon(PhosphorIconsRegular.gauge),
+                label: const Text('ทดสอบบอร์ด'),
+              ),
+            ],
+            if (state.error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                state.error!,
+                style: const TextStyle(fontSize: 12, color: AquaColors.red),
+              ),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: 24),
+      _SettingsGroup(
+        title: 'สอบเทียบ pH',
+        subtitle: '',
+        icon: PhosphorIconsRegular.flask,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const PhCalibrationScreen(),
+                ),
+              ),
+              icon: const Icon(PhosphorIconsRegular.flask),
+              label: const Text('เปิดคู่มือและสอบเทียบ pH'),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 24),
+      _SettingsGroup(
+        title: 'ค่าควบคุม',
+        subtitle: 'อุณหภูมิและช่วง pH',
+        icon: PhosphorIconsRegular.slidersHorizontal,
+        child: Form(
+          key: _settingsForm,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeading(
+                'ค่าตั้งการควบคุม',
+                trailing: TextButton(
+                  onPressed: () =>
+                      setState(() => _loadSettings(state.settings)),
+                  child: const Text(
+                    'โหลดค่าปัจจุบัน',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
+              LayoutBuilder(
+                builder: (context, c) {
+                  final fields = [
+                    _field(_temperature, 'อุณหภูมิเป้าหมาย', '°C', 20, 35),
+                    _field(_ph, 'pH ต่ำสุด', 'pH', 0, 14),
+                    _field(_phMax, 'pH สูงสุด', 'pH', 0, 14),
+                  ];
+                  final width = c.maxWidth >= 700
+                      ? (c.maxWidth - 16) / 2
+                      : c.maxWidth;
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 14,
+                    children: fields
+                        .map((field) => SizedBox(width: width, child: field))
+                        .toList(),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: state.fresh && !state.busy ? _saveSettings : null,
+                icon: const Icon(PhosphorIconsRegular.floppyDisk, size: 18),
+                label: Text(
+                  state.busy ? 'รอเครื่องยืนยัน…' : 'ส่งค่าตั้งไปยังเครื่อง',
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'pH ใช้ตรวจวัดและแจ้งเตือน',
+                style: TextStyle(fontSize: 12, color: AquaColors.muted),
+              ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 24),
+      _SettingsGroup(
+        title: 'รอบฟัก',
+        subtitle: 'รอบปัจจุบันและการเริ่มรอบใหม่',
+        icon: PhosphorIconsRegular.stack,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeading(
+              'รอบฟักปัจจุบัน',
+              trailing: OutlinedButton.icon(
+                onPressed: state.busy
+                    ? null
+                    : () => showBatchDialog(
+                        context,
+                        ref.read(appControllerProvider.notifier),
+                      ),
+                icon: const Icon(PhosphorIconsRegular.plus, size: 17),
+                label: const Text('เริ่มรอบใหม่'),
+              ),
+            ),
+            Text(
+              state.batch?.name ?? 'ยังไม่มีรอบฟัก',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            if (state.batch != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'เริ่ม ${fullTime(state.batch!.startedAt)}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              Text(
+                'ไข่เริ่มต้น: ${state.batch!.eggs?.toString() ?? 'ยังไม่ระบุ'}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              TextButton.icon(
+                onPressed: state.busy
+                    ? null
+                    : () => showDeleteBatchDialog(
+                        context,
+                        ref.read(appControllerProvider.notifier),
+                        state.batch!,
+                      ),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
+                icon: const Icon(PhosphorIconsRegular.trash, size: 18),
+                label: const Text('ลบรอบฟัก'),
+              ),
+            ],
+            const SizedBox(height: 12),
+            const Text(
+              'ผลนับบันทึกในมือถือสูงสุด 100 รายการ รุ่นนี้ยังไม่ซิงก์ประวัติรอบฟักกับเซิร์ฟเวอร์',
+              style: TextStyle(fontSize: 12, color: AquaColors.muted),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 24),
+      if (state.connection.demo) ...[
+        _SettingsGroup(
+          title: 'เครื่องมือทดลอง',
+          subtitle: 'จำลอง pH ผิดปกติและระดับน้ำต่ำ',
+          icon: PhosphorIconsRegular.flask,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionHeading('ทดสอบสถานการณ์จำลอง'),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('pH นอกช่วง', style: TextStyle(fontSize: 14)),
+                subtitle: const Text(
+                  'ดูการแจ้งเตือนบนหน้าแรก',
+                  style: TextStyle(fontSize: 12),
+                ),
+                value: _abnormalPh,
+                onChanged: (v) {
+                  setState(() => _abnormalPh = v);
+                  ref
+                      .read(appControllerProvider.notifier)
+                      .demoScenario(ph: v, water: _lowWater);
+                },
+              ),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'ระดับน้ำต่ำ',
+                  style: TextStyle(fontSize: 14),
+                ),
+                subtitle: const Text(
+                  'ทดสอบการตัดอุปกรณ์และปฏิเสธคำสั่ง',
+                  style: TextStyle(fontSize: 12),
+                ),
+                value: _lowWater,
+                onChanged: (v) {
+                  setState(() => _lowWater = v);
+                  ref
+                      .read(appControllerProvider.notifier)
+                      .demoScenario(ph: _abnormalPh, water: v);
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    ];
+    final groups = content.whereType<_SettingsGroup>().toList();
+    if (widget.section != null) {
+      final chosen = groups.where((g) => g.title == widget.section);
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.section!)),
+        body: PageBody(
+          children: chosen.isEmpty
+              ? [const Text('เชื่อมต่อเครื่องเพื่อเปิดส่วนนี้')]
+              : [chosen.first.child],
+        ),
+      );
+    }
+    return PageBody(
+      children: [
+        const PageTitle('อุปกรณ์ของคุณ'),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AquaColors.sage,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    PhosphorIconsRegular.qrCode,
+                    size: 64,
+                    color: AquaColors.blue,
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'เพิ่มอุปกรณ์',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'บอร์ดควบคุม หรือกล้อง',
+                          style: AquaType.caption,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                key: const ValueKey('add-device-by-qr'),
+                onPressed: state.busy ? null : _openQrPairing,
+                icon: const Icon(PhosphorIconsRegular.scan),
+                label: const Text('สแกน QR เพื่อเพิ่มอุปกรณ์'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
         ConnectionOverview(
           state: state,
           onBoard: state.busy || _connecting ? null : _openWifiSetup,
@@ -220,378 +589,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _connect();
                 },
         ),
-        const SizedBox(height: 12),
-        _SettingsGroup(
-          title: 'ดูจากนอกบ้าน',
-          subtitle:
-              state.connection.relayOrigin != null ||
-                  state.cameraConnection?.relayOrigin != null
-              ? 'เปิดใช้งานแล้ว'
-              : 'ผ่านอินเทอร์เน็ต',
-          icon: Icons.public_rounded,
-          child: const RemoteSettings(),
+        const SizedBox(height: 16),
+        const SectionHeading('จัดการ'),
+        Surface(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              for (var i = 0; i < groups.length; i++) ...[
+                groups[i],
+                if (i < groups.length - 1)
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Card(
-          clipBehavior: Clip.antiAlias,
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 8,
-            ),
-            leading: const Icon(
-              Icons.photo_camera_outlined,
-              color: AquaColors.blue,
-            ),
-            title: const Text(
-              'กล้อง: IP และ USB',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
+            leading: const Icon(PhosphorIconsRegular.camera),
+            title: const Text('กล้อง: IP และ USB'),
+            trailing: const Icon(PhosphorIconsRegular.caretRight),
             onTap: () => Navigator.of(context).push<void>(
               MaterialPageRoute(builder: (_) => const CameraConnectionScreen()),
             ),
           ),
         ),
-        const SizedBox(height: 14),
-        _SettingsGroup(
-          title: 'ตั้งค่าบอร์ดขั้นสูง',
-          subtitle: 'IP และเซิร์ฟเวอร์ของบอร์ด',
-          icon: Icons.router_outlined,
-          initiallyExpanded: false,
+        const SizedBox(height: 24),
+        const Center(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SectionHeading(
-                'การเชื่อมต่อ',
-                trailing: Pill(
-                  state.connection.demo
-                      ? 'ทดลอง'
-                      : state.fresh
-                      ? 'ออนไลน์'
-                      : 'ออฟไลน์',
-                  color: state.fresh ? AquaColors.teal : AquaColors.orange,
-                ),
-              ),
-              SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment(
-                    value: true,
-                    label: Text('เครื่องจำลอง'),
-                    icon: Icon(Icons.science_outlined),
-                  ),
-                  ButtonSegment(
-                    value: false,
-                    label: Text('เครื่องจริง'),
-                    icon: Icon(Icons.router_outlined),
-                  ),
-                ],
-                selected: {_demo},
-                onSelectionChanged: _connecting || state.busy
-                    ? null
-                    : (values) => setState(() => _demo = values.first),
-              ),
-              const SizedBox(height: 20),
-              if (!_demo) ...[
-                DropdownButtonFormField<bool>(
-                  initialValue: _localEsp32,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'เชื่อมต่อผ่าน'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: false,
-                      child: Text('เซิร์ฟเวอร์ของบอร์ด'),
-                    ),
-                    DropdownMenuItem(value: true, child: Text('ESP32 ในบ้าน')),
-                  ],
-                  onChanged: _connecting || state.busy
-                      ? null
-                      : (value) => setState(() => _localEsp32 = value ?? false),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  key: const PageStorageKey('connection-url'),
-                  controller: _url,
-                  keyboardType: TextInputType.url,
-                  decoration: InputDecoration(
-                    labelText: _localEsp32 ? 'URL บอร์ด' : 'URL เซิร์ฟเวอร์',
-                    hintText: _localEsp32
-                        ? 'https://192.168.1.50'
-                        : 'https://incubator.example.com',
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  key: const PageStorageKey('connection-device'),
-                  controller: _device,
-                  decoration: const InputDecoration(
-                    labelText: 'รหัสเครื่อง',
-                    hintText: 'incubator-01',
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  key: const PageStorageKey('connection-token'),
-                  controller: _token,
-                  obscureText: true,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  decoration: const InputDecoration(
-                    labelText: 'รหัสเข้าถึงเซิร์ฟเวอร์',
-                    helperText: 'เว้นว่างเพื่อใช้รหัสเดิมของเครื่องนี้',
-                  ),
-                ),
-                const SizedBox(height: 14),
-                if (!_localEsp32) const Notice('เซิร์ฟเวอร์ภายนอกใช้ HTTPS'),
-                TextButton.icon(
-                  onPressed: state.busy
-                      ? null
-                      : () async {
-                          final error = await ref
-                              .read(appControllerProvider.notifier)
-                              .forgetCredentials();
-                          if (context.mounted) {
-                            showFeedback(
-                              context,
-                              error,
-                              success: 'ลบรหัสที่บันทึกแล้ว',
-                            );
-                          }
-                        },
-                  icon: const Icon(Icons.logout_rounded),
-                  label: const Text('ลบรหัสที่บันทึก'),
-                ),
-              ],
-              const SizedBox(height: 18),
-              FilledButton.icon(
-                onPressed: _connecting || state.busy ? null : _connect,
-                icon: const Icon(Icons.link_rounded, size: 18),
-                label: Text(
-                  _connecting ? 'กำลังเชื่อมต่อ…' : 'บันทึกและเชื่อมต่อ',
-                ),
-              ),
-              if (state.connection.localEsp32 && state.fresh) ...[
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: state.busy
-                      ? null
-                      : () async {
-                          final error = await ref
-                              .read(appControllerProvider.notifier)
-                              .send('ping', {});
-                          if (context.mounted) {
-                            showFeedback(
-                              context,
-                              error,
-                              success: 'บอร์ดหลักตอบรับคำสั่งจริงแล้ว',
-                            );
-                          }
-                        },
-                  icon: const Icon(Icons.network_check_rounded),
-                  label: const Text('ทดสอบบอร์ด'),
-                ),
-              ],
-              if (state.error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  state.error!,
-                  style: const TextStyle(fontSize: 12, color: AquaColors.red),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 22),
-        _SettingsGroup(
-          title: 'สอบเทียบ pH',
-          subtitle: '',
-          icon: Icons.science_outlined,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const PhCalibrationScreen(),
-                  ),
-                ),
-                icon: const Icon(Icons.science_outlined),
-                label: const Text('เปิดคู่มือและสอบเทียบ pH'),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 22),
-        _SettingsGroup(
-          title: 'ค่าควบคุม',
-          subtitle: 'อุณหภูมิและช่วง pH',
-          icon: Icons.tune_rounded,
-          initiallyExpanded: false,
-          child: Form(
-            key: _settingsForm,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionHeading(
-                  'ค่าตั้งการควบคุม',
-                  trailing: TextButton(
-                    onPressed: () =>
-                        setState(() => _loadSettings(state.settings)),
-                    child: const Text(
-                      'โหลดค่าปัจจุบัน',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ),
-                LayoutBuilder(
-                  builder: (context, c) {
-                    final fields = [
-                      _field(_temperature, 'อุณหภูมิเป้าหมาย', '°C', 20, 35),
-                      _field(_ph, 'pH ต่ำสุด', 'pH', 0, 14),
-                      _field(_phMax, 'pH สูงสุด', 'pH', 0, 14),
-                    ];
-                    final width = c.maxWidth >= 700
-                        ? (c.maxWidth - 16) / 2
-                        : c.maxWidth;
-                    return Wrap(
-                      spacing: 16,
-                      runSpacing: 14,
-                      children: fields
-                          .map((field) => SizedBox(width: width, child: field))
-                          .toList(),
-                    );
-                  },
-                ),
-                const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: state.fresh && !state.busy ? _saveSettings : null,
-                  icon: const Icon(Icons.save_outlined, size: 18),
-                  label: Text(
-                    state.busy ? 'รอเครื่องยืนยัน…' : 'ส่งค่าตั้งไปยังเครื่อง',
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'ค่าตั้งเริ่มต้นใช้ทดลองแอป โปรดกำหนดช่วง pH และอุณหภูมิตามรอบฟักจริง ระบบ pH ใช้ตรวจวัดและแจ้งเตือนเท่านั้น',
-                  style: TextStyle(fontSize: 12, color: AquaColors.muted),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 22),
-        _SettingsGroup(
-          title: 'รอบฟัก',
-          subtitle: 'รอบปัจจุบันและการเริ่มรอบใหม่',
-          icon: Icons.layers_outlined,
-          initiallyExpanded: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeading(
-                'รอบฟักปัจจุบัน',
-                trailing: OutlinedButton.icon(
-                  onPressed: state.busy
-                      ? null
-                      : () => showBatchDialog(
-                          context,
-                          ref.read(appControllerProvider.notifier),
-                        ),
-                  icon: const Icon(Icons.add_rounded, size: 17),
-                  label: const Text('เริ่มรอบใหม่'),
-                ),
+              Text(
+                'Smart Catfish System',
+                style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
               Text(
-                state.batch?.name ?? 'ยังไม่มีรอบฟัก',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              if (state.batch != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'เริ่ม ${fullTime(state.batch!.startedAt)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                Text(
-                  'ไข่เริ่มต้น: ${state.batch!.eggs?.toString() ?? 'ยังไม่ระบุ'}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                TextButton.icon(
-                  onPressed: state.busy
-                      ? null
-                      : () => showDeleteBatchDialog(
-                          context,
-                          ref.read(appControllerProvider.notifier),
-                          state.batch!,
-                        ),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  label: const Text('ลบรอบฟัก'),
-                ),
-              ],
-              const SizedBox(height: 12),
-              const Text(
-                'ผลนับบันทึกในมือถือสูงสุด 100 รายการ รุ่นนี้ยังไม่ซิงก์ประวัติรอบฟักกับเซิร์ฟเวอร์',
-                style: TextStyle(fontSize: 12, color: AquaColors.muted),
+                '0.21.0',
+                style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 22),
-        if (state.connection.demo) ...[
-          _SettingsGroup(
-            title: 'เครื่องมือทดลอง',
-            subtitle: 'จำลอง pH ผิดปกติและระดับน้ำต่ำ',
-            icon: Icons.science_outlined,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SectionHeading('ทดสอบสถานการณ์จำลอง'),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'pH นอกช่วง',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                  subtitle: const Text(
-                    'ดูการแจ้งเตือนบนหน้าแรก',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  value: _abnormalPh,
-                  onChanged: (v) {
-                    setState(() => _abnormalPh = v);
-                    ref
-                        .read(appControllerProvider.notifier)
-                        .demoScenario(ph: v, water: _lowWater);
-                  },
-                ),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'ระดับน้ำต่ำ',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                  subtitle: const Text(
-                    'ทดสอบการตัดอุปกรณ์และปฏิเสธคำสั่ง',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  value: _lowWater,
-                  onChanged: (v) {
-                    setState(() => _lowWater = v);
-                    ref
-                        .read(appControllerProvider.notifier)
-                        .demoScenario(ph: _abnormalPh, water: v);
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 22),
-        ],
       ],
     );
   }
@@ -621,51 +658,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   );
 }
 
-class _SettingsGroup extends StatefulWidget {
+class _SettingsGroup extends StatelessWidget {
   final String title, subtitle;
   final IconData icon;
-  final bool initiallyExpanded;
   final Widget child;
   const _SettingsGroup({
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.child,
-    this.initiallyExpanded = false,
   });
   @override
-  State<_SettingsGroup> createState() => _SettingsGroupState();
-}
-
-class _SettingsGroupState extends State<_SettingsGroup> {
-  // ExpansionTile stores a bool in the route bucket. EditableText stores a
-  // double scroll offset, so descendants must not share the tile's identifier.
-  final _contentStorage = PageStorageBucket();
-
-  @override
-  Widget build(BuildContext context) => Card(
-    clipBehavior: Clip.antiAlias,
-    child: ExpansionTile(
-      key: PageStorageKey(widget.title),
-      maintainState: true,
-      initiallyExpanded: widget.initiallyExpanded,
-      shape: const Border(),
-      collapsedShape: const Border(),
-      leading: Icon(widget.icon, color: AquaColors.blue),
-      title: Text(
-        widget.title,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-      subtitle: widget.subtitle.isEmpty
-          ? null
-          : Text(widget.subtitle, style: Theme.of(context).textTheme.bodySmall),
-      tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-          child: PageStorage(bucket: _contentStorage, child: widget.child),
-        ),
-      ],
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    leading: Icon(icon, color: AquaColors.blue),
+    title: Text(
+      title,
+      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+    ),
+    trailing: const Icon(
+      PhosphorIconsRegular.caretRight,
+      color: AquaColors.muted,
+    ),
+    onTap: () => Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => SettingsScreen(section: title)),
     ),
   );
 }

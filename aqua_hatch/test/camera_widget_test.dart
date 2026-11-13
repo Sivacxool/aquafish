@@ -133,7 +133,7 @@ void main() {
         },
       );
       expect(find.text('OV3660 · 2048 × 1536 พิกเซล'), findsOneWidget);
-      await tester.tap(find.text('ถ่ายภาพ'));
+      await tester.tap(find.byKey(const ValueKey('device-capture-button')));
       await tester.pump();
       controller.photo.complete(capture);
       final wait = Stopwatch()..start();
@@ -176,13 +176,13 @@ void main() {
       final controller = CameraController();
       await mount(tester, controller);
       expect(find.text('ภาพตัวอย่างจำลอง'), findsNothing);
-      final captureButton = find.widgetWithText(FilledButton, 'ถ่ายภาพ');
-      expect(tester.widget<FilledButton>(captureButton).onPressed, isNotNull);
+      final captureButton = find.byKey(const ValueKey('device-capture-button'));
+      expect(tester.widget<OutlinedButton>(captureButton).onPressed, isNotNull);
       await tester.ensureVisible(captureButton);
       await tester.tap(captureButton);
       await tester.pump();
       expect(controller.captures, 1);
-      expect(tester.widget<FilledButton>(captureButton).onPressed, isNull);
+      expect(tester.widget<OutlinedButton>(captureButton).onPressed, isNull);
       controller.photo.complete(captured());
       // Native image decoding needs real event-loop time. Wait for the visible
       // result instead of assuming it finishes within a fixed 150 ms under load.
@@ -218,7 +218,7 @@ void main() {
   ) async {
     final controller = CameraController();
     await mount(tester, controller);
-    await tester.tap(find.text('ถ่ายภาพ'));
+    await tester.tap(find.byKey(const ValueKey('device-capture-button')));
     await tester.pump();
     controller.switchMachine();
     await tester.pump();

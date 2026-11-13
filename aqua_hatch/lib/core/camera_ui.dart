@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,7 +26,7 @@ class CameraConnectionCard extends ConsumerWidget {
         leading: const CircleAvatar(
           foregroundColor: AquaColors.blue,
           backgroundColor: AquaColors.sage,
-          child: Icon(Icons.photo_camera_outlined),
+          child: Icon(PhosphorIconsRegular.camera),
         ),
         title: const Text(
           'เปิดกล้อง',
@@ -42,7 +43,7 @@ class CameraConnectionCard extends ConsumerWidget {
               ? 'กำลังเช็กกล้อง'
               : 'ยังไม่เชื่อมต่อ',
         ),
-        trailing: const Icon(Icons.arrow_forward_rounded),
+        trailing: const Icon(PhosphorIconsRegular.arrowRight),
       ),
     );
   }

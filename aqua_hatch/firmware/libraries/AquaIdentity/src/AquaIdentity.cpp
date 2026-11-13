@@ -18,7 +18,7 @@ bool AquaIdentity::begin(const char *kind){
   mac_=hex(mac,sizeof(mac));id_=(kind_=="s3"?"s3-":"cam-")+mac_;
   host_="aquahatch-"+id_+".local";
   String tail=mac_.substring(6);tail.toUpperCase();
-  ssid_=(kind_=="s3"?"AquaHatch-S3-":"AquaHatch-CAM-")+tail;
+  ssid_=(kind_=="s3"?"Smart Catfish System-B-":"Smart Catfish System-C-")+tail;
   if(!storage_.begin("aqua_ident",false)){error_="identity_storage_unavailable";return false;}
   if(storage_.isKey("record_v1")){
     String record=storage_.getString("record_v1","");

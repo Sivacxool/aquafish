@@ -24,6 +24,9 @@ void main() {
     final font = FontLoader('NotoSansThai')
       ..addFont(rootBundle.load('assets/fonts/NotoSansThai.ttf'));
     await font.load();
+    await (FontLoader(
+      'PhosphorRegular',
+    )..addFont(rootBundle.load('assets/fonts/Phosphor.ttf'))).load();
     final icons = FontLoader('MaterialIcons')
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await icons.load();
@@ -42,6 +45,7 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
     Future<void> capture(String name) async {
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 650));
       expect(tester.takeException(), isNull);
       final boundary =
           key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
@@ -58,10 +62,10 @@ void main() {
 
     await capture('dashboard-desktop');
     await tester.tap(find.text('ควบคุมเครื่อง').first);
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 650));
     await capture('controls-desktop');
     await tester.tap(find.text('นับลูกปลา').first);
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 650));
     await capture('camera-desktop');
     tester.view.physicalSize = const Size(390, 844);
     await tester.pump();
@@ -80,16 +84,17 @@ void main() {
     tester.view.physicalSize = const Size(1440, 1024);
     await tester.pump();
     await tester.tap(find.text('ตั้งค่า').first);
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 650));
     await capture('settings-desktop');
     tester.view.physicalSize = const Size(390, 844);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 650));
+    await capture('settings-mobile');
     await tester.tap(find.text('ภาพรวม').last);
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 650));
     await capture('dashboard-mobile');
     await tester.tap(find.text('นับลูกปลา').last);
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 650));
     final previousHandler = FlutterError.onError;
     FlutterError.onError = (details) {
       if (details.exceptionAsString().contains('overflow')) {
@@ -102,7 +107,7 @@ void main() {
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     for (final label in ['ควบคุม', 'นับลูกปลา', 'ตั้งค่า']) {
       await tester.tap(find.text(label).last);
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(const Duration(milliseconds: 650));
       expect(tester.takeException(), isNull, reason: label);
     }
     await tester.pumpWidget(const SizedBox());

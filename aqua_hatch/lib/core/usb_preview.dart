@@ -1,3 +1,4 @@
+import 'package:aqua_hatch/app/icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/theme.dart';
@@ -62,7 +63,7 @@ class _UsbLivePreviewState extends ConsumerState<UsbLivePreview>
                 _client.close();
                 setState(_open);
               },
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(PhosphorIconsRegular.arrowClockwise),
               label: const Text('รับภาพใหม่'),
             ),
           ],
@@ -111,7 +112,7 @@ class _UsbLivePreviewState extends ConsumerState<UsbLivePreview>
                 child: Pill(
                   'ภาพสด · USB',
                   color: AquaColors.teal,
-                  icon: Icons.usb_rounded,
+                  icon: PhosphorIconsRegular.usb,
                 ),
               ),
             ],

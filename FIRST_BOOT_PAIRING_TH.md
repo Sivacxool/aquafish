@@ -1,3 +1,5 @@
+> รุ่น 0.21 เปลี่ยนชื่อ Wi-Fi ตั้งค่าเป็น `Smart Catfish System-B-XXXXXX` (บอร์ด) และ `Smart Catfish System-C-XXXXXX` (กล้อง) QR เก่ายังใช้จับคู่ได้ หลังอัปเดตเฟิร์มแวร์ให้เลือกชื่อ Wi-Fi ใหม่ในแอปหรืออ่าน QR ใหม่ โดยไม่ล้าง NVS
+
 # บอร์ดใหม่สร้างรหัสเอง แล้วสแกน QR จับคู่
 
 สำหรับ AquaHatch 0.19.0 และบอร์ด ET-ESP32 WROOM 32UE V1 / กล้อง AI Thinker ESP32-CAM

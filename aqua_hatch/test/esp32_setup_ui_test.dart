@@ -44,20 +44,14 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('ออนไลน์ · รอติดตั้ง'), findsOneWidget);
+      expect(find.text('ออนไลน์'), findsOneWidget);
       await tester.tap(find.text('ควบคุม').last);
       await tester.pumpAndSettle();
-      expect(find.text('รอติดตั้งวงจรควบคุม'), findsOneWidget);
-      expect(find.text('รอติดตั้ง'), findsNWidgets(4));
-      expect(
-        tester
-            .widget<SegmentedButton<bool>>(find.byType(SegmentedButton<bool>))
-            .onSelectionChanged,
-        isNull,
-      );
-      await tester.tap(find.text('ควบคุมเอง').first);
-      await tester.pumpAndSettle();
-      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.text('วงจรไม่พร้อม'), findsNothing);
+      expect(find.text('รอวงจรควบคุมพร้อม'), findsOneWidget);
+      final start = find.widgetWithText(FilledButton, 'เปิดเติมน้ำอัตโนมัติ');
+      expect(tester.widget<FilledButton>(start).onPressed, isNull);
+      expect(find.byType(SegmentedButton<bool>), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.tap(find.text('ตั้งค่า').last);
       await tester.pumpAndSettle();
