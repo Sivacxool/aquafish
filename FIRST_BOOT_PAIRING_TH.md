@@ -16,11 +16,11 @@
 | CAM | AI Thinker ESP32-CAM / ESP32-S บนฐาน ESP32-CAM-MB พร้อม OV3660 (ไดรเวอร์เดิมรองรับ OV2640 / OV5640 ด้วย) |
 
 ETT และ CAM ใช้เฟิร์มแวร์คนละไฟล์ ห้ามสลับกัน บอร์ดต่างรุ่นหรือผังขากล้องต่างออกไปต้องปรับเป้าหมายก่อน
-ขั้นตอนนี้เตรียมสำหรับ Windows ที่มี Arduino IDE / Arduino CLI และ Arduino-ESP32 3.3.12 แล้ว พร้อม Python3.11ขึ้นไป การเตรียมไลบรารี QR ครั้งแรกใช้อินเทอร์เน็ต
+ตัวติดตั้งสำหรับ Windows ใช้ Python 3.11 ขึ้นไป และใช้อินเทอร์เน็ตเตรียมเครื่องมือครั้งแรก ชุดกล้องใช้ esptool โดยตรง ส่วนชุด ETT ใช้ Arduino IDE หรือ Arduino CLI พร้อม Arduino-ESP32 3.3.12
 
 ## 1. ลงเฟิร์มแวร์
 
-1. ดาวน์โหลดและแตก [FirstBoot สำหรับ ETT](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ETT-WROOM32UE-v0.22.1-ett32ue.1-FirstBoot.zip) และ [FirstBoot สำหรับกล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0-camera.2/AquaHatch-ESP32-CAM-v0.22.0-camera.2-FirstBoot.zip) แยกกัน
+1. ดาวน์โหลดและแตก [FirstBoot สำหรับ ETT](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ETT-WROOM32UE-v0.22.1-ett32ue.1-FirstBoot.zip) และ [FirstBoot สำหรับกล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0-camera.2-install.1/AquaHatch-ESP32-CAM-v0.22.0-camera.2-InstallerFix.zip) แยกกัน
 2. ปิด Serial Monitor ต่อโปรแกรมเมอร์ของบอร์ด ETT ตาม [คู่มือ ETT](ETT_WROOM32UE_SETUP_TH.md)
 3. เปิด `Install-ETT-WROOM32UE.cmd` กรอกพอร์ตที่ Windows แสดง เช่น COM5 แล้วรอจนลงเสร็จ
 4. โปรแกรมรอบอร์ดสร้างตัวตน จากนั้นรับบัตรผ่าน USB และเปิดไฟล์ `PAIRING_PRIVATE.html` ให้เอง

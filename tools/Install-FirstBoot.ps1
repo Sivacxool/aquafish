@@ -17,9 +17,11 @@ if (!(Test-Path -LiteralPath $venvPython)) {
   & $pythonExe -m venv $venvPath
   if ($LASTEXITCODE -ne 0) { throw 'เตรียม Python ไม่สำเร็จ' }
 }
-& $venvPython -m pip install -r (Join-Path $PSScriptRoot 'pairing-requirements.txt')
-if ($LASTEXITCODE -ne 0) { throw 'เตรียมโปรแกรมรับ QR ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่' }
+$pipArgs=@('-m','pip','--disable-pip-version-check','install','-r',(Join-Path $PSScriptRoot 'pairing-requirements.txt'))
+if ($Kind -eq 'camera' -and !$ReadOnly) { $pipArgs+='esptool==5.3.1' }
+& $venvPython @pipArgs
+if ($LASTEXITCODE -ne 0) { throw 'เตรียมเครื่องมือติดตั้งไม่สำเร็จ ตรวจข้อความ pip ด้านบน' }
 $pairArgs=@('-X','utf8',(Join-Path $PSScriptRoot 'pairing_card.py'),'--kind',$Kind,'--port',$Port)
 if ($ReadOnly) { $pairArgs+='--read-only' }
 & $venvPython @pairArgs
-if ($LASTEXITCODE -ne 0) { throw 'ติดตั้งหรืออ่านบัตร QR ไม่สำเร็จ' }
+exit $LASTEXITCODE

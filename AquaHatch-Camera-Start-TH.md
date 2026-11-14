@@ -5,7 +5,7 @@
 
 ## เก็บรูปต้นฉบับลง microSD
 
-1. แตก [ZIP เฟิร์มแวร์กล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0-camera.2/AquaHatch-ESP32-CAM-v0.22.0-camera.2-FirstBoot.zip) ต่อ ESP32-CAM-MB เข้าคอม ปิด Serial Monitor แล้วเปิด `Install-CAM.cmd` เลือก COM ของกล้อง ใช้บอร์ด AI Thinker ESP32-CAM ใน Arduino IDE ขั้นตอนนี้เก็บ QR และ Wi-Fi ที่บันทึกไว้ในบอร์ดเดิม
+1. แตก [ZIP เฟิร์มแวร์กล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0-camera.2-install.1/AquaHatch-ESP32-CAM-v0.22.0-camera.2-InstallerFix.zip) ปิดไฟและถอด microSD ก่อน ต่อ AI Thinker ESP32-CAM บนฐาน ESP32-CAM-MB เข้าคอมผ่านสาย USB ที่รับส่งข้อมูลได้ ปิด Serial Monitor แล้วเปิด `Install-CAM.cmd` เลือก COM ของกล้อง ตัวติดตั้งใช้ Python 3.11 ขึ้นไป ดาวน์โหลด esptool ครั้งแรก และเก็บ QR กับ Wi-Fi ที่บันทึกไว้ในบอร์ดเดิม
 2. ปิดไฟกล้อง ใส่ microSD แบบ FAT32 แล้วเปิดใหม่ ถ้าเปิด Serial Monitor ที่ `115200` จะเห็น `SD_READY /AQUAHATCH` หลังกล้องอ่านการ์ดสำเร็จ
 3. ในแอปไปที่ **นับลูกปลา** แล้วกดถ่ายจากกล้อง บอร์ดจะเซฟ JPG ต้นฉบับหนึ่งไฟล์ต่อภาพในโฟลเดอร์ `AQUAHATCH` และส่งรูปให้แอปตามเดิม Serial Monitor แสดง `SD_SAVED` เมื่อบันทึกเสร็จ
 4. เมื่อถ่ายเสร็จ รอรูปขึ้นในแอป ปิดไฟกล้อง แล้วถอดการ์ดไปเปิดบนคอม ชื่อไฟล์ใช้วันและเวลา UTC ตามด้วยรหัสสุ่ม

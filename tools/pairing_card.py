@@ -4,7 +4,7 @@ Never generate a token/key on the PC, erase NVS, discover network devices, or lo
 the returned secret. Nothing touches a serial port unless main() is invoked.
 """
 from pathlib import Path
-import argparse,base64,hashlib,html,io,json,os,re,shutil,subprocess,time,webbrowser
+import argparse,base64,hashlib,html,io,json,os,re,shutil,subprocess,sys,time,webbrowser
 
 ROOT=Path(__file__).resolve().parent.parent
 FQBN={
@@ -14,6 +14,12 @@ FQBN={
 }
 # The controller's QR role predates WROOM-DA and is shared with 0.14 apps.
 PAIRING_KIND={'wroom-da':'s3','ett32ue':'s3','camera':'camera'}
+CAMERA_FLASH_LAYOUT = (
+    ('0x1000', 'camera_server.ino.bootloader.bin'),
+    ('0x8000', 'camera_server.ino.partitions.bin'),
+    ('0xe000', 'boot_app0.bin'),
+    ('0x10000', 'camera_server.ino.bin'),
+)
 
 def validate(payload,expected_kind=None):
     if not isinstance(payload,dict) or set(payload)!={'format','version','kind','id','host','ssid','token','ca'}:
@@ -96,39 +102,80 @@ def arduino_command(override):
     return command
 
 
+def verify_images(images, files):
+    manifest = images.parent / 'SHA256SUMS.json'
+    expected = json.loads(manifest.read_text(encoding='utf-8'))
+    for name in files:
+        image = images / name
+        relative = image.relative_to(images.parent).as_posix()
+        # Older packages used both archive-root and manifest-relative keys.
+        checksum = expected.get(relative, expected.get(f'{images.parent.name}/{relative}'))
+        if hashlib.sha256(image.read_bytes()).hexdigest() != checksum:
+            raise ValueError(f'ไฟล์ {name} ไม่ตรงกับ checksum ของชุดติดตั้ง')
+
+
 def flash(port,kind,command,images):
     folder='camera_server' if kind=='camera' else 'local_server'
-    images=Path(images)
-    required=[images/f'{folder}.ino{suffix}.bin' for suffix in ['', '.bootloader','.partitions']]
-    if not all(path.is_file() for path in required):raise FileNotFoundError('Generic firmware files are missing. Use the complete FirstBoot package.')
-    manifest=images.parent/'SHA256SUMS.json'
-    if not manifest.is_file():raise FileNotFoundError('Firmware checksum manifest is missing')
-    expected=json.loads(manifest.read_text(encoding='utf-8'))
-    for file in required:
-        relative=file.relative_to(images.parent).as_posix()
-        if hashlib.sha256(file.read_bytes()).hexdigest()!=expected.get(relative):raise ValueError('Firmware checksum mismatch')
+    verify_images(images, [f'{folder}.ino{suffix}.bin' for suffix in ['', '.bootloader', '.partitions']])
     subprocess.run(command + ['upload','--fqbn',FQBN[kind],'--port',port,'--input-dir',str(images),str(ROOT/'aqua_hatch/firmware'/folder)],check=True)
+
+
+def flash_camera(port, images):
+    from serial.tools.list_ports import comports
+
+    available = {entry.device.upper() for entry in comports()}
+    if port.upper() not in available:
+        ports = ', '.join(sorted(available)) or 'ไม่มี'
+        raise OSError(f'ไม่พบ {port} (พอร์ตที่พบ: {ports}) ให้ถอดเสียบ USB แล้วเลือก COM ที่เพิ่มขึ้น')
+
+    verify_images(images, (name for _, name in CAMERA_FLASH_LAYOUT))
+    command = [sys.executable, '-m', 'esptool', '--chip', 'esp32', '--port', port,
+               '--baud', '115200', '--before', 'default-reset', '--after', 'hard-reset',
+               'write-flash', '--flash-mode', 'keep', '--flash-freq', 'keep', '--flash-size', 'keep']
+    # These are the Arduino ESP32-CAM upload offsets. NVS (0x9000–0xDFFF) is untouched.
+    for address, name in CAMERA_FLASH_LAYOUT:
+        command.extend([address, str(images / name)])
+    subprocess.run(command, check=True)
+
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--kind',choices=FQBN,required=True);parser.add_argument('--port',required=True)
     parser.add_argument('--read-only',action='store_true',help='Retrieve the existing QR without flashing or changing identity')
-    parser.add_argument('--arduino-cli',help='Path to Arduino CLI (normally auto-detected)')
+    parser.add_argument('--arduino-cli',help='Path to Arduino CLI for controller uploads')
     parser.add_argument('--images',type=Path);parser.add_argument('--output',type=Path,default=ROOT/'outputs/private-pairing')
     parser.add_argument('--no-open',action='store_true');args=parser.parse_args()
     if not re.fullmatch(r'COM[1-9][0-9]*',args.port,re.IGNORECASE):parser.error('Use a Windows COM port such as COM3')
+    if not args.read_only:
+        print('กำลังลงเฟิร์มแวร์ โดยไม่สั่งล้าง NVS…', flush=True)
+        images = args.images or ROOT / 'firmware-images' / args.kind
+        try:
+            if args.kind == 'camera':
+                flash_camera(args.port, images)
+            else:
+                flash(args.port, args.kind, arduino_command(args.arduino_cli), images)
+        except FileNotFoundError as error:
+            print(f'ลงเฟิร์มแวร์ไม่สำเร็จ ไฟล์ติดตั้งหาย ({Path(error.filename).name}) กรุณาแตก ZIP ให้ครบ'
+                  if error.filename else str(error), file=sys.stderr, flush=True)
+            raise SystemExit(1) from None
+        except (OSError, ValueError) as error:
+            print(f'ลงเฟิร์มแวร์ไม่สำเร็จ {error}', file=sys.stderr, flush=True)
+            raise SystemExit(1) from None
+        except subprocess.CalledProcessError:
+            print(f'ลงเฟิร์มแวร์ไม่สำเร็จที่ {args.port} ดูข้อความของโปรแกรมแฟลชด้านบน',
+                  file=sys.stderr, flush=True)
+            raise SystemExit(1) from None
+        print('เขียนและตรวจเฟิร์มแวร์เสร็จแล้ว', flush=True)
     try:
-        if not args.read_only:
-            print('กำลังลงเฟิร์มแวร์ โดยไม่สั่งล้าง NVS…',flush=True)
-            flash(args.port,args.kind,arduino_command(args.arduino_cli),args.images or ROOT/'firmware-images'/args.kind)
         print('รอบอร์ดเตรียมรหัสเฉพาะตัว แล้วรับบัตรผ่าน USB…',flush=True)
         payload=read_pairing(args.port,PAIRING_KIND[args.kind])
         card=render_card(payload,args.output)
         print('บัตรจับคู่ส่วนตัวพร้อมแล้ว: '+str(card),flush=True)
         if not args.no_open:webbrowser.open(card.resolve().as_uri())
-    except (OSError,ValueError,TimeoutError,subprocess.CalledProcessError) as error:
+    except (OSError,ValueError):
         # Do not dump serial content or an exception containing a payload.
-        print('ทำรายการไม่สำเร็จ ตรวจพอร์ต USB รุ่นบอร์ด และปิด Serial Monitor แล้วลองใหม่',flush=True)
+        print('อ่านบัตร QR ไม่สำเร็จ ตรวจ COM ปิด Serial Monitor กด RST แล้วเปิด Read-QR สำหรับบอร์ดนี้',
+              file=sys.stderr, flush=True)
         raise SystemExit(1) from None
 
 if __name__=='__main__':main()
