@@ -8,6 +8,7 @@ import '../core/board_wifi.dart';
 import '../core/controller.dart';
 import '../core/models.dart';
 import '../core/wifi_platform.dart';
+import '../core/ui.dart' show showFeedback;
 import '../core/paired_camera.dart';
 import 'connection_journey.dart';
 import '../core/pairing.dart';
@@ -623,10 +624,10 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
                           ClipboardData(text: setupNetworkPassword(_token)),
                         );
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('คัดลอกรหัส Wi-Fi อุปกรณ์แล้ว'),
-                          ),
+                        showFeedback(
+                          context,
+                          null,
+                          success: 'คัดลอกรหัส Wi-Fi อุปกรณ์แล้ว',
                         );
                       },
                       icon: const Icon(PhosphorIconsRegular.copy),

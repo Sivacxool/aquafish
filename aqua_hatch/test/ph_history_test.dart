@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:aqua_hatch/core/models.dart';
@@ -59,6 +61,31 @@ void main() {
     expect(telemetryCsv(store.history(demo)), contains('ph_calibrated'));
     expect(telemetryCsv(store.history(demo)), contains('7.2,true'));
   });
+  test(
+    'clear history replaces legacy points and remembers the cutoff',
+    () async {
+      final old = Telemetry(at: DateTime.utc(2026, 1, 1), ph: 7);
+      SharedPreferences.setMockInitialValues({
+        'history_v2:demo': jsonEncode([old.toJson()]),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final store = LocalStore(prefs);
+      const config = ConnectionConfig();
+      expect(store.history(config).single.ph, 7);
+      final clearedAt = DateTime.utc(2026, 1, 2);
+      await store.saveHistory(config, const [], clearedAt: clearedAt);
+      await prefs.reload();
+      expect(store.history(config), isEmpty);
+      expect(store.historyClearedAt(config), clearedAt);
+      await store.saveHistory(config, [
+        Telemetry(at: DateTime.utc(2026, 1, 3), ph: 7.5),
+      ]);
+      await prefs.reload();
+      expect(store.history(config).single.ph, 7.5);
+      expect(store.historyClearedAt(config), clearedAt);
+    },
+  );
+
   test(
     'connection label never presents simulation or stale data as a real online device',
     () {

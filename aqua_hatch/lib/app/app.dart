@@ -108,67 +108,95 @@ class AppShell extends ConsumerWidget {
     PhosphorIconsRegular.scan,
     PhosphorIconsRegular.gearSix,
   ];
-  void _notifications(BuildContext context, AppState state) {
-    final events = state.events.take(200).toList();
+  void _notifications(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * .82,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 16, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+      builder: (sheetContext) => Consumer(
+        builder: (context, ref, _) {
+          final events = ref.watch(
+            appControllerProvider.select((state) => state.events),
+          );
+          return SafeArea(
+            top: false,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(sheetContext).height * .82,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 16, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Expanded(
-                      child: SectionHeading('กิจกรรมและการแจ้งเตือน'),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: SectionHeading('กิจกรรมและการแจ้งเตือน'),
+                        ),
+                        IconButton(
+                          tooltip: 'ปิดการแจ้งเตือน',
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          icon: const Icon(PhosphorIconsRegular.x),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      tooltip: 'ปิดการแจ้งเตือน',
-                      onPressed: () => Navigator.of(sheetContext).pop(),
-                      icon: const Icon(PhosphorIconsRegular.x),
-                    ),
+                    if (events.isNotEmpty)
+                      TextButton.icon(
+                        icon: const Icon(PhosphorIconsRegular.trash),
+                        label: const Text('ล้างการแจ้งเตือน'),
+                        onPressed: () async {
+                          final controller = ref.read(
+                            appControllerProvider.notifier,
+                          );
+                          if (!await confirmClear(
+                                context,
+                                'ล้างการแจ้งเตือน?',
+                                'ลบรายการแจ้งเตือนของเครื่องนี้ในมือถือ',
+                              ) ||
+                              !context.mounted) {
+                            return;
+                          }
+                          final saved = await controller.clearEvents();
+                          if (!saved && context.mounted) {
+                            showFeedback(context, 'ล้างการแจ้งเตือนไม่สำเร็จ');
+                          }
+                        },
+                      ),
+                    if (events.isEmpty)
+                      const Text('ยังไม่มีกิจกรรม')
+                    else
+                      Flexible(
+                        child: ListView.builder(
+                          key: const ValueKey('notification-events'),
+                          shrinkWrap: true,
+                          itemCount: events.length,
+                          itemBuilder: (context, index) {
+                            final event = events[index];
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                event.warning
+                                    ? PhosphorIconsRegular.warning
+                                    : PhosphorIconsRegular.checkCircle,
+                                color: event.warning
+                                    ? AquaColors.orange
+                                    : AquaColors.teal,
+                              ),
+                              title: Text(event.message),
+                              subtitle: Text(shortTime(event.at)),
+                            );
+                          },
+                        ),
+                      ),
                   ],
                 ),
-                if (events.isEmpty)
-                  const Text('ยังไม่มีกิจกรรม')
-                else
-                  Flexible(
-                    child: ListView.builder(
-                      key: const ValueKey('notification-events'),
-                      shrinkWrap: true,
-                      itemCount: events.length,
-                      itemBuilder: (context, index) {
-                        final event = events[index];
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(
-                            event.warning
-                                ? PhosphorIconsRegular.warning
-                                : PhosphorIconsRegular.checkCircle,
-                            color: event.warning
-                                ? AquaColors.orange
-                                : AquaColors.teal,
-                          ),
-                          title: Text(event.message),
-                          subtitle: Text(shortTime(event.at)),
-                        );
-                      },
-                    ),
-                  ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -235,7 +263,7 @@ class AppShell extends ConsumerWidget {
                             IconButton(
                               tooltip: 'กิจกรรมและการแจ้งเตือน',
                               onPressed: () {
-                                _notifications(context, state);
+                                _notifications(context);
                                 ref
                                     .read(appControllerProvider.notifier)
                                     .acknowledgeEvents();

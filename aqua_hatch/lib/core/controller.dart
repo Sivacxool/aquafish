@@ -191,15 +191,23 @@ class AppController extends Notifier<AppState> {
   bool _wifiSetupPaused = false;
   bool _wasFresh = false;
   DateTime? _lastSavedSample;
+  DateTime? _historyClearedAt;
   DateTime? _startedAt;
   bool _reportedWaiting = false;
   Future<void> _persistence = Future.value();
-  void _persist(Future<void> Function() save) {
-    _persistence = _persistence.then((_) => save()).catchError((Object _) {
-      if (!_disposed) {
-        state = state.copyWith(error: 'บันทึกประวัติในมือถือไม่สำเร็จ');
-      }
-    });
+  Future<bool> _persist(Future<void> Function() save) {
+    final operation = _persistence.then((_) => save());
+    final result = operation.then(
+      (_) => true,
+      onError: (Object _) {
+        if (!_disposed) {
+          state = state.copyWith(error: 'บันทึกประวัติในมือถือไม่สำเร็จ');
+        }
+        return false;
+      },
+    );
+    _persistence = result.then<void>((_) {});
+    return result;
   }
 
   late LocalStore _store;
@@ -208,6 +216,7 @@ class AppController extends Notifier<AppState> {
     final store = ref.read(localStoreProvider);
     _store = store;
     final config = store.connection;
+    _historyClearedAt = store.historyClearedAt(config);
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!_disposed) {
         state = state.copyWith(now: DateTime.now());
@@ -253,6 +262,8 @@ class AppController extends Notifier<AppState> {
       settings: store.settings,
       now: DateTime.now(),
       counts: store.counts,
+      history: store.history(config),
+      events: store.events(config),
       batch: hatch.active,
       hatchRounds: hatch.rounds,
     );
@@ -289,7 +300,31 @@ class AppController extends Notifier<AppState> {
     _persist(() => _store.saveEvents(config, events));
   }
 
+  Future<bool> clearEvents() {
+    final config = state.connection;
+    state = state.copyWith(events: const []);
+    return _persist(() => _store.saveEvents(config, const []));
+  }
+
+  Future<bool> clearHistory() {
+    final config = state.connection;
+    final clearedAt = DateTime.now();
+    _historyClearedAt = clearedAt;
+    _lastSavedSample = null;
+    state = state.copyWith(history: const []);
+    return _persist(
+      () => _store.saveHistory(config, const [], clearedAt: clearedAt),
+    );
+  }
+
   void _event(String text, {bool warning = false}) {
+    final first = state.events.firstOrNull;
+    if (warning &&
+        first?.message == text &&
+        first?.warning == true &&
+        first?.acknowledged == false) {
+      return;
+    }
     state = state.copyWith(
       events: [
         DeviceEvent(text, warning: warning),
@@ -312,9 +347,13 @@ class AppController extends Notifier<AppState> {
     await _subscription?.cancel();
     await _repository?.dispose();
     if (_disposed || generation != _generation) return;
-    final hatch = _store.scope(config) == _store.scope(state.connection)
-        ? null
-        : _store.hatchRounds(config);
+    final switched = _store.scope(config) != _store.scope(state.connection);
+    if (switched) {
+      await _persistence;
+      if (_disposed || generation != _generation) return;
+      _historyClearedAt = _store.historyClearedAt(config);
+    }
+    final hatch = switched ? _store.hatchRounds(config) : null;
     state = state.copyWith(
       connection: config,
       batch: hatch?.active,
@@ -322,8 +361,8 @@ class AppController extends Notifier<AppState> {
       hatchRounds: hatch?.rounds,
       connected: false,
       clearTelemetry: true,
-      history: _store.history(config),
-      events: _store.events(config),
+      history: switched ? _store.history(config) : null,
+      events: switched ? _store.events(config) : null,
       clearError: true,
     );
     final repo = config.demo
@@ -383,6 +422,10 @@ class AppController extends Notifier<AppState> {
   }
 
   List<Telemetry> _appendHistory(Telemetry reading) {
+    final clearedAt = _historyClearedAt;
+    if (clearedAt != null && !reading.at.isAfter(clearedAt)) {
+      return state.history;
+    }
     final samples = [...state.history];
     if (samples.isNotEmpty && samples.last.simulated != reading.simulated) {
       samples.clear();
@@ -409,11 +452,13 @@ class AppController extends Notifier<AppState> {
       if (_disposed || generation != _generation) return null;
       final simulated =
           state.telemetry?.simulated ?? samples.lastOrNull?.simulated;
+      final clearedAt = _historyClearedAt;
       final indexed = {
-        for (final t in [
-          ...samples,
-          ...state.history,
-        ].where((t) => simulated == null || t.simulated == simulated))
+        for (final t in [...samples, ...state.history].where(
+          (t) =>
+              (simulated == null || t.simulated == simulated) &&
+              (clearedAt == null || t.at.isAfter(clearedAt)),
+        ))
           t.at.millisecondsSinceEpoch ~/ 60000: t,
       };
       final merged = indexed.values.toList()
@@ -541,7 +586,15 @@ class AppController extends Notifier<AppState> {
       if (_disposed || generation != _generation) {
         return 'การเชื่อมต่อถูกเปลี่ยน';
       }
-      _event(result.message, warning: !result.applied);
+      if (!result.applied ||
+          !const {
+            'set_output',
+            'set_fill',
+            'set_mode',
+            'set_config',
+          }.contains(action)) {
+        _event(result.message, warning: !result.applied);
+      }
       return result.applied ? null : result.message;
     } catch (e) {
       if (!_disposed && generation == _generation) {
@@ -778,6 +831,10 @@ class AppController extends Notifier<AppState> {
       throw StateError('การเชื่อมต่อถูกเปลี่ยน');
     }
     return result;
+  }
+
+  Future<String?> setRemoteViewing(bool enabled, {required bool camera}) {
+    return setRelayOrigin(enabled ? defaultRelayOrigin : '', camera: camera);
   }
 
   Future<String?> setRelayOrigin(String input, {required bool camera}) async {

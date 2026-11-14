@@ -118,7 +118,11 @@ class RelayModeSelector extends StatelessWidget {
       'duration_seconds': 300,
     });
     if (context.mounted) {
-      showFeedback(context, error, success: 'เปลี่ยนโหมดแล้ว');
+      if (error != null) {
+        showFeedback(context, error);
+      } else {
+        clearFeedback(context);
+      }
     }
   }
 
@@ -282,11 +286,11 @@ class _RelayOutputs extends StatelessWidget {
                                   {'output': output, 'enabled': value},
                                 );
                                 if (context.mounted) {
-                                  showFeedback(
-                                    context,
-                                    error,
-                                    success: 'บอร์ดรับคำสั่งแล้ว',
-                                  );
+                                  if (error != null) {
+                                    showFeedback(context, error);
+                                  } else {
+                                    clearFeedback(context);
+                                  }
                                 }
                               }
                             : null,
@@ -354,12 +358,13 @@ class _FillControls extends StatelessWidget {
       if (confirmed != true || !context.mounted) return;
     }
     final error = await controller.send('set_fill', {'enabled': enabled});
-    if (!context.mounted) return;
-    showFeedback(
-      context,
-      error,
-      success: enabled ? 'เปิดระบบเติมน้ำแล้ว' : 'ปิดระบบเติมน้ำแล้ว',
-    );
+    if (context.mounted) {
+      if (error != null) {
+        showFeedback(context, error);
+      } else {
+        clearFeedback(context);
+      }
+    }
   }
 
   @override

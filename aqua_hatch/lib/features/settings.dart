@@ -6,11 +6,9 @@ import '../core/controller.dart';
 import '../core/models.dart';
 import '../core/ui.dart';
 import 'wifi_setup.dart';
-import 'camera_connection.dart';
 import 'connection_overview.dart';
 import 'controls.dart' show RelayModeSelector;
 import 'remote_settings.dart';
-import 'ph_calibration.dart';
 import 'qr_pairing.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -156,7 +154,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
     final content = <Widget>[
       _SettingsGroup(
-        title: 'ดูจากนอกบ้าน',
+        title: 'ดูจากระยะไกล',
         subtitle:
             state.connection.relayOrigin != null ||
                 state.cameraConnection?.relayOrigin != null
@@ -164,28 +162,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             : 'ผ่านอินเทอร์เน็ต',
         icon: PhosphorIconsRegular.globe,
         child: const RemoteSettings(),
-      ),
-      const SizedBox(height: 12),
-      Card(
-        clipBehavior: Clip.antiAlias,
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 18,
-            vertical: 8,
-          ),
-          leading: const Icon(
-            PhosphorIconsRegular.camera,
-            color: AquaColors.blue,
-          ),
-          title: const Text(
-            'กล้อง: IP และ USB',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          trailing: const Icon(PhosphorIconsRegular.caretRight),
-          onTap: () => Navigator.of(context).push<void>(
-            MaterialPageRoute(builder: (_) => const CameraConnectionScreen()),
-          ),
-        ),
       ),
       const SizedBox(height: 12),
       _SettingsGroup(
@@ -331,26 +307,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: const TextStyle(fontSize: 12, color: AquaColors.red),
               ),
             ],
-          ],
-        ),
-      ),
-      const SizedBox(height: 24),
-      _SettingsGroup(
-        title: 'สอบเทียบ pH',
-        subtitle: '',
-        icon: PhosphorIconsRegular.flask,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const PhCalibrationScreen(),
-                ),
-              ),
-              icon: const Icon(PhosphorIconsRegular.flask),
-              label: const Text('เปิดคู่มือและสอบเทียบ pH'),
-            ),
           ],
         ),
       ),
@@ -632,17 +588,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 8),
-        Card(
-          child: ListTile(
-            leading: const Icon(PhosphorIconsRegular.camera),
-            title: const Text('กล้อง: IP และ USB'),
-            trailing: const Icon(PhosphorIconsRegular.caretRight),
-            onTap: () => Navigator.of(context).push<void>(
-              MaterialPageRoute(builder: (_) => const CameraConnectionScreen()),
-            ),
-          ),
-        ),
         const SizedBox(height: 24),
         const Center(
           child: Column(
@@ -652,7 +597,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
               Text(
-                '0.22.2',
+                'Demo 1',
                 style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
             ],

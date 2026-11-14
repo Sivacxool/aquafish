@@ -111,12 +111,41 @@ class LocalStore {
     }
   }
 
-  List<Telemetry> history(ConnectionConfig c) =>
-      _list('history_v2:${scope(c)}', Telemetry.fromJson);
+  String _historyKey(ConnectionConfig config) => 'history_v2:${scope(config)}';
+
+  DateTime? historyClearedAt(ConnectionConfig config) =>
+      _read<DateTime?>(_historyKey(config), (data) {
+        final timestamp = data['cleared_at'];
+        return timestamp is String ? DateTime.tryParse(timestamp) : null;
+      });
+
+  List<Telemetry> history(ConnectionConfig config) {
+    final key = _historyKey(config);
+    return _read(key, (data) {
+          final samples = data['samples'] as List<dynamic>;
+          return samples
+              .map(
+                (sample) => Telemetry.fromJson(sample as Map<String, dynamic>),
+              )
+              .toList();
+        }) ??
+        _list(key, Telemetry.fromJson);
+  }
+
   List<DeviceEvent> events(ConnectionConfig c) =>
       _list('events_v2:${scope(c)}', DeviceEvent.fromJson);
-  Future<void> saveHistory(ConnectionConfig c, List<Telemetry> items) =>
-      _write('history_v2:${scope(c)}', items.map((e) => e.toJson()).toList());
+
+  Future<void> saveHistory(
+    ConnectionConfig config,
+    List<Telemetry> items, {
+    DateTime? clearedAt,
+  }) => _write(_historyKey(config), {
+    'samples': items.map((sample) => sample.toJson()).toList(),
+    'cleared_at': (clearedAt ?? historyClearedAt(config))
+        ?.toUtc()
+        .toIso8601String(),
+  });
+
   Future<void> saveEvents(ConnectionConfig c, List<DeviceEvent> items) =>
       _write(
         'events_v2:${scope(c)}',

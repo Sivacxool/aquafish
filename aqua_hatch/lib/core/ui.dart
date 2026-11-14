@@ -11,6 +11,7 @@ void showFeedback(
   String? error, {
   String success = 'บันทึกแล้ว',
 }) {
+  clearFeedback(context);
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Text(error ?? success),
@@ -19,6 +20,36 @@ void showFeedback(
     ),
   );
 }
+
+void clearFeedback(BuildContext context) {
+  ScaffoldMessenger.of(context)
+    ..clearSnackBars()
+    ..removeCurrentSnackBar();
+}
+
+Future<bool> confirmClear(
+  BuildContext context,
+  String title,
+  String detail,
+) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(detail),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('ยกเลิก'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ล้าง'),
+          ),
+        ],
+      ),
+    ) ==
+    true;
 
 String number(double? value, {int decimals = 1}) =>
     value?.toStringAsFixed(decimals) ?? '—';

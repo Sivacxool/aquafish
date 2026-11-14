@@ -10,37 +10,17 @@ class RemoteSettings extends ConsumerStatefulWidget {
 }
 
 class _RemoteSettingsState extends ConsumerState<RemoteSettings> {
-  late final TextEditingController _url;
   String? _message;
   bool _working = false;
 
-  @override
-  void initState() {
-    super.initState();
-    final state = ref.read(appControllerProvider);
-    _url = TextEditingController(
-      text: state.connection.relayOrigin ?? state.cameraConnection?.relayOrigin,
-    );
-  }
-
-  @override
-  void dispose() {
-    _url.dispose();
-    super.dispose();
-  }
-
   Future<void> _set(bool camera, bool enabled) async {
-    if (enabled && _url.text.trim().isEmpty) {
-      setState(() => _message = 'ใส่ลิงก์บริการก่อน');
-      return;
-    }
     setState(() {
       _working = true;
       _message = null;
     });
     final error = await ref
         .read(appControllerProvider.notifier)
-        .setRelayOrigin(enabled ? _url.text : '', camera: camera);
+        .setRemoteViewing(enabled, camera: camera);
     if (!mounted) return;
     setState(() {
       _working = false;
@@ -58,15 +38,6 @@ class _RemoteSettingsState extends ConsumerState<RemoteSettings> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text('เปิดบน Wi-Fi ของอุปกรณ์ · ปิดได้จากทุกเครือข่าย'),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _url,
-          enabled: enabled,
-          keyboardType: TextInputType.url,
-          autocorrect: false,
-          decoration: const InputDecoration(labelText: 'ลิงก์บริการ AquaHatch'),
-        ),
-        const SizedBox(height: 8),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: const Text('ดูค่าเซนเซอร์'),

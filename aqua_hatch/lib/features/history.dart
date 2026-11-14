@@ -28,6 +28,24 @@ String telemetryCsv(List<Telemetry> samples) => [
   ),
 ].join('\r\n');
 
+Future<void> clearWaterHistory(
+  BuildContext context,
+  AppController controller,
+) async {
+  if (!await confirmClear(
+        context,
+        'ล้างข้อมูลแนวโน้ม?',
+        'ลบจุดที่บันทึกไว้ในมือถือของเครื่องนี้ แอปจะเริ่มเก็บจุดใหม่เมื่อได้รับข้อมูล',
+      ) ||
+      !context.mounted) {
+    return;
+  }
+  final saved = await controller.clearHistory();
+  if (!saved && context.mounted) {
+    showFeedback(context, 'ล้างข้อมูลแนวโน้มไม่สำเร็จ');
+  }
+}
+
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
   @override
@@ -76,6 +94,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           _loading ? 'กำลังโหลด…' : 'โหลดจากเซิร์ฟเวอร์',
                         ),
                       ),
+                    TextButton.icon(
+                      onPressed: samples.isEmpty
+                          ? null
+                          : () => clearWaterHistory(
+                              context,
+                              ref.read(appControllerProvider.notifier),
+                            ),
+                      icon: const Icon(PhosphorIconsRegular.trash),
+                      label: const Text('ล้างข้อมูลแนวโน้ม'),
+                    ),
                     OutlinedButton.icon(
                       onPressed: samples.isEmpty
                           ? null

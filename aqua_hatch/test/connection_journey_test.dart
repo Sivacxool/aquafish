@@ -73,7 +73,7 @@ void main() {
   );
 
   testWidgets(
-    'camera IP and USB page scrolls on a small phone and accepts a bare IP',
+    'Demo 1 shows remote switches with no URL input or legacy settings pages',
     (tester) async {
       tester.view.physicalSize = const Size(320, 620);
       tester.view.devicePixelRatio = 1;
@@ -96,23 +96,20 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tap(tester, find.text('กล้อง: IP และ USB'));
+      expect(find.text('กล้อง: IP และ USB'), findsNothing);
+      expect(find.text('สอบเทียบ pH'), findsNothing);
+      expect(find.text('Demo 1'), findsOneWidget);
+      await tap(tester, find.text('ดูจากระยะไกล'));
       expect(find.byType(BackButton), findsOneWidget);
-      final usb = find.byKey(const ValueKey('connect-usb-camera'));
-      await tester.ensureVisible(usb);
-      await tester.pumpAndSettle();
-      expect(usb.hitTestable(), findsOneWidget);
-      final address = find.widgetWithText(TextField, 'IP หรือ URL บอร์ดกล้อง');
-      await tester.ensureVisible(address);
-      await tester.enterText(address, '192.168.1.55');
-      await tester.pumpAndSettle();
-      await tap(
-        tester,
-        find.widgetWithText(OutlinedButton, 'เชื่อมกล้องด้วย IP'),
+      expect(
+        find.widgetWithText(SwitchListTile, 'ดูค่าเซนเซอร์'),
+        findsOneWidget,
       );
-      expect(controller.configuredCamera?.baseUrl, 'https://192.168.1.55');
-      await tap(tester, find.byType(BackButton));
-      expect(address, findsNothing);
+      expect(
+        find.widgetWithText(SwitchListTile, 'ถ่ายภาพจากกล้อง'),
+        findsOneWidget,
+      );
+      expect(find.byType(TextField), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

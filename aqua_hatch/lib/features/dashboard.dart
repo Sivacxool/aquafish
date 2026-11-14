@@ -355,14 +355,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               const SizedBox(height: 16),
               TrendChart(history: history, ph: _phChart),
-              TextButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const HistoryScreen(),
+              Wrap(
+                spacing: 8,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const HistoryScreen(),
+                      ),
+                    ),
+                    icon: const Icon(
+                      PhosphorIconsRegular.clockCounterClockwise,
+                    ),
+                    label: const Text('ประวัติคุณภาพน้ำ'),
                   ),
-                ),
-                icon: const Icon(PhosphorIconsRegular.clockCounterClockwise),
-                label: const Text('ประวัติคุณภาพน้ำ'),
+                  TextButton.icon(
+                    onPressed: state.history.isEmpty
+                        ? null
+                        : () => clearWaterHistory(context, controller),
+                    icon: const Icon(PhosphorIconsRegular.trash),
+                    label: const Text('ล้างข้อมูลแนวโน้ม'),
+                  ),
+                ],
               ),
             ],
           ),

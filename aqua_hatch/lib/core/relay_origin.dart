@@ -1,3 +1,6 @@
+const defaultRelayOrigin =
+    'https://aquahatch-relay.aquahatch-relay.workers.dev';
+
 Uri? parseRelayOrigin(String input) {
   final uri = Uri.tryParse(input.trim());
   if (uri == null ||

@@ -1,15 +1,19 @@
-# Smart Catfish System · AquaHatch 0.22.2
+# Smart Catfish System · AquaHatch Demo 1
 
 แอป Flutter สำหรับ Android และ iOS ใช้กับบอร์ดควบคุม ETT WROOM32UE และกล้อง ESP32-CAM ของเครื่องฟักไข่ปลาดุก
 
 | ชุดติดตั้ง | ดาวน์โหลด |
 | --- | --- |
-| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.22.2/AquaHatch-v0.22.2-Android.apk) |
-| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.22.2/AquaHatch-v0.22.2-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
+| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.22.3/AquaHatch-v0.22.3-Android.apk) |
+| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.22.3/AquaHatch-v0.22.3-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
 | บอร์ด ETT WROOM32UE | [FirstBoot 0.22.1-ett32ue.1](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ETT-WROOM32UE-v0.22.1-ett32ue.1-FirstBoot.zip) |
 | ESP32-CAM + OV3660 | [FirstBoot 0.22.0-camera.1](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ESP32-CAM-v0.22.0-camera.1-FirstBoot.zip) |
 
 ## สิ่งที่เปลี่ยน
+
+- คำสั่งควบคุมแสดงสถานะที่เครื่องยืนยันและแจ้งเมื่อสั่งงานไม่สำเร็จ
+- **ดูจากระยะไกล** ใช้บริการที่ตั้งไว้ในแอป เปิดดูค่าเซนเซอร์หรือถ่ายภาพผ่านอินเทอร์เน็ตได้จากสวิตช์ของแต่ละอุปกรณ์
+- ล้างการแจ้งเตือนและจุดแนวโน้มของเครื่องที่เลือกได้จากในแอป
 
 - เพิ่มรอบฟักแล้วรอบเดิมยังอยู่ กด **เลือกรอบฟัก** ในหน้าภาพรวมหรือตั้งค่าเพื่อสลับรอบ
 

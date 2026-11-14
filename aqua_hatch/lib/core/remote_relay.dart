@@ -112,7 +112,7 @@ class RemoteRelay {
     final data = await _decodeJson(response);
     if (response.statusCode == 200) return data;
     if (response.statusCode == 423 && data['error'] == 'remote_disabled') {
-      throw StateError('ปิดการดูจากนอกบ้านไว้');
+      throw StateError('ปิดการดูจากระยะไกลไว้');
     }
     if (response.statusCode == 401) {
       throw StateError('บริการยังไม่ได้อนุญาตอุปกรณ์นี้');
@@ -137,7 +137,7 @@ class RemoteRelay {
       throw StateError('บริการยังไม่ได้อนุญาตอุปกรณ์นี้');
     }
     if (response.statusCode == 404) {
-      throw StateError('ต้องอัปเดตบริการก่อนตั้งค่าการดูจากนอกบ้าน');
+      throw StateError('ต้องอัปเดตบริการก่อนตั้งค่าการดูจากระยะไกล');
     }
     final confirmed = data['enabled'];
     if (response.statusCode != 200 ||
