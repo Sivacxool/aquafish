@@ -18,5 +18,5 @@
 #define VSYNC_GPIO_NUM 25
 #define HREF_GPIO_NUM 23
 #define PCLK_GPIO_NUM 22
-// Standard AI Thinker camera-board flash LED; no SD interface is used here.
+// Standard AI Thinker flash LED. The 1-bit SD bus does not use GPIO4.
 #define FLASH_GPIO_NUM 4

@@ -1,5 +1,5 @@
 // Direct camera HTTPS server; optional bounded capture illumination on GPIO4.
-// No pump/heater/SD GPIO control.
+// Archives the captured JPEG to the onboard microSD card when mounted.
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -19,8 +19,9 @@ AquaIdentity boardIdentity;
 #define SERVER_KEY boardIdentity.serverKey().c_str()
 #include "camera_pins.h"
 #include "camera_quality.h"
+#include "capture_archive.h"
 
-static const char VERSION[]="0.22.0-camera.1";
+static const char VERSION[]="0.22.0-camera.2";
 Preferences prefs;
 httpd_handle_t server=nullptr;
 bool tlsReady=false,wasConnected=false,cameraReady=false,cameraActive=false;
@@ -35,6 +36,7 @@ const char *nativeResolution="3mp";
 bool serialOverflow=false;
 camera_fb_t *photo=nullptr;
 camera_fb_t storedPhoto={};
+bool photoSavedToSd=false;
 String captureId,receivedAt,photoDigest;
 uint32_t capturedAt=0;
 SemaphoreHandle_t cameraMutex = nullptr;
@@ -73,6 +75,7 @@ void identity(JsonDocument &doc) {
 void status(JsonDocument &doc) {
   identity(doc); doc["configured"]=cameraReady; doc["online"]=cameraReady;
   doc["sensor"]=sensorName; doc["psram_bytes"]=ESP.getPsramSize();
+  doc["sd_mounted"]=capture_archive::mounted;
   doc["capture_mode"]="on_demand";doc["camera_awake"]=cameraActive;
   doc["focus_status"]=lastFocus.status;
   doc["flash_active"]=flashActive;
@@ -99,6 +102,7 @@ void job(JsonDocument &doc) {
   doc["sensor"]=sensorName;
   doc["status"]=photo?"captured":"expired";
   if(photo) { doc["bytes"]=photo->len; doc["width"]=photo->width; doc["height"]=photo->height; doc["sha256"]=photoDigest; }
+  if(photo) doc["sd_saved"]=photoSavedToSd;
   doc["focus_status"]=lastFocus.status;doc["focus_firmware_ready"]=lastFocus.firmwareReady;
   doc["focus_confirmed"]=lastFocus.focused;doc["focus_raw"]=lastFocus.raw;
   doc["focus_init_ms"]=lastFocus.initMs;doc["focus_search_ms"]=lastFocus.searchMs;
@@ -199,7 +203,9 @@ const char *performCapture(const JsonDocument &incoming, JsonDocument &result, S
   photoDigest=""; const char *hex="0123456789abcdef";
   for(uint8_t value:digest) { photoDigest+=hex[value>>4]; photoDigest+=hex[value&15]; }
   lastCaptureMs=millis()-captureStart;
-  receivedAt=nowIso(); capturedAt=millis(); job(result); return "202 Accepted";
+  receivedAt=nowIso();
+  photoSavedToSd=capture_archive::save(photo->buf,photo->len,time(nullptr));
+  capturedAt=millis(); job(result); return "202 Accepted";
 }
 #include "remote_camera.h"
 
@@ -357,6 +363,7 @@ void setup() {
   cameraMutex = xSemaphoreCreateMutex();
   if (!cameraMutex) { Serial.println("CAMERA_MUTEX_FAILED"); while (true) delay(1000); }
   prefs.begin("aquacam",false);flashOff();initCamera();
+  capture_archive::begin();
   WiFi.onEvent([](WiFiEvent_t,WiFiEventInfo_t info){lastDisconnectReason=info.wifi_sta_disconnected.reason;},ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   WiFi.persistent(false);WiFi.setHostname(boardIdentity.mdnsName().c_str());WiFi.mode(WIFI_AP_STA);WiFi.setAutoReconnect(true);WiFi.setSleep(false);
   provisioning::begin();String ssid,password;provisioning::loadSaved(ssid,password);

@@ -7,7 +7,7 @@
 | Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.22.3/AquaHatch-v0.22.3-Android.apk) |
 | iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.22.3/AquaHatch-v0.22.3-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
 | บอร์ด ETT WROOM32UE | [FirstBoot 0.22.1-ett32ue.1](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ETT-WROOM32UE-v0.22.1-ett32ue.1-FirstBoot.zip) |
-| ESP32-CAM + OV3660 | [FirstBoot 0.22.0-camera.1](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ESP32-CAM-v0.22.0-camera.1-FirstBoot.zip) |
+| ESP32-CAM + OV3660 | [FirstBoot 0.22.0-camera.2](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0-camera.2/AquaHatch-ESP32-CAM-v0.22.0-camera.2-FirstBoot.zip) · [วิธีเก็บรูปลง microSD](AquaHatch-Camera-Start-TH.md#เก็บรูปต้นฉบับลง-microsd) |
 
 ## สิ่งที่เปลี่ยน
 
