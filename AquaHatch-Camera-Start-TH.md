@@ -1,16 +1,18 @@
 # กล้อง AquaHatch — OV3660 / Wi-Fi / แฟลช
 
 ชุดล่าสุด: AI Thinker ESP32-CAM (ESP32-S บนฐาน USB ESP32-CAM-MB) + OV3660
-เฟิร์มแวร์ [camera_server](aqua_hatch/firmware/camera_server/camera_server.ino) รุ่น **0.22.0-camera.2** · แอป iOS/Android **Demo 1**
+เฟิร์มแวร์ [camera_server](aqua_hatch/firmware/camera_server/camera_server.ino) รุ่น **0.22.0-camera.3** · แอป iOS/Android **Demo 1**
 
 ## เก็บรูปต้นฉบับลง microSD
 
-1. แตก [ZIP เฟิร์มแวร์กล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0-camera.2-install.1/AquaHatch-ESP32-CAM-v0.22.0-camera.2-InstallerFix.zip) ปิดไฟและถอด microSD ก่อน ต่อ AI Thinker ESP32-CAM บนฐาน ESP32-CAM-MB เข้าคอมผ่านสาย USB ที่รับส่งข้อมูลได้ ปิด Serial Monitor แล้วเปิด `Install-CAM.cmd` เลือก COM ของกล้อง ตัวติดตั้งใช้ Python 3.11 ขึ้นไป ดาวน์โหลด esptool ครั้งแรก และเก็บ QR กับ Wi-Fi ที่บันทึกไว้ในบอร์ดเดิม
-2. ปิดไฟกล้อง ใส่ microSD แบบ FAT32 แล้วเปิดใหม่ ถ้าเปิด Serial Monitor ที่ `115200` จะเห็น `SD_READY /AQUAHATCH` หลังกล้องอ่านการ์ดสำเร็จ
+1. แตก [ZIP เฟิร์มแวร์กล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0-camera.3/AquaHatch-ESP32-CAM-v0.22.0-camera.3-FirstBoot.zip) ปิดไฟและถอด microSD ก่อน ต่อ AI Thinker ESP32-CAM บนฐาน ESP32-CAM-MB เข้าคอมผ่านสาย USB ที่รับส่งข้อมูลได้ ปิด Serial Monitor แล้วเปิด `Install-CAM.cmd` เลือก COM ของกล้อง ตัวติดตั้งใช้ Python 3.11 ขึ้นไป ดาวน์โหลด esptool ครั้งแรก และเก็บ QR กับ Wi-Fi ที่บันทึกไว้ในบอร์ดเดิม
+2. ปิดไฟกล้อง ใส่ microSD แบบ FAT32 แล้วเปิดใหม่ กล้องจะเริ่มใช้งานการ์ดเมื่อกดถ่ายภาพ
 3. ในแอปไปที่ **นับลูกปลา** แล้วกดถ่ายจากกล้อง บอร์ดจะเซฟ JPG ต้นฉบับหนึ่งไฟล์ต่อภาพในโฟลเดอร์ `AQUAHATCH` และส่งรูปให้แอปตามเดิม Serial Monitor แสดง `SD_SAVED` เมื่อบันทึกเสร็จ
 4. เมื่อถ่ายเสร็จ รอรูปขึ้นในแอป ปิดไฟกล้อง แล้วถอดการ์ดไปเปิดบนคอม ชื่อไฟล์ใช้วันและเวลา UTC ตามด้วยรหัสสุ่ม
 
 เฟิร์มแวร์ใช้ microSD โหมด 1-bit เพื่อใช้แฟลช GPIO4 ได้ หากการ์ดอ่านไม่ได้หรือเขียนไม่สำเร็จ ให้ตรวจ `SD_UNAVAILABLE` หรือ `SD_SAVE_FAILED` ใน Serial Monitor การถ่ายภาพเข้าแอปยังใช้ได้ และเฟิร์มแวร์จะไม่ฟอร์แมตการ์ดอัตโนมัติ
+
+ถ้าหลุดตอนขึ้น `Connection terminated during handshake` ให้ต่อกล้องผ่านฐาน USB เปิด Wi-Fi ของกล้องบนมือถือ และเลือกเชื่อมต่อไว้เมื่อ Android แจ้งว่าไม่มีอินเทอร์เน็ต ลองปิดเน็ตมือถือชั่วคราวแล้วกดเชื่อมในแอปอีกครั้ง ถ้ายังหลุด ให้เปิด Serial Monitor ที่ `115200` เพื่อดูบรรทัด `CAMERA_BOOT`, `TLS_START_FAILED`, `mbedtls` หรือ `Brownout` ตอนกด หลีกเลี่ยงการส่งภาพบัตร QR หรือรหัส Wi-Fi ของกล้อง
 
 ## เชื่อมกล้องเข้ากับแอป
 

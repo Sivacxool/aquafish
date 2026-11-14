@@ -11,28 +11,24 @@
 namespace capture_archive {
 constexpr char mountPath[] = "/sdcard";
 constexpr char directory[] = "/sdcard/AQUAHATCH";
-bool mounted = false;
 
-void begin() {
+bool mount() {
   // SD_MMC's 1-bit bus leaves GPIO4 available for the camera's flash LED.
   if (!SD_MMC.begin(mountPath, true, false, SDMMC_FREQ_DEFAULT, 2)) {
-    Serial.println("SD_UNAVAILABLE: insert a FAT32 card and restart");
-    return;
+    Serial.println("SD_UNAVAILABLE: check the FAT32 card");
+    return false;
   }
   struct stat entry {};
   if (mkdir(directory, 0777) != 0 &&
       (stat(directory, &entry) != 0 || !S_ISDIR(entry.st_mode))) {
     Serial.println("SD_UNAVAILABLE: could not create AQUAHATCH directory");
     SD_MMC.end();
-    return;
+    return false;
   }
-  mounted = true;
-  Serial.println("SD_READY /AQUAHATCH");
+  return true;
 }
 
-bool save(const uint8_t *jpeg, size_t length, time_t captured) {
-  if (!mounted) return false;
-
+bool writeJpeg(const uint8_t *jpeg, size_t length, time_t captured) {
   struct tm utc {};
   char stamp[20];
   if (!gmtime_r(&captured, &utc) ||
@@ -67,5 +63,14 @@ bool save(const uint8_t *jpeg, size_t length, time_t captured) {
   Serial.printf("SD_SAVED %s (%u bytes)\n", path + sizeof(mountPath) - 1,
                 static_cast<unsigned>(length));
   return true;
+}
+
+bool save(const uint8_t *jpeg, size_t length, time_t captured) {
+  // Keep SDMMC and FAT buffers out of Wi-Fi setup and idle HTTPS handshakes.
+  // The camera mutex serializes local and remote captures.
+  if (!mount()) return false;
+  const bool saved = writeJpeg(jpeg, length, captured);
+  SD_MMC.end();
+  return saved;
 }
 }

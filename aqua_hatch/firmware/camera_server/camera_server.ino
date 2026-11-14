@@ -1,5 +1,5 @@
 // Direct camera HTTPS server; optional bounded capture illumination on GPIO4.
-// Archives the captured JPEG to the onboard microSD card when mounted.
+// Archives the captured JPEG to the onboard microSD card on demand.
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -7,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <esp_https_server.h>
 #include <esp_heap_caps.h>
+#include <esp_system.h>
 #include <sys/time.h>
 #include "esp_camera.h"
 #include <AquaIdentity.h>
@@ -21,7 +22,7 @@ AquaIdentity boardIdentity;
 #include "camera_quality.h"
 #include "capture_archive.h"
 
-static const char VERSION[]="0.22.0-camera.2";
+static const char VERSION[]="0.22.0-camera.3";
 Preferences prefs;
 httpd_handle_t server=nullptr;
 bool tlsReady=false,wasConnected=false,cameraReady=false,cameraActive=false;
@@ -75,7 +76,7 @@ void identity(JsonDocument &doc) {
 void status(JsonDocument &doc) {
   identity(doc); doc["configured"]=cameraReady; doc["online"]=cameraReady;
   doc["sensor"]=sensorName; doc["psram_bytes"]=ESP.getPsramSize();
-  doc["sd_mounted"]=capture_archive::mounted;
+  if(photo) doc["sd_saved"]=photoSavedToSd;
   doc["capture_mode"]="on_demand";doc["camera_awake"]=cameraActive;
   doc["focus_status"]=lastFocus.status;
   doc["flash_active"]=flashActive;
@@ -84,6 +85,8 @@ void status(JsonDocument &doc) {
   doc["message"]=cameraReady?"กล้องพร้อมถ่ายภาพผ่าน Wi-Fi":cameraError;
   doc["last_seen"]=nowIso(); doc["ip"]=WiFi.localIP().toString();
   doc["wifi_rssi"]=WiFi.RSSI();doc["free_heap"]=ESP.getFreeHeap();
+  doc["internal_free"]=heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  doc["internal_largest"]=heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
   doc["min_free_heap"]=ESP.getMinFreeHeap();doc["disconnect_reason"]=(uint16_t)lastDisconnectReason;
   doc["uptime_ms"]=millis();doc["wifi_mode"]=(int)WiFi.getMode();
   {provisioning::Guard guard;doc["setup_ap_active"]=provisioning::apActive;}
@@ -276,7 +279,8 @@ void startTls() {
   config.httpd.recv_wait_timeout=15;config.httpd.send_wait_timeout=15;
   config.servercert=(const uint8_t*)SERVER_CERT; config.servercert_len=strlen(SERVER_CERT)+1;
   config.prvtkey_pem=(const uint8_t*)SERVER_KEY; config.prvtkey_len=strlen(SERVER_KEY)+1;
-  if(httpd_ssl_start(&server,&config)!=ESP_OK) { Serial.println("TLS_START_FAILED"); return; }
+  const esp_err_t started=httpd_ssl_start(&server,&config);
+  if(started!=ESP_OK) { Serial.printf("TLS_START_FAILED %s\n",esp_err_to_name(started)); return; }
   httpd_uri_t route={}; route.uri="/api/v1/*"; route.method=HTTP_GET; route.handler=api; httpd_register_uri_handler(server,&route);
   route.method=HTTP_POST; httpd_register_uri_handler(server,&route); tlsReady=true;
 }
@@ -355,6 +359,7 @@ void serialCommand() {
 }
 void setup() {
   Serial.begin(115200);delay(250);
+  Serial.printf("CAMERA_BOOT firmware=%s reset_reason=%d\n",VERSION,static_cast<int>(esp_reset_reason()));
   WiFi.persistent(false);
   if(!WiFi.mode(WIFI_AP_STA)){Serial.println("WIFI_INIT_FAILED");while(true)delay(1000);}
   WiFi.setSleep(false);
@@ -363,7 +368,6 @@ void setup() {
   cameraMutex = xSemaphoreCreateMutex();
   if (!cameraMutex) { Serial.println("CAMERA_MUTEX_FAILED"); while (true) delay(1000); }
   prefs.begin("aquacam",false);flashOff();initCamera();
-  capture_archive::begin();
   WiFi.onEvent([](WiFiEvent_t,WiFiEventInfo_t info){lastDisconnectReason=info.wifi_sta_disconnected.reason;},ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   WiFi.persistent(false);WiFi.setHostname(boardIdentity.mdnsName().c_str());WiFi.mode(WIFI_AP_STA);WiFi.setAutoReconnect(true);WiFi.setSleep(false);
   provisioning::begin();String ssid,password;provisioning::loadSaved(ssid,password);

@@ -20,7 +20,7 @@ ETT และ CAM ใช้เฟิร์มแวร์คนละไฟล�
 
 ## 1. ลงเฟิร์มแวร์
 
-1. ดาวน์โหลดและแตก [FirstBoot สำหรับ ETT](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ETT-WROOM32UE-v0.22.1-ett32ue.1-FirstBoot.zip) และ [FirstBoot สำหรับกล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0-camera.2-install.1/AquaHatch-ESP32-CAM-v0.22.0-camera.2-InstallerFix.zip) แยกกัน
+1. ดาวน์โหลดและแตก [FirstBoot สำหรับ ETT](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ETT-WROOM32UE-v0.22.1-ett32ue.1-FirstBoot.zip) และ [FirstBoot สำหรับกล้อง](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0-camera.3/AquaHatch-ESP32-CAM-v0.22.0-camera.3-FirstBoot.zip) แยกกัน
 2. ปิด Serial Monitor ต่อโปรแกรมเมอร์ของบอร์ด ETT ตาม [คู่มือ ETT](ETT_WROOM32UE_SETUP_TH.md)
 3. เปิด `Install-ETT-WROOM32UE.cmd` กรอกพอร์ตที่ Windows แสดง เช่น COM5 แล้วรอจนลงเสร็จ
 4. โปรแกรมรอบอร์ดสร้างตัวตน จากนั้นรับบัตรผ่าน USB และเปิดไฟล์ `PAIRING_PRIVATE.html` ให้เอง
