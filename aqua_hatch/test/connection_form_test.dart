@@ -13,7 +13,7 @@ void main() {
       final group = find.text('ตั้งค่าบอร์ดขั้นสูง');
       await tester.ensureVisible(group);
       await tester.pump();
-      //       await tester.tap(group);
+      await tester.tap(group);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       for (final label in [
