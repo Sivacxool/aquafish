@@ -1,11 +1,11 @@
-# Smart Catfish System · AquaHatch 0.23.1
+# Smart Catfish System · AquaHatch 0.23.2
 
 ระบบเครื่องฟักไข่ปลาดุกด้วยบอร์ด ET-ESP32 WROOM32UE, กล้อง Arducam B0434 และแอป Flutter สำหรับ Android/iOS
 
 | ชุดติดตั้ง | ดาวน์โหลด |
 | --- | --- |
-| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.23.1/AquaHatch-v0.23.1-Android.apk) |
-| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.23.1/AquaHatch-v0.23.1-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
+| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.23.2/AquaHatch-v0.23.2-Android.apk) |
+| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.23.2/AquaHatch-v0.23.2-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
 | ETT WROOM32UE + B0434 | [FirstBoot ZIP](https://github.com/Sivacxool/aquafish/releases/download/v0.23.0/AquaHatch-ETT-WROOM32UE-v0.23.0-FirstBoot.zip) |
 
 ## เริ่มใช้งาน
@@ -21,6 +21,7 @@
 - ETT ใช้ GPIO32 สำหรับ DS18B20, RS485 TX27/RX26 สำหรับ DO และ pH, ลูกลอย GPIO13, RY0 ฮีตเตอร์, RY1 ปั๊ม และ RY2 พัดลม
 - แอปสั่งกล้องและรีเลย์ผ่าน HTTPS ของ ETT บอร์ดคุมรีเลย์ตามลูกลอยและอุณหภูมิได้เอง การสั่งรีเลย์จากแอปใช้ LAN
 - Arducam ถ่าย VGA หรือ 3 MP ตามคำสั่ง รองรับโหมดปกติ แสงน้อย และตั้งค่า EV ความสว่าง คอนทราสต์ ความอิ่มสี สมดุลแสงขาว ผลนับบันทึกในมือถือ
+- หลังถ่ายจาก Arducam กด **บันทึกรูปลงแกลเลอรี** เพื่อเก็บ JPEG ต้นฉบับ ดูในอัลบั้ม AquaHatch บน Android หรือแอปรูปภาพบน iPhone
 - หน้าภาพรวมแสดงผลนับล่าสุดของรอบฟักที่เลือก เมื่อมีจำนวนไข่ตั้งต้น อัตราฟักจะคำนวณจากจำนวนลูกปลาที่บันทึก ÷ จำนวนไข่ตั้งต้น × 100
 
 [แอป Flutter](aqua_hatch/) · [Android](ANDROID/) · [iOS](IOS/) · [เฟิร์มแวร์](aqua_hatch/firmware/) · [เริ่มใช้งาน](START_HERE_TH.md)

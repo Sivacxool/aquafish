@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +15,7 @@ import 'arducam_settings.dart';
 import '../core/models.dart';
 import '../core/ui.dart';
 import '../core/motion.dart';
+import '../core/photo_gallery.dart';
 
 class CountingScreen extends ConsumerStatefulWidget {
   const CountingScreen({super.key});
@@ -26,7 +28,8 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   bool _workspace = false;
   bool _erasing = false;
   double _markerRadius = 2;
-  Uint8List? _bytes;
+  Uint8List? _bytes, _originalJpeg;
+  bool _savingPhoto = false, _photoSaved = false;
   String _filename = 'ยังไม่มีภาพ', _model = '';
   String? _captureId;
   String _captureProgress = '';
@@ -69,6 +72,9 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
 
   void _reset() {
     _workspace = false;
+    _originalJpeg = null;
+    _savingPhoto = false;
+    _photoSaved = false;
     _transform.value = Matrix4.identity();
     _points = [];
     _undo.clear();
@@ -147,6 +153,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
       if (!mounted || generation != _imageGeneration) return;
       setState(() {
         _bytes = image.bytes;
+        _originalJpeg = PhotoGallery.isJpeg(image.bytes) ? image.bytes : null;
         _aspect = width / height;
         _captureId = image.id;
         _receivedAt = image.receivedAt;
@@ -171,6 +178,31 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
         ref.invalidate(cameraStatusProvider);
       }
     }
+  }
+
+  Future<void> _savePhoto() async {
+    final bytes = _originalJpeg;
+    final id = _captureId;
+    if (bytes == null || id == null || _savingPhoto || _photoSaved) return;
+
+    final generation = _imageGeneration;
+    setState(() => _savingPhoto = true);
+    String? error;
+    try {
+      await PhotoGallery.saveJpeg(id, bytes);
+    } on PlatformException catch (failure) {
+      error = failure.code == 'permission_denied'
+          ? 'อนุญาตให้ AquaHatch เพิ่มรูปในการตั้งค่ามือถือ แล้วลองอีกครั้ง'
+          : 'บันทึกรูปลงแกลเลอรีไม่สำเร็จ ลองอีกครั้ง';
+    } catch (_) {
+      error = 'บันทึกรูปลงแกลเลอรีไม่สำเร็จ ลองอีกครั้ง';
+    }
+    if (!mounted || generation != _imageGeneration) return;
+    setState(() {
+      _savingPhoto = false;
+      _photoSaved = error == null;
+    });
+    showFeedback(context, error, success: 'บันทึกรูปลงแกลเลอรีแล้ว');
   }
 
   Future<void> _pick(ImageSource source, {bool video = false}) async {
@@ -630,6 +662,31 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                     ),
                   ),
                 ),
+              if (PhotoGallery.supported && _originalJpeg != null) ...[
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  key: const ValueKey('save-photo-to-gallery'),
+                  onPressed: _busy || _savingPhoto || _photoSaved
+                      ? null
+                      : _savePhoto,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AquaColors.lime,
+                    disabledForegroundColor: AquaColors.paper,
+                  ),
+                  icon: Icon(
+                    _photoSaved
+                        ? PhosphorIconsRegular.check
+                        : PhosphorIconsRegular.floppyDisk,
+                  ),
+                  label: Text(
+                    _photoSaved
+                        ? 'บันทึกรูปแล้ว'
+                        : _savingPhoto
+                        ? 'กำลังบันทึกรูป…'
+                        : 'บันทึกรูปลงแกลเลอรี',
+                  ),
+                ),
+              ],
               const SizedBox(height: 18),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -638,7 +695,9 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                     child: _CaptureAction(
                       icon: PhosphorIconsRegular.image,
                       label: 'เลือกภาพ',
-                      onTap: _busy ? null : () => _pick(ImageSource.gallery),
+                      onTap: _busy || _savingPhoto
+                          ? null
+                          : () => _pick(ImageSource.gallery),
                     ),
                   ),
                   Column(
@@ -651,7 +710,10 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                           child: OutlinedButton(
                             key: const ValueKey('device-capture-button'),
                             onPressed:
-                                _busy || needsBoard || camera?.ready != true
+                                _busy ||
+                                    _savingPhoto ||
+                                    needsBoard ||
+                                    camera?.ready != true
                                 ? null
                                 : _capture,
                             style: OutlinedButton.styleFrom(
