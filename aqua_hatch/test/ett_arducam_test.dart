@@ -25,7 +25,7 @@ void main() {
 
   for (final useRelay in [false, true]) {
     test(
-      'ETT takes a manual B0434 photo over ' + (useRelay ? 'relay' : 'LAN'),
+      "ETT takes a manual B0434 photo over ${useRelay ? 'relay' : 'LAN'}",
       () async {
         var posted = false;
         Future<http.Response> capture(http.Request request) async {
@@ -35,10 +35,10 @@ void main() {
           } else {
             expect(
               request.url.path,
-              startsWith('/api/v1/devices/' + board.deviceId),
+              startsWith('/api/v1/devices/${board.deviceId}'),
             );
             expect(request.url.host, board.identity!.hostname);
-            expect(request.headers['Authorization'], 'Bearer ' + pairing.token);
+            expect(request.headers['Authorization'], 'Bearer ${pairing.token}');
           }
           final status = {
             ...fixture.status(),
