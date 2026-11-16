@@ -1,5 +1,49 @@
 import 'dart:typed_data';
 
+class ArducamSettings {
+  final bool fullSize;
+  final String lighting;
+  final Map<String, int> levels;
+  const ArducamSettings({
+    this.fullSize = true,
+    this.lighting = 'normal',
+    this.levels = const {},
+  });
+
+  static const limits = {
+    'ev': 3,
+    'brightness': 4,
+    'contrast': 3,
+    'saturation': 3,
+    'white_balance': 4,
+  };
+
+  factory ArducamSettings.fromJson(Map<String, dynamic> data) {
+    final lighting = data['lighting'];
+    final settings = data['settings'];
+    return ArducamSettings(
+      fullSize: data['resolution'] != 'vga',
+      lighting: lighting == 'manual' || lighting == 'low-light'
+          ? lighting as String
+          : 'normal',
+      levels: {
+        for (final MapEntry(:key, :value) in limits.entries)
+          if (settings is Map && settings[key] is int)
+            key: (settings[key] as int).clamp(
+              key == 'white_balance' ? 0 : -value,
+              value,
+            ),
+      },
+    );
+  }
+
+  Map<String, Object> toJson() => {
+    'resolution': fullSize ? '3mp' : 'vga',
+    'lighting': lighting,
+    'settings': {for (final key in limits.keys) key: levels[key] ?? 0},
+  };
+}
+
 class DeviceCameraStatus {
   final String cameraId, message;
   final String sensor;
@@ -34,7 +78,7 @@ class DeviceCameraStatus {
       );
   bool get ready => configured && online;
   String get captureResolution => switch (sensor) {
-    'OV3660' => '3mp',
+    'Arducam B0434' || 'OV3660' => '3mp',
     'OV2640' => 'uxga',
     _ => '5mp', // Backwards compatibility with paired camera firmware 0.9.
   };

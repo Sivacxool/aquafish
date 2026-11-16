@@ -6,6 +6,7 @@ import '../core/controller.dart';
 import '../core/models.dart';
 import '../core/ui.dart';
 import 'wifi_setup.dart';
+import 'arducam_settings.dart';
 import 'connection_overview.dart';
 import 'controls.dart' show RelayModeSelector;
 import 'remote_settings.dart';
@@ -543,10 +544,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'บอร์ดควบคุม หรือกล้อง',
-                          style: AquaType.caption,
-                        ),
+                        const Text('บอร์ดควบคุม ETT', style: AquaType.caption),
                       ],
                     ),
                   ),
@@ -566,7 +564,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ConnectionOverview(
           state: state,
           onBoard: state.busy || _connecting ? null : _openWifiSetup,
-          onCamera: state.busy ? null : _openCameraWifi,
+          onCamera: state.busy
+              ? null
+              : state.usesArducam
+              ? () => showArducamSettings(context, ref)
+              : _openCameraWifi,
           onDemo: _connecting || state.busy
               ? null
               : () {

@@ -20,6 +20,9 @@ void sender(void *) {
     if (upload->origin != aqua_relay::origin(prefs) || WiFi.status() != WL_CONNECTED) continue;
     lastResult.store(aqua_relay::postJson(
       upload->origin + "/v1/readings/" + keys.room, keys.writer, upload->body));
+#if defined(AQUAHATCH_ET_WROOM32UE)
+    if (upload->origin == aqua_relay::origin(prefs)) ett_camera::relayCapture(upload->origin, keys);
+#endif
   }
 }
 
@@ -31,9 +34,14 @@ void tick() {
   const String url = aqua_relay::origin(prefs);
   if (url.isEmpty()) return;
   if (!pending) {
+#if defined(AQUAHATCH_ET_WROOM32UE)
+    const uint32_t stackSize = 12288;
+#else
+    const uint32_t stackSize = 8192;
+#endif
     pending = xQueueCreate(1, sizeof(Upload *));
     if (!pending) return;
-    if (xTaskCreate(sender, "aqua-readings", 8192, nullptr, 1, nullptr) != pdPASS) {
+    if (xTaskCreate(sender, "aqua-readings", stackSize, nullptr, 1, nullptr) != pdPASS) {
       vQueueDelete(pending);
       pending = nullptr;
       return;

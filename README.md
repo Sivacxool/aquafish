@@ -1,44 +1,26 @@
-# Smart Catfish System · AquaHatch Demo 1
+# Smart Catfish System · AquaHatch 0.23.0
 
-แอป Flutter สำหรับ Android และ iOS ใช้กับบอร์ดควบคุม ETT WROOM32UE และกล้อง ESP32-CAM ของเครื่องฟักไข่ปลาดุก
+ระบบเครื่องฟักไข่ปลาดุกด้วยบอร์ด ET-ESP32 WROOM32UE, กล้อง Arducam B0434 และแอป Flutter สำหรับ Android/iOS
 
 | ชุดติดตั้ง | ดาวน์โหลด |
 | --- | --- |
-| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.22.3/AquaHatch-v0.22.3-Android.apk) |
-| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.22.3/AquaHatch-v0.22.3-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
-| บอร์ด ETT WROOM32UE | [FirstBoot 0.22.1-ett32ue.1](https://github.com/Sivacxool/aquafish/releases/download/v0.22.1/AquaHatch-ETT-WROOM32UE-v0.22.1-ett32ue.1-FirstBoot.zip) |
-| ESP32-CAM + OV3660 | [FirstBoot 0.22.0-camera.3](https://github.com/Sivacxool/aquafish/releases/download/v0.22.0-camera.3/AquaHatch-ESP32-CAM-v0.22.0-camera.3-FirstBoot.zip) · [วิธีเก็บรูปลง microSD](AquaHatch-Camera-Start-TH.md#เก็บรูปต้นฉบับลง-microsd) |
-
-## สิ่งที่เปลี่ยน
-
-- คำสั่งควบคุมแสดงสถานะที่เครื่องยืนยันและแจ้งเมื่อสั่งงานไม่สำเร็จ
-- **ดูจากระยะไกล** ใช้บริการที่ตั้งไว้ในแอป เปิดดูค่าเซนเซอร์หรือถ่ายภาพผ่านอินเทอร์เน็ตได้จากสวิตช์ของแต่ละอุปกรณ์
-- ล้างการแจ้งเตือนและจุดแนวโน้มของเครื่องที่เลือกได้จากในแอป
-
-- เพิ่มรอบฟักแล้วรอบเดิมยังอยู่ กด **เลือกรอบฟัก** ในหน้าภาพรวมหรือตั้งค่าเพื่อสลับรอบ
-
-- หน้าภาพรวมอ่านอุณหภูมิ DO, pH และระดับน้ำในแผงเดียว หน้ากล้องมีชัตเตอร์หลัก หน้าตั้งค่ามีสแกน QR เป็นจุดเริ่มต้น
-- พื้นเรียบ สีเน้นเดียว ไอคอน Phosphor และลำดับตัวอักษรชัดเจน มีภาพเคลื่อนไหวตอนเปิดแอปและขณะรอคำสั่ง รองรับ Reduce Motion
-- ปั๊ม RY1 เดินตามลูกลอยตั้งแต่บอร์ดพร้อม พอน้ำถึงระดับจึงหยุด และเริ่มใหม่เมื่อน้ำลด
-- ฮีตเตอร์ RY0 และพัดลม RY2 ทำงานตามอุณหภูมิใน Auto หรือสั่งแยกจากแอปใน Manual 5 นาที ลูกลอยควบคุมปั๊มอย่างเดียว และบอร์ดสั่งฮีตเตอร์กับพัดลมทีละตัว
-- เพิ่มรอบฟักได้จากภาพรวมและตั้งค่า แม้เครื่องออฟไลน์ ปรับไอคอน Android ให้รองรับรูปทรงของ Launcher
-- ชื่อ Wi-Fi ตั้งค่าใหม่ `Smart Catfish System-B-XXXXXX` สำหรับบอร์ด และ `Smart Catfish System-C-XXXXXX` สำหรับกล้อง แต่ละตัวใช้ท้าย MAC ของตนเอง
-- รหัสจับคู่ CA และชื่อ TLS เดิมยังใช้ได้ เมื่ออัปเกรดโดยไม่ล้าง NVS แอปยังอ่าน QR ของเฟิร์มแวร์รุ่นเดิมได้
+| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.23.0/AquaHatch-v0.23.0-Android.apk) |
+| iPhone iOS 16+ | [บิลด์ iOS จาก GitHub Actions](https://github.com/Sivacxool/aquafish/actions/workflows/ios.yml) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
+| ETT WROOM32UE + B0434 | [FirstBoot ZIP](https://github.com/Sivacxool/aquafish/releases/download/v0.23.0/AquaHatch-ETT-WROOM32UE-v0.23.0-FirstBoot.zip) |
 
 ## เริ่มใช้งาน
 
-1. อ่าน [ผังต่อ ETT](ETT_WROOM32UE_SETUP_TH.md) และถอดโหลดก่อนอัปเดต แฟลชด้วย `Install-ETT-WROOM32UE.cmd` ใน ZIP ของบอร์ด หรือ `Install-CAM.cmd` สำหรับกล้อง เลือก COM ของอุปกรณ์ที่ต่อจริง
-2. เปิด **ตั้งค่า → สแกน QR เพื่อเพิ่มอุปกรณ์** สแกนบัตรของแต่ละตัว แล้วตั้ง Wi-Fi 2.4 GHz ตามขั้นตอน
-3. บอร์ดและกล้องใช้ Wi-Fi เดียวกันได้ แต่มี IP และ QR แยกกัน บอร์ดที่อัปเดตจาก QR เก่าใช้ตัวเลือก **อัปเดตเฟิร์มแวร์แล้ว? ใช้ชื่อ Wi-Fi ใหม่** ในหน้าตั้ง Wi-Fi หรืออ่านบัตร QR ใหม่ด้วย Read-QR
-4. ตรวจค่าบอร์ดใน **ภาพรวม** แล้วกด **เพิ่มรอบฟัก** จากนั้นไป **นับลูกปลา** เพื่อถ่ายภาพ วิเคราะห์ และแก้จุดนับก่อนบันทึก
-5. อัปเดตบอร์ด ETT เป็น 0.22.1-ett32ue.1 ใช้ Wi-Fi เดียวกับบอร์ดเพื่อเข้า **ควบคุม → Manual 5 นาที** เมื่อหมดเวลาบอร์ดกลับเป็น Auto และกลับมาเดินปั๊มตามลูกลอย
+1. ถอดไฟโหลดรีเลย์ทั้งหมด แล้วต่อ B0434 เข้าหัว 4G-EC200U ของบอร์ดหลักตาม [ผัง ETT](ETT_WROOM32UE_SETUP_TH.md#กล้อง-arducam-b0434)
+2. แตก ZIP แล้วเปิด Install-ETT-WROOM32UE.cmd เลือก COM ของ ETT ชุดนี้ลงเฟิร์มแวร์และตารางพาร์ทิชันสำหรับพัก JPEG โดยเก็บ NVS เดิม
+3. เปิดแอป **ตั้งค่า → สแกน QR เพื่อเพิ่มอุปกรณ์** ใช้ QR ของ ETT ตัวเดียว ตั้ง Wi-Fi 2.4 GHz หากเปลี่ยนเครือข่าย
+4. เปิด **นับลูกปลา** ตั้งความละเอียดหรือค่ากล้องด้วยไอคอนปรับค่า กดถ่าย แล้วเลือก AI หรือแก้จุดนับด้วยมือก่อนบันทึกผล
+5. เมื่อต้องใช้จากเครือข่ายอื่น เพิ่มสิทธิ์ห้องกล้องของ ETT ใน Cloudflare แล้วเปิด **ตั้งค่า → ดูจากระยะไกล** ตาม [คู่มือ](REMOTE_SETUP_TH.md)
 
-ชุด ETT นี้สืบทอดผัง `.5`: DS18B20 GPIO32, RS485 TX27/RX26, ลูกลอย GPIO13, RY0 ฮีตเตอร์ RY1 ปั๊ม และ RY2 พัดลม หัว pH RS485 MI-Water-PH-T แทน PH-4502C/ADS1115 ในโปรไฟล์ ETT เท่านั้น คำสั่งรีเลย์ใช้เครือข่ายภายใน การดูข้อมูล/รับภาพจากนอกบ้านใช้ Cloudflare ที่ตั้งไว้
+## โครงสร้างและรุ่นเดิม
 
-ก่อนใช้งานกับถังจริง ให้ทดสอบการตัดโหลดแต่ละรีเลย์ตาม [คู่มือ ETT](ETT_WROOM32UE_SETUP_TH.md)
+- ETT ใช้ GPIO32 สำหรับ DS18B20, RS485 TX27/RX26 สำหรับ DO และ pH, ลูกลอย GPIO13, RY0 ฮีตเตอร์, RY1 ปั๊ม และ RY2 พัดลม
+- แอปสั่งกล้องและรีเลย์ผ่าน HTTPS ของ ETT บอร์ดคุมรีเลย์ตามลูกลอยและอุณหภูมิได้เอง การสั่งรีเลย์จากแอปใช้ LAN
+- Arducam ถ่าย VGA หรือ 3 MP ตามคำสั่ง รองรับโหมดปกติ แสงน้อย และตั้งค่า EV ความสว่าง คอนทราสต์ ความอิ่มสี สมดุลแสงขาว ผลนับบันทึกในมือถือ
+- แอปยังเปิดเครื่องรุ่นเดิมที่จับคู่ ESP32-CAM ไว้ได้เมื่อบอร์ดหลักไม่ประกาศกล้อง B0434 ดู [รุ่นก่อนหน้า](https://github.com/Sivacxool/aquafish/releases/tag/v0.22.3)
 
-## ซอร์สและเอกสาร
-
-[แอป Flutter](aqua_hatch/) · [Android](ANDROID/) · [iOS](IOS/) · [เฟิร์มแวร์](aqua_hatch/firmware/) · [วิธี build](REBUILD.md)
-
-[แนวทางออกแบบและที่มาของ skill](DESIGN_021.md) · [จับคู่ QR](FIRST_BOOT_PAIRING_TH.md) · [ดูจากนอกบ้าน](REMOTE_SETUP_TH.md)
+[แอป Flutter](aqua_hatch/) · [Android](ANDROID/) · [iOS](IOS/) · [เฟิร์มแวร์](aqua_hatch/firmware/) · [เริ่มใช้งาน](START_HERE_TH.md)

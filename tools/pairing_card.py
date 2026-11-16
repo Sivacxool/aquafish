@@ -9,7 +9,7 @@ import argparse,base64,hashlib,html,io,json,os,re,shutil,subprocess,sys,time,web
 ROOT=Path(__file__).resolve().parent.parent
 FQBN={
     'wroom-da':'esp32:esp32:esp32da:FlashSize=4M,FlashMode=dio,FlashFreq=40,PartitionScheme=min_spiffs,UploadSpeed=115200',
-    'ett32ue':'esp32:esp32:esp32:FlashSize=4M,FlashMode=dio,FlashFreq=40,PartitionScheme=min_spiffs,UploadSpeed=115200',
+    'ett32ue':'esp32:esp32:esp32:FlashSize=4M,FlashMode=dio,FlashFreq=40,PartitionScheme=no_ota,UploadSpeed=115200',
     'camera':'esp32:esp32:esp32cam',
 }
 # The controller's QR role predates WROOM-DA and is shared with 0.14 apps.

@@ -26,7 +26,7 @@ AquaIdentity boardIdentity;
 #endif
 
 #if defined(AQUAHATCH_ET_WROOM32UE)
-static const char VERSION[] = "0.22.1-ett32ue.1";
+static const char VERSION[] = "0.23.0-ett32ue.1";
 #else
 static const char VERSION[] = "0.17.0-wroom-da.pump.1";
 #endif
@@ -48,6 +48,13 @@ esp_err_t sendJson(httpd_req_t *req, const char *status, const JsonDocument &doc
 esp_err_t error(httpd_req_t *req, const char *status, const char *message);
 void snapshot(JsonDocument &doc);
 #include "wifi_setup.h"
+#include <AquaRelay.h>
+#include <atomic>
+#if defined(AQUAHATCH_ET_WROOM32UE)
+String nowIso();
+#include "ett_camera.h"
+#include "ett_camera_remote.h"
+#endif
 #include "remote_readings.h"
 
 String nowIso() {
@@ -75,6 +82,8 @@ void snapshot(JsonDocument &doc) {
   doc["board_profile"] = BOARD_PROFILE;
   doc["capabilities"]["ph_calibration"] = !PH_RS485_ENABLED;
 #if defined(AQUAHATCH_ET_WROOM32UE)
+  doc["camera_model"] = "arducam-b0434";
+  doc["capabilities"]["camera"] = true;
   doc["capabilities"]["heater_thermostat"] = true;
   doc["capabilities"]["hardware_control"] = true;
   doc["capabilities"]["ett_manual_control"] = true;
@@ -221,9 +230,14 @@ esp_err_t api(httpd_req_t *req) {
     if (nowIso().isEmpty()) return error(req,"503 Service Unavailable","บอร์ดกำลังตั้งเวลา กรุณาลองเชื่อมต่อใหม่");
     JsonDocument doc; snapshot(doc); return sendJson(req,"200 OK",doc);
   }
+#if defined(AQUAHATCH_ET_WROOM32UE)
+  const String cameraPath = base + "/camera";
+  if (uri == cameraPath || uri.startsWith(cameraPath + "/"))
+    return ett_camera::handle(req, uri.substring(cameraPath.length()));
+#endif
   if (req->method == HTTP_GET && uri == base + "/camera") {
     JsonDocument doc; doc["configured"] = false; doc["online"] = false;
-    doc["message"] = "ยังไม่ตั้งค่าบอร์ดและขากล้อง OV5640";
+    doc["message"] = "บอร์ดนี้ไม่มี Arducam B0434";
     return sendJson(req,"200 OK",doc);
   }
   if (req->method == HTTP_GET && uri == base + "/history") {
@@ -345,7 +359,7 @@ esp_err_t api(httpd_req_t *req) {
     cache[cacheIndex] = {id,body,reply}; cacheIndex=(cacheIndex+1)%8;
     return sendJson(req,"200 OK",response);
   }
-  if (uri.startsWith(base + "/camera/captures")) return error(req,"503 Service Unavailable","ยังไม่ติดตั้งและยืนยันขากล้อง");
+  if (uri.startsWith(base + "/camera/captures")) return error(req,"503 Service Unavailable","บอร์ดนี้ไม่มี Arducam B0434");
   if (uri == base + "/counts/analyze") return error(req,"501 Not Implemented","การวิเคราะห์ AI ต้องใช้ Gateway ที่ติดตั้งโมเดลลูกปลา");
   return error(req,"404 Not Found","ไม่พบเส้นทางหรือรหัสเครื่องนี้");
 }
@@ -431,6 +445,9 @@ void setup() {
   WiFi.setAutoReconnect(true); provisioning::begin();
   String ssid,password; provisioning::loadSaved(ssid,password);
   if (!ssid.isEmpty()) { WiFi.begin(ssid.c_str(),password.c_str()); lastWifiAttempt=millis(); }
+#if defined(AQUAHATCH_ET_WROOM32UE)
+  ett_camera::begin();
+#endif
   serialStatus("boot");
 }
 void loop() {

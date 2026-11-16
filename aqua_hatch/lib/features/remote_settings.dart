@@ -40,20 +40,23 @@ class _RemoteSettingsState extends ConsumerState<RemoteSettings> {
         const Text('เปิดบน Wi-Fi ของอุปกรณ์ · ปิดได้จากทุกเครือข่าย'),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('ดูค่าเซนเซอร์'),
+          title: Text(
+            state.usesArducam ? 'ดูเซนเซอร์และถ่ายภาพ' : 'ดูค่าเซนเซอร์',
+          ),
           value: board.relayOrigin != null,
           onChanged: enabled && board.identity != null
               ? (on) => _set(false, on)
               : null,
         ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('ถ่ายภาพจากกล้อง'),
-          value: camera?.relayOrigin != null,
-          onChanged: enabled && camera?.identity != null
-              ? (on) => _set(true, on)
-              : null,
-        ),
+        if (!state.usesArducam)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('ถ่ายภาพจากกล้อง'),
+            value: camera?.relayOrigin != null,
+            onChanged: enabled && camera?.identity != null
+                ? (on) => _set(true, on)
+                : null,
+          ),
         if (board.identity == null && camera?.identity == null)
           const Text('สแกน QR ของอุปกรณ์ก่อน'),
         if (_working) const LinearProgressIndicator(),

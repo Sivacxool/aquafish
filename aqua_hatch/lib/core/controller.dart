@@ -40,6 +40,7 @@ final cameraStatusProvider = FutureProvider.autoDispose<DeviceCameraStatus>((
 ) async {
   ref.watch(appControllerProvider.select((s) => s.connection));
   ref.watch(appControllerProvider.select((s) => s.cameraConnection));
+  ref.watch(appControllerProvider.select((s) => s.usesArducam));
   final usb = ref.watch(
     appControllerProvider.select((s) => s.usbCameraEnabled),
   );
@@ -95,6 +96,7 @@ class AppState {
     this.batchBusy = false,
     this.error,
   });
+  bool get usesArducam => telemetry?.embeddedCamera == true;
   bool get fresh => connected && (telemetry?.isFresh(now) ?? false);
   bool get canControl =>
       fresh &&
@@ -742,13 +744,20 @@ class AppController extends Notifier<AppState> {
     if (repo is DemoRepository) repo.scenario(ph: ph, water: water);
   }
 
+  ArducamSettings get arducamSettings =>
+      _store.arducamSettings(state.connection);
+  Future<void> saveArducamSettings(ArducamSettings settings) =>
+      _store.saveArducamSettings(state.connection, settings);
+
   Future<DeviceCameraStatus> cameraStatus() async {
-    if (state.usbCameraEnabled) return _ensureUsbCamera().status();
+    if (state.usbCameraEnabled && !state.usesArducam) {
+      return _ensureUsbCamera().status();
+    }
     if (_wifiSetupPaused) {
       return const DeviceCameraStatus(message: 'กำลังตั้ง Wi-Fi');
     }
     final camera = state.cameraConnection;
-    if (camera != null) {
+    if (camera != null && !state.usesArducam) {
       return (await _ensureCamera(camera)).status();
     }
     final repo = _repository;
@@ -763,7 +772,7 @@ class AppController extends Notifier<AppState> {
     void Function(String)? onProgress,
     bool Function()? cancelled,
   }) async {
-    if (state.usbCameraEnabled) {
+    if (state.usbCameraEnabled && !state.usesArducam) {
       final generation = _cameraGeneration;
       final image = await _ensureUsbCamera().capture(
         requestId,
@@ -780,7 +789,7 @@ class AppController extends Notifier<AppState> {
       return image;
     }
     final camera = state.cameraConnection;
-    if (camera != null) {
+    if (camera != null && !state.usesArducam) {
       final generation = _cameraGeneration;
       final image = await (await _ensureCamera(camera)).capture(
         requestId,
@@ -799,12 +808,20 @@ class AppController extends Notifier<AppState> {
     final repo = _repository;
     if (repo == null) throw StateError('ยังไม่เชื่อมต่อเซิร์ฟเวอร์');
     final generation = _generation;
-    final image = await repo.capture(
-      requestId,
-      onProgress: onProgress,
-      cancelled: () =>
-          _disposed || generation != _generation || cancelled?.call() == true,
-    );
+    bool stopped() =>
+        _disposed || generation != _generation || cancelled?.call() == true;
+    final image = repo is Esp32Repository && repo.embeddedCamera
+        ? await repo.captureArducam(
+            requestId,
+            arducamSettings,
+            onProgress: onProgress,
+            cancelled: stopped,
+          )
+        : await repo.capture(
+            requestId,
+            onProgress: onProgress,
+            cancelled: stopped,
+          );
     if (_disposed || generation != _generation) {
       throw StateError('การเชื่อมต่อถูกเปลี่ยน');
     }
@@ -850,7 +867,13 @@ class AppController extends Notifier<AppState> {
     try {
       final token = await ref.read(credentialStoreProvider).read(config);
       if (token.isEmpty) return 'อ่านรหัสจับคู่ไม่ได้';
-      await configureDeviceRelay(config, token, updated.relayOrigin);
+      await configureDeviceRelay(
+        config,
+        token,
+        updated.relayOrigin,
+        includeControllerCamera: !camera,
+        requireControllerCamera: !camera && state.usesArducam,
+      );
       if (_disposed) return 'ปิดแอปแล้ว';
       if (camera) {
         await _store.saveCameraConnection(updated);

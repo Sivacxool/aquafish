@@ -251,6 +251,7 @@ class Telemetry {
   final String? firmwareVersion;
   final bool simulated;
   final bool viaRelay;
+  final bool embeddedCamera;
   final bool deviceOnline;
   final bool hardwareReady;
   final String? hardwareMessage;
@@ -277,6 +278,7 @@ class Telemetry {
     this.firmwareVersion,
     this.simulated = false,
     this.viaRelay = false,
+    this.embeddedCamera = false,
     this.deviceOnline = true,
     this.hardwareReady = true,
     this.hardwareMessage,
@@ -387,6 +389,7 @@ class Telemetry {
       ettControl: EttControlStatus.parse(j['ett_control']),
       simulated: j['simulated'] == true,
       viaRelay: j['via_relay'] == true,
+      embeddedCamera: j['embedded_camera'] == true,
       deviceOnline: j['device_online'] != false,
       hardwareReady: j['hardware_ready'] != false,
       hardwareMessage: j['hardware_message'] as String?,

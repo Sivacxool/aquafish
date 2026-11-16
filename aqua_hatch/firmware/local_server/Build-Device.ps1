@@ -15,7 +15,8 @@ $options = 'FlashSize=4M,FlashMode=dio,FlashFreq=40,PartitionScheme=min_spiffs,U
 $board = "esp32:esp32:esp32da:$options"
 $profileFlags = @()
 if ($Profile -eq 'ett32ue') {
-  $board = "esp32:esp32:esp32:$options"
+  $ettOptions = $options.Replace("PartitionScheme=min_spiffs", "PartitionScheme=no_ota")
+  $board = "esp32:esp32:esp32:$ettOptions"
   $profileFlags = @('--build-property', 'compiler.cpp.extra_flags=-DAQUAHATCH_ET_WROOM32UE=1')
 }
 $buildOptions = @()

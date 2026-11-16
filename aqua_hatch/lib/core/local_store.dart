@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'models.dart';
+import 'camera.dart';
 
 class LocalStore {
   final SharedPreferences preferences;
@@ -21,6 +22,14 @@ class LocalStore {
       const ConnectionConfig();
   DeviceSettings get settings =>
       _read('settings', DeviceSettings.fromJson) ?? const DeviceSettings();
+  ArducamSettings arducamSettings(ConnectionConfig config) =>
+      _read('arducam:${scope(config)}', ArducamSettings.fromJson) ??
+      const ArducamSettings();
+  Future<void> saveArducamSettings(
+    ConnectionConfig config,
+    ArducamSettings settings,
+  ) => _write('arducam:${scope(config)}', settings.toJson());
+
   ConnectionConfig? get cameraConnection =>
       _read('camera_connection_v1', ConnectionConfig.fromJson);
   Future<void> saveCameraConnection(ConnectionConfig config) =>

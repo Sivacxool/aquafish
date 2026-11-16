@@ -31,13 +31,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("cards", type=Path, nargs="+")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--ett-camera", action="store_true",
+                        help="Also allow the Arducam camera on the supplied ETT controller IDs")
     args = parser.parse_args()
     try:
-        rooms = sorted({room_for(card) for card in args.cards})
-        args.output.write_text(json.dumps({"RELAY_ROOMS": ",".join(rooms)}) + "\n", encoding="utf-8")
+        rooms = {room_for(card) for card in args.cards}
+        if args.ett_camera:
+            rooms.update("cameras:" + room.split(":", 1)[1]
+                         for room in tuple(rooms) if room.startswith("readings:"))
+        args.output.write_text(json.dumps({"RELAY_ROOMS": ",".join(sorted(rooms))}) + "\n", encoding="utf-8")
     except (OSError, ValueError, TypeError, KeyError):
         parser.exit(1, "Could not prepare the allowlist. Check the private cards and output path.\n")
-    print(f"Allowlist prepared for {len(rooms)} device(s).")
+    print(f"Allowlist prepared for {len(rooms)} room(s).")
 
 
 if __name__ == "__main__":

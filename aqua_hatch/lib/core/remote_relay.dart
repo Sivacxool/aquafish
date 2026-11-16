@@ -24,6 +24,7 @@ class RemoteRelay {
     ConnectionConfig config,
     String token, {
     http.Client? client,
+    bool controllerCamera = false,
   }) {
     final origin = parseRelayOrigin(config.relayOrigin ?? '');
     if (origin == null ||
@@ -38,7 +39,7 @@ class RemoteRelay {
     final room = hash('aquahatch relay room v1:', reader);
     return RemoteRelay._(
       origin,
-      config.identity!.kind == 'camera',
+      controllerCamera || config.identity!.kind == 'camera',
       writer,
       reader,
       room,
@@ -50,13 +51,19 @@ class RemoteRelay {
     ConnectionConfig config,
     String token, {
     http.Client? client,
+    bool controllerCamera = false,
   }) {
     if (config.relayOrigin == null ||
         config.validate() != null ||
         !RegExp(r'^[0-9a-f]{64}$').hasMatch(token)) {
       return null;
     }
-    return RemoteRelay(config, token, client: client);
+    return RemoteRelay(
+      config,
+      token,
+      client: client,
+      controllerCamera: controllerCamera,
+    );
   }
 
   Future<http.StreamedResponse> send(
@@ -125,7 +132,7 @@ class RemoteRelay {
     );
   }
 
-  Future<bool> access({bool? enabled}) async {
+  Future<bool> access({bool? enabled, bool optionalRoom = false}) async {
     final response = await _send(
       enabled == null ? 'GET' : 'POST',
       '/access',
@@ -134,6 +141,7 @@ class RemoteRelay {
     );
     final data = await _decodeJson(response);
     if (response.statusCode == 401) {
+      if (optionalRoom) return false;
       throw StateError('บริการยังไม่ได้อนุญาตอุปกรณ์นี้');
     }
     if (response.statusCode == 404) {
@@ -157,6 +165,9 @@ Future<void> configureDeviceRelay(
   String? origin, {
   http.Client? relayClient,
   Future<http.Client> Function(ConnectionConfig)? localClientFactory,
+  bool includeControllerCamera = false,
+  bool requireControllerCamera = false,
+  http.Client? controllerCameraClient,
 }) async {
   if (config.identity == null || !config.localEsp32 || config.demo) {
     throw StateError('จับคู่อุปกรณ์ด้วย QR ก่อน');
@@ -168,15 +179,34 @@ Future<void> configureDeviceRelay(
     token,
     client: relayClient,
   );
+  final embedded = includeControllerCamera
+      ? RemoteRelay(
+          config.withRelayOrigin(service),
+          token,
+          controllerCamera: true,
+          client: controllerCameraClient,
+        )
+      : null;
   try {
     if (origin != null) {
       // Check the service before storing it on the board. Re-enabling a
       // blocked room is only attempted after the paired LAN device responds.
       await relay.access();
+      if (requireControllerCamera) await embedded?.access();
       await _writeDeviceRelay(config, token, origin, localClientFactory);
     }
-    await relay.access(enabled: origin != null);
+    if (origin == null) {
+      await embedded?.access(enabled: false, optionalRoom: true);
+      await relay.access(enabled: false);
+    } else {
+      await relay.access(enabled: true);
+      await embedded?.access(
+        enabled: true,
+        optionalRoom: !requireControllerCamera,
+      );
+    }
   } finally {
+    embedded?.close();
     relay.close();
   }
 }

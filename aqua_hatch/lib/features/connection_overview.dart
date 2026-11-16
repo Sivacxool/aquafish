@@ -32,8 +32,10 @@ class ConnectionOverview extends StatelessWidget {
     );
     final camera = _DeviceTile(
       key: const ValueKey('start-camera-setup'),
-      title: 'กล้อง',
-      status: state.usbCameraEnabled
+      title: state.usesArducam ? 'Arducam B0434' : 'กล้อง',
+      status: state.usesArducam
+          ? 'ตั้งค่ากล้อง'
+          : state.usbCameraEnabled
           ? 'ใช้ USB'
           : state.cameraConnection != null
           ? 'จับคู่แล้ว'

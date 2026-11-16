@@ -10,6 +10,7 @@ import '../app/theme.dart';
 import '../app/brand.dart';
 import '../core/controller.dart';
 import '../core/fish_head_analyzer.dart';
+import 'arducam_settings.dart';
 import '../core/models.dart';
 import '../core/ui.dart';
 import '../core/motion.dart';
@@ -114,7 +115,8 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
 
   Future<void> _capture() async {
     if (_busy) return;
-    final usb = ref.read(appControllerProvider).usbCameraEnabled;
+    final state = ref.read(appControllerProvider);
+    final usb = state.usbCameraEnabled && !state.usesArducam;
     final shownFrame =
         usb &&
             _bytes == null &&
@@ -155,13 +157,18 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
               );
       final codec = await ui.instantiateImageCodec(image.bytes);
       final frame = await codec.getNextFrame();
-      final aspect = frame.image.width / frame.image.height;
+      final width = frame.image.width;
+      final height = frame.image.height;
       frame.image.dispose();
       codec.dispose();
+      if (state.usesArducam &&
+          (image.width != width || image.height != height)) {
+        throw StateError('ขนาด JPEG ไม่ตรงกับค่าที่ตั้งไว้');
+      }
       if (!mounted || generation != _imageGeneration) return;
       setState(() {
         _bytes = image.bytes;
-        _aspect = aspect;
+        _aspect = width / height;
         _captureId = image.id;
         _receivedAt = image.receivedAt;
         _filename = 'กล้อง ${image.cameraId} / ${image.id}';
@@ -561,11 +568,13 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   Widget _input(AppState state) {
     final cameraAsync = ref.watch(cameraStatusProvider);
     final camera = cameraAsync.asData?.value;
-    final usb = state.usbCameraEnabled;
+    final usb = state.usbCameraEnabled && !state.usesArducam;
     final demoCamera =
         state.connection.demo && state.cameraConnection == null && !usb;
     final hasImage = _sample || _bytes != null;
-    final directCapture = _captureId != null && state.cameraConnection != null;
+    final directCapture =
+        _captureId != null &&
+        (state.usesArducam || state.cameraConnection != null);
     final localAI = !_video && ref.watch(fishHeadAnalyzerProvider) != null;
     final canAI =
         _sample ||
@@ -613,13 +622,32 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      usb ? 'กล้อง USB' : 'ESP32-CAM',
+                      state.usesArducam
+                          ? 'Arducam B0434'
+                          : usb
+                          ? 'กล้อง USB'
+                          : state.cameraConnection != null
+                          ? 'ESP32-CAM'
+                          : 'Arducam B0434',
                       style: const TextStyle(
                         color: AquaColors.paper,
                         fontSize: 13,
                       ),
                     ),
                   ),
+                  if (state.usesArducam)
+                    IconButton(
+                      key: const ValueKey('open-arducam-settings'),
+                      tooltip: 'ตั้งค่ากล้อง Arducam',
+                      icon: const Icon(
+                        Icons.tune,
+                        color: AquaColors.lime,
+                        size: 20,
+                      ),
+                      onPressed: _busy
+                          ? null
+                          : () => showArducamSettings(context, ref),
+                    ),
                   Text(
                     demoCamera
                         ? 'ยังไม่เพิ่มกล้อง'
@@ -635,6 +663,11 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                   ),
                 ],
               ),
+              if (state.usesArducam && camera != null && !camera.ready)
+                Text(
+                  camera.message,
+                  style: const TextStyle(color: AquaColors.paper),
+                ),
               if (camera?.description.isNotEmpty == true)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),

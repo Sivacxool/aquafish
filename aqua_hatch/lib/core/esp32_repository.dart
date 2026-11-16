@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'camera.dart';
+import 'direct_camera.dart';
 import 'device_tls_client.dart';
 import 'models.dart';
 import 'repository.dart';
@@ -14,6 +15,8 @@ class Esp32Repository implements DeviceRepository {
   final http.Client? _providedClient;
   final Duration pollInterval;
   late final RemoteRelay? _relay;
+  DirectCameraClient? _camera;
+  bool embeddedCamera = false;
   DateTime? _retryLanAt;
   final _stream = StreamController<Telemetry>.broadcast();
   Future<http.Client>? _creating;
@@ -149,6 +152,8 @@ class Esp32Repository implements DeviceRepository {
     if (raw is! Map) throw StateError('ไม่ได้รับสถานะบอร์ด');
     final telemetry = Map<String, dynamic>.from(raw);
     final capabilities = data['capabilities'];
+    embeddedCamera = data['camera_model'] == 'arducam-b0434';
+    telemetry['embedded_camera'] = embeddedCamera;
     telemetry['hardware_ready'] =
         capabilities is Map &&
         capabilities['hardware_control'] == true &&
@@ -276,15 +281,38 @@ class Esp32Repository implements DeviceRepository {
   }
 
   @override
-  Future<DeviceCameraStatus> cameraStatus() async =>
-      DeviceCameraStatus.fromJson(await _request('GET', '/camera'));
+  Future<DeviceCameraStatus> cameraStatus() async => embeddedCamera
+      ? _embedded.status()
+      : DeviceCameraStatus.fromJson(await _request('GET', '/camera'));
+
+  DirectCameraClient get _embedded =>
+      _camera ??= DirectCameraClient(config, token, controllerCamera: true);
+
+  Future<DeviceCapture> captureArducam(
+    String id,
+    ArducamSettings settings, {
+    void Function(String)? onProgress,
+    bool Function()? cancelled,
+  }) => _embedded.captureArducam(
+    id,
+    settings,
+    onProgress: onProgress,
+    cancelled: cancelled,
+  );
   @override
   Future<DeviceCapture> capture(
     String requestId, {
     void Function(String)? onProgress,
     bool Function()? cancelled,
   }) async {
-    throw StateError('ยังไม่ติดตั้งและยืนยันขากล้อง OV5640 ของบอร์ดนี้');
+    if (!embeddedCamera) {
+      throw StateError('อัปเดตเฟิร์มแวร์ ETT เพื่อใช้ Arducam B0434');
+    }
+    return _embedded.capture(
+      requestId,
+      onProgress: onProgress,
+      cancelled: cancelled,
+    );
   }
 
   @override
@@ -307,6 +335,7 @@ class Esp32Repository implements DeviceRepository {
     _timer?.cancel();
     _client?.close();
     _relay?.close();
+    _camera?.close();
     await _stream.close();
   }
 }

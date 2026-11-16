@@ -110,6 +110,24 @@ inline int post(
   return result;
 }
 
+inline int postStream(const String &url, const String &writer, Stream &file, size_t length,
+                      const String &photoMetadata) {
+  WiFiClientSecure tls;
+  tls.useBuiltinCACertBundle();
+  tls.setHandshakeTimeout(6);
+  HTTPClient http;
+  http.setConnectTimeout(3500);
+  http.setTimeout(8000);
+  http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
+  if (!http.begin(tls, url)) return -1;
+  http.addHeader("Authorization", String("Bearer ") + writer);
+  http.addHeader("Content-Type", "image/jpeg");
+  http.addHeader("X-AquaHatch-Photo", photoMetadata);
+  const int result = http.sendRequest("POST", &file, length);
+  http.end();
+  return result;
+}
+
 inline int postJson(const String &url, const String &writer, const String &data, String *reply = nullptr) {
   return post(url, writer, "application/json",
               reinterpret_cast<uint8_t *>(const_cast<char *>(data.c_str())), data.length(), reply);

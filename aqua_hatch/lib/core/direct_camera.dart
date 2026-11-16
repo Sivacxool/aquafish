@@ -11,6 +11,7 @@ import 'remote_relay.dart';
 class DirectCameraClient {
   final ConnectionConfig config;
   final String token;
+  final bool controllerCamera;
   final http.Client? _provided;
   http.Client? _client;
   Future<void> _requests = Future<void>.value();
@@ -24,9 +25,19 @@ class DirectCameraClient {
     this.token, {
     http.Client? client,
     http.Client? relayClient,
+    this.controllerCamera = false,
   }) : _provided = client {
-    _relay = RemoteRelay.maybe(config, token, client: relayClient);
+    _relay = RemoteRelay.maybe(
+      config,
+      token,
+      client: relayClient,
+      controllerCamera: controllerCamera,
+    );
   }
+
+  String get _cameraId => controllerCamera
+      ? config.deviceId.replaceFirst(RegExp(r'^s3-'), 'cam-')
+      : config.identity?.deviceId ?? cameraDeviceId;
 
   void _check(bool Function()? cancelled) {
     if (_closed || cancelled?.call() == true) {
@@ -120,8 +131,10 @@ class DirectCameraClient {
           _provided ??
           await createPairedClient(
             config,
-            hostname: cameraTlsHostname,
-            caAsset: cameraCaAsset,
+            hostname: controllerCamera ? deviceTlsHostname : cameraTlsHostname,
+            caAsset: controllerCamera
+                ? 'assets/device/device_ca.pem'
+                : cameraCaAsset,
             connectionTimeout: const Duration(seconds: 15),
           );
       _check(cancelled);
@@ -129,7 +142,8 @@ class DirectCameraClient {
           http.Request(
               method,
               Uri.https(
-                config.identity?.hostname ?? cameraTlsHostname,
+                config.identity?.hostname ??
+                    (controllerCamera ? deviceTlsHostname : cameraTlsHostname),
                 '/api/v1/devices/${config.deviceId}/camera$suffix',
               ),
             )
@@ -191,8 +205,8 @@ class DirectCameraClient {
     final data = jsonDecode(utf8.decode(response.bodyBytes));
     if (data is! Map<String, dynamic> ||
         data['backend'] != 'esp32-camera' ||
-        data['device_id'] != config.deviceId ||
-        data['camera_id'] != (config.identity?.deviceId ?? cameraDeviceId)) {
+        data['device_id'] != (controllerCamera ? _cameraId : config.deviceId) ||
+        data['camera_id'] != _cameraId) {
       throw StateError('ข้อมูลไม่ตรงกับบอร์ดกล้องที่จับคู่');
     }
     final clock = data['server_time_unix'];
@@ -239,12 +253,35 @@ class DirectCameraClient {
     String id, {
     void Function(String)? onProgress,
     bool Function()? cancelled,
+  }) => _capture(id, onProgress: onProgress, cancelled: cancelled);
+
+  Future<DeviceCapture> captureArducam(
+    String id,
+    ArducamSettings settings, {
+    void Function(String)? onProgress,
+    bool Function()? cancelled,
+  }) => _capture(
+    id,
+    settings: settings,
+    onProgress: onProgress,
+    cancelled: cancelled,
+  );
+
+  Future<DeviceCapture> _capture(
+    String id, {
+    ArducamSettings? settings,
+    void Function(String)? onProgress,
+    bool Function()? cancelled,
   }) async {
     _check(cancelled);
     if (!RegExp(r'^[a-zA-Z0-9_-]{1,64}$').hasMatch(id)) {
       throw StateError('รหัสถ่ายภาพไม่ถูกต้อง');
     }
-    onProgress?.call('กำลังเปิดแฟลชและปรับแสงเพื่อถ่ายภาพความละเอียดสูง…');
+    onProgress?.call(
+      controllerCamera
+          ? 'กำลังถ่ายภาพจาก Arducam…'
+          : 'กำลังเปิดแฟลชและปรับแสงเพื่อถ่ายภาพความละเอียดสูง…',
+    );
     final (camera, viaRelay) = await _selectCamera(cancelled: cancelled);
     _check(cancelled);
     if (_boardTime == null) throw StateError('นาฬิกากล้องยังไม่พร้อม');
@@ -257,10 +294,12 @@ class DirectCameraClient {
           body: {
             'capture_id': id,
             'expires_at_unix': _boardTime! + 30,
-            'flash': true,
+            'flash': !controllerCamera,
             'flash_duty': 64,
             'autofocus': camera.requestAutofocus,
             'resolution': camera.captureResolution,
+            if (controllerCamera)
+              'arducam': (settings ?? const ArducamSettings()).toJson(),
             'jpeg_quality': 10,
             'warmup_ms': 1800,
           },
@@ -332,7 +371,7 @@ class DirectCameraClient {
     if (received == null) throw StateError('ภาพไม่มีเวลาที่บอร์ดยืนยัน');
     return DeviceCapture(
       id: id,
-      cameraId: config.identity?.deviceId ?? cameraDeviceId,
+      cameraId: _cameraId,
       receivedAt: received.toLocal(),
       bytes: bytes,
       width: job['width'] is int ? job['width'] as int : null,
