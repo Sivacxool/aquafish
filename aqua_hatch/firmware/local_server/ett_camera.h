@@ -134,6 +134,7 @@ Submit submit(const JsonDocument &options, JsonDocument &reply) {
 bool savePhoto(Photo &photo) {
   const size_t total = arducam_b0434::total;
   if (total > PhotoLimit || total < 4) return false;
+  if (LittleFS.exists(PhotoPath) && !LittleFS.remove(PhotoPath)) return false;
   File file = LittleFS.open(PhotoPath, FILE_WRITE);
   if (!file) return false;
   uint8_t bytes[2048];
