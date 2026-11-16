@@ -25,7 +25,10 @@ AquaIdentity boardIdentity;
 #include "fill_control.h"
 #endif
 
-#if defined(AQUAHATCH_ET_WROOM32UE)
+#if defined(AQUAHATCH_B0434_TEST)
+#include "b0434_test.h"
+static const char VERSION[] = "0.22.1-ett32ue-b0434-test.1";
+#elif defined(AQUAHATCH_ET_WROOM32UE)
 static const char VERSION[] = "0.22.1-ett32ue.1";
 #else
 static const char VERSION[] = "0.17.0-wroom-da.pump.1";
@@ -368,6 +371,9 @@ void serialCommand() {
   JsonDocument doc;
   if (deserializeJson(doc, serialLine)) { Serial.println("{\"type\":\"invalid_command\"}"); return; }
   String op=doc["op"] | "";
+#if defined(AQUAHATCH_B0434_TEST)
+  if (b0434_test::handle(op, doc)) return;
+#endif
   if (op=="status") { serialStatus(); return; }
   if(op=="pairing"){
     // The physically connected owner's PC supplies UTC for offline first boot.
@@ -434,6 +440,9 @@ void setup() {
   serialStatus("boot");
 }
 void loop() {
+#if defined(AQUAHATCH_B0434_TEST)
+  b0434_test::tick();
+#endif
   temperature_sensor::tick();
   oxygen_sensor::tick();
 #if !defined(AQUAHATCH_ET_WROOM32UE)
