@@ -7,7 +7,7 @@ import 'package:aqua_hatch/core/local_store.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
-    'opening Wi-Fi setup during bootstrap pauses polling until the wizard exits',
+    'an unpaired app stays offline after closing Wi-Fi setup during bootstrap',
     () async {
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
@@ -26,7 +26,8 @@ void main() {
       expect(container.read(appControllerProvider).telemetry, isNull);
       await controller.reconnect();
       await Future<void>.delayed(const Duration(milliseconds: 20));
-      expect(container.read(appControllerProvider).connected, isTrue);
+      expect(container.read(appControllerProvider).connected, isFalse);
+      expect(container.read(appControllerProvider).telemetry, isNull);
     },
   );
 }

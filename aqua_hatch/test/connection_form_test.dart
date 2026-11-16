@@ -13,16 +13,11 @@ void main() {
       final group = find.text('ตั้งค่าบอร์ดขั้นสูง');
       await tester.ensureVisible(group);
       await tester.pump();
-      // Offline settings start expanded; a fresh demo can start collapsed.
-      if (find.text('เครื่องจริง').evaluate().isEmpty) {
-        await tester.tap(group);
-        await tester.pumpAndSettle();
-      }
-      await tester.tap(find.text('เครื่องจริง'));
+      //       await tester.tap(group);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       for (final label in [
-        'URL เซิร์ฟเวอร์',
+        'URL บอร์ด',
         'รหัสเครื่อง',
         'รหัสเข้าถึงเซิร์ฟเวอร์',
       ]) {
@@ -33,7 +28,7 @@ void main() {
         await tester.pump();
         await tester.enterText(
           field,
-          label == 'URL เซิร์ฟเวอร์' ? 'https://example.com' : 'test-value',
+          label == 'URL บอร์ด' ? 'https://192.168.1.50' : 'test-value',
         );
         await tester.pump();
         expect(tester.takeException(), isNull);

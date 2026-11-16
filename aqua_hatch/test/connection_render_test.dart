@@ -13,7 +13,7 @@ import 'package:aqua_hatch/core/controller.dart';
 import 'package:aqua_hatch/core/board_wifi.dart';
 import 'package:aqua_hatch/features/connection_overview.dart';
 import 'package:aqua_hatch/features/wifi_setup.dart';
-import 'board_wifi_test.dart' show wifiStatus, wifiResponse;
+import 'board_wifi_test.dart' show wifiStatus, wifiResponse, wifiConfig;
 import 'wifi_setup_test.dart'
     show WifiTestController, TestWifiPlatform, TestCredentials;
 
@@ -54,7 +54,7 @@ void main() {
                   body: SingleChildScrollView(
                     padding: const EdgeInsets.all(20),
                     child: ConnectionOverview(
-                      state: app.build(),
+                      state: app.build().copyWith(connection: wifiConfig),
                       onBoard: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => WifiSetupScreen(
