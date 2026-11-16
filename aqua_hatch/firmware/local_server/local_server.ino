@@ -27,7 +27,7 @@ AquaIdentity boardIdentity;
 
 #if defined(AQUAHATCH_B0434_TEST)
 #include "b0434_test.h"
-static const char VERSION[] = "0.22.1-ett32ue-b0434-test.1";
+static const char VERSION[] = "0.22.1-ett32ue-b0434-test.2";
 #elif defined(AQUAHATCH_ET_WROOM32UE)
 static const char VERSION[] = "0.22.1-ett32ue.1";
 #else

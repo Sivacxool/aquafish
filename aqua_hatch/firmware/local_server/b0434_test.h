@@ -19,17 +19,22 @@ constexpr size_t ChunkSize = 768;
 // Arducam Mega SPI application note, register table and burst timing.
 // Sensor IDs and the legacy resolution mapping follow ArduCAM/Arducam_Mega.
 constexpr uint8_t FifoControl = 0x04, Reset = 0x07, DeviceAddress = 0x0a;
-constexpr uint8_t Format = 0x20, Resolution = 0x21, BurstRead = 0x3c;
+constexpr uint8_t Format = 0x20, Resolution = 0x21, Brightness = 0x22, ExposureCompensation = 0x25;
+constexpr uint8_t BurstRead = 0x3c;
 constexpr uint8_t SensorId = 0x40, SensorState = 0x44, FifoSize = 0x45;
 constexpr uint8_t IdleMask = 0x03, IdleValue = 0x02, CaptureDone = 0x04;
 
 SPIClass bus(HSPI);
-enum class Phase { Idle, Resetting, Addressing, FormatSetting, SizeSetting, Exposing, Ready, Failed };
+enum class Phase {
+  Idle, Resetting, Addressing, FormatSetting, SizeSetting, ExposureSetting,
+  BrightnessSetting, WarmingUp, Exposing, Ready, Failed,
+};
 Phase phase = Phase::Idle;
 bool busStarted = false;
 uint32_t phaseStarted = 0, lastRead = 0, total = 0, offset = 0;
 uint8_t sensorId = 0;
 bool highResolution = false;
+bool lowLight = false;
 const char *failure = "";
 
 void transact() {
@@ -72,7 +77,7 @@ bool working() {
   return phase >= Phase::Resetting && phase <= Phase::Exposing;
 }
 
-void begin(bool fullSize) {
+void begin(bool fullSize, bool dimScene) {
   if (!busStarted) {
     pinMode(Cs, OUTPUT);
     digitalWrite(Cs, HIGH);
@@ -80,12 +85,19 @@ void begin(bool fullSize) {
     busStarted = true;
   }
   highResolution = fullSize;
+  lowLight = dimScene;
   sensorId = 0;
   total = 0;
   offset = 0;
   failure = "";
   writeRegister(Reset, 0x40);
   advance(Phase::Resetting);
+}
+
+void trigger(Phase next) {
+  writeRegister(FifoControl, 0x01);  // Clear the previous capture flag.
+  writeRegister(FifoControl, 0x02);  // Start a single capture.
+  advance(next);
 }
 
 void tick() {
@@ -95,8 +107,13 @@ void tick() {
   if (!working()) return;
   const uint32_t elapsed = millis() - phaseStarted;
   const uint8_t state = readRegister(SensorState);
-  if (phase == Phase::Exposing) {
+  if (phase == Phase::WarmingUp || phase == Phase::Exposing) {
     if ((state & CaptureDone) && state != 0xff) {
+      if (phase == Phase::WarmingUp) {
+        // Let auto exposure run on a first frame before keeping a JPEG.
+        if (elapsed >= 500) trigger(Phase::Exposing);
+        return;
+      }
       total = readRegister(FifoSize);
       total |= uint32_t(readRegister(FifoSize + 1)) << 8;
       total |= uint32_t(readRegister(FifoSize + 2)) << 16;
@@ -138,9 +155,15 @@ void tick() {
       break;
     }
     case Phase::SizeSetting:
-      writeRegister(FifoControl, 0x01);  // Clear the previous capture flag.
-      writeRegister(FifoControl, 0x02);  // Start a single capture.
-      advance(Phase::Exposing);
+      writeRegister(ExposureCompensation, lowLight ? 0x03 : 0x00);  // Arducam +2 level.
+      advance(Phase::ExposureSetting);
+      break;
+    case Phase::ExposureSetting:
+      writeRegister(Brightness, lowLight ? 0x01 : 0x00);  // Arducam +1 level.
+      advance(Phase::BrightnessSetting);
+      break;
+    case Phase::BrightnessSetting:
+      trigger(lowLight ? Phase::WarmingUp : Phase::Exposing);
       break;
     default:
       break;
@@ -150,6 +173,7 @@ void tick() {
 void status(JsonDocument &reply) {
   reply["type"] = "b0434_status";
   reply["sensor_id"] = sensorId;
+  reply["lighting"] = lowLight ? "low-light" : "normal";
   if (working()) {
     reply["status"] = "busy";
   } else if (phase == Phase::Ready) {
@@ -201,9 +225,15 @@ bool handle(const String &op, const JsonDocument &input) {
   JsonDocument reply;
   if (op == "b0434_capture") {
     const String size = input["resolution"] | "vga";
-    if (!working() && (size == "vga" || size == "3mp")) begin(size == "3mp");
+    const String lighting = input["lighting"] | "normal";
+    const bool validSize = size == "vga" || size == "3mp";
+    const bool validLighting = lighting == "normal" || lighting == "low-light";
+    const bool busy = working();
+    if (!busy && validSize && validLighting) begin(size == "3mp", lighting == "low-light");
     status(reply);
-    if (size != "vga" && size != "3mp") reply["error"] = "unsupported_resolution";
+    if (!validSize) reply["error"] = "unsupported_resolution";
+    else if (!validLighting) reply["error"] = "unsupported_lighting";
+    else if (busy) reply["error"] = "capture_in_progress";
   } else if (op == "b0434_status") {
     status(reply);
   } else if (op == "b0434_read") {
