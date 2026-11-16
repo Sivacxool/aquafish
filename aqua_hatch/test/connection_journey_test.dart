@@ -72,47 +72,49 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Demo 1 shows remote switches with no URL input or legacy settings pages',
-    (tester) async {
-      tester.view.physicalSize = const Size(320, 620);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final controller = WifiTestController(true);
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [appControllerProvider.overrideWith(() => controller)],
-          child: MaterialApp(
-            theme: buildTheme(),
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: const TextScaler.linear(1.4)),
-              child: child!,
-            ),
-            home: const Scaffold(body: SettingsScreen()),
+  testWidgets('settings exposes only the ETT and its shared remote switch', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 620);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = WifiTestController(true);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appControllerProvider.overrideWith(() => controller)],
+        child: MaterialApp(
+          theme: buildTheme(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(1.4)),
+            child: child!,
           ),
+          home: const Scaffold(body: SettingsScreen()),
         ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('กล้อง: IP และ USB'), findsNothing);
-      expect(find.text('สอบเทียบ pH'), findsNothing);
-      expect(find.text('Demo 1'), findsOneWidget);
-      await tap(tester, find.text('ดูจากระยะไกล'));
-      expect(find.byType(BackButton), findsOneWidget);
-      expect(
-        find.widgetWithText(SwitchListTile, 'ดูค่าเซนเซอร์'),
-        findsOneWidget,
-      );
-      expect(
-        find.widgetWithText(SwitchListTile, 'ถ่ายภาพจากกล้อง'),
-        findsOneWidget,
-      );
-      expect(find.byType(TextField), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('กล้อง: IP และ USB'), findsNothing);
+    expect(find.text('สอบเทียบ pH'), findsNothing);
+    expect(find.text('Demo 1'), findsNothing);
+    expect(find.text('โหมดทดลอง'), findsNothing);
+    expect(find.byKey(const ValueKey('start-camera-setup')), findsNothing);
+    expect(find.text('สแกน QR บอร์ด ETT'), findsOneWidget);
+    await tap(tester, find.text('ดูจากระยะไกล'));
+    expect(find.byType(BackButton), findsOneWidget);
+    expect(
+      find.widgetWithText(SwitchListTile, 'ดูเซนเซอร์และถ่ายภาพ'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(SwitchListTile, 'ถ่ายภาพจากกล้อง'),
+      findsNothing,
+    );
+    expect(find.byType(TextField), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'walkthrough fits small screen with large Thai text and reduced motion',

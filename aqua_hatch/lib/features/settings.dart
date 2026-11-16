@@ -6,7 +6,6 @@ import '../core/controller.dart';
 import '../core/models.dart';
 import '../core/ui.dart';
 import 'wifi_setup.dart';
-import 'arducam_settings.dart';
 import 'connection_overview.dart';
 import 'controls.dart' show RelayModeSelector;
 import 'remote_settings.dart';
@@ -23,12 +22,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _settingsForm = GlobalKey<FormState>();
   late final TextEditingController _temperature, _ph, _phMax, _url, _device;
   final _token = TextEditingController();
-  bool _demo = true,
-      _localEsp32 = false,
-      _connecting = false,
-      _dirty = false,
-      _abnormalPh = false,
-      _lowWater = false;
+  bool _localEsp32 = true, _connecting = false, _dirty = false;
   @override
   void initState() {
     super.initState();
@@ -40,8 +34,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _phMax = TextEditingController(text: number(state.settings.phMaximum));
     _url = TextEditingController(text: state.connection.baseUrl);
     _device = TextEditingController(text: state.connection.deviceId);
-    _demo = state.connection.demo;
-    _localEsp32 = state.connection.localEsp32;
+    _localEsp32 = state.connection.demo || state.connection.localEsp32;
   }
 
   @override
@@ -70,8 +63,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
     final state = ref.read(appControllerProvider);
     setState(() {
-      _demo = state.connection.demo;
-      _localEsp32 = state.connection.localEsp32;
+      _localEsp32 = state.connection.demo || state.connection.localEsp32;
       _url.text = state.connection.baseUrl;
       _device.text = state.connection.deviceId;
       _token.clear();
@@ -85,8 +77,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
     final config = ref.read(appControllerProvider).connection;
     setState(() {
-      _demo = config.demo;
-      _localEsp32 = config.localEsp32;
+      _localEsp32 = config.demo || config.localEsp32;
       _url.text = config.baseUrl;
       _device.text = config.deviceId;
       _token.clear();
@@ -108,23 +99,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     showFeedback(context, error, success: 'เครื่องยืนยันค่าตั้งแล้ว');
   }
 
-  Future<void> _openCameraWifi() async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const WifiSetupScreen(camera: true)),
-    );
-  }
-
   Future<void> _connect() async {
     setState(() => _connecting = true);
     final config = ConnectionConfig(
       identity:
-          !_demo &&
-              _localEsp32 &&
+          _localEsp32 &&
               _device.text.trim() ==
                   ref.read(appControllerProvider).connection.deviceId
           ? ref.read(appControllerProvider).connection.identity
           : null,
-      demo: _demo,
+      demo: false,
       localEsp32: _localEsp32,
       baseUrl: _url.text.trim(),
       deviceId: _device.text.trim(),
@@ -135,14 +119,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!mounted) return;
     setState(() {
       _connecting = false;
-      _abnormalPh = false;
-      _lowWater = false;
     });
-    showFeedback(
-      context,
-      error,
-      success: _demo ? 'เข้าสู่โหมดทดลองแล้ว' : 'เชื่อมต่อเซิร์ฟเวอร์แล้ว',
-    );
+    showFeedback(context, error, success: 'เชื่อมต่อเครื่องแล้ว');
   }
 
   @override
@@ -156,9 +134,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final content = <Widget>[
       _SettingsGroup(
         title: 'ดูจากระยะไกล',
-        subtitle:
-            state.connection.relayOrigin != null ||
-                state.cameraConnection?.relayOrigin != null
+        subtitle: state.connection.relayOrigin != null
             ? 'เปิดใช้งานแล้ว'
             : 'ผ่านอินเทอร์เน็ต',
         icon: PhosphorIconsRegular.globe,
@@ -176,102 +152,81 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               'การเชื่อมต่อ',
               trailing: Pill(
                 state.connection.demo
-                    ? 'ทดลอง'
+                    ? 'ยังไม่เชื่อมต่อ'
                     : state.fresh
                     ? 'ออนไลน์'
                     : 'ออฟไลน์',
                 color: state.fresh ? AquaColors.teal : AquaColors.orange,
               ),
             ),
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                  value: true,
-                  label: Text('เครื่องจำลอง'),
-                  icon: Icon(PhosphorIconsRegular.flask),
-                ),
-                ButtonSegment(
+            DropdownButtonFormField<bool>(
+              initialValue: _localEsp32,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'เชื่อมต่อผ่าน'),
+              items: const [
+                DropdownMenuItem(
                   value: false,
-                  label: Text('เครื่องจริง'),
-                  icon: Icon(PhosphorIconsRegular.wifiHigh),
+                  child: Text('เซิร์ฟเวอร์ของบอร์ด'),
                 ),
+                DropdownMenuItem(value: true, child: Text('ESP32 ในบ้าน')),
               ],
-              selected: {_demo},
-              onSelectionChanged: _connecting || state.busy
+              onChanged: _connecting || state.busy
                   ? null
-                  : (values) => setState(() => _demo = values.first),
+                  : (value) => setState(() => _localEsp32 = value ?? false),
             ),
-            const SizedBox(height: 20),
-            if (!_demo) ...[
-              DropdownButtonFormField<bool>(
-                initialValue: _localEsp32,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'เชื่อมต่อผ่าน'),
-                items: const [
-                  DropdownMenuItem(
-                    value: false,
-                    child: Text('เซิร์ฟเวอร์ของบอร์ด'),
-                  ),
-                  DropdownMenuItem(value: true, child: Text('ESP32 ในบ้าน')),
-                ],
-                onChanged: _connecting || state.busy
-                    ? null
-                    : (value) => setState(() => _localEsp32 = value ?? false),
+            const SizedBox(height: 12),
+            TextField(
+              key: const PageStorageKey('connection-url'),
+              controller: _url,
+              keyboardType: TextInputType.url,
+              decoration: InputDecoration(
+                labelText: _localEsp32 ? 'URL บอร์ด' : 'URL เซิร์ฟเวอร์',
+                hintText: _localEsp32
+                    ? 'https://192.168.1.50'
+                    : 'https://incubator.example.com',
               ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const PageStorageKey('connection-url'),
-                controller: _url,
-                keyboardType: TextInputType.url,
-                decoration: InputDecoration(
-                  labelText: _localEsp32 ? 'URL บอร์ด' : 'URL เซิร์ฟเวอร์',
-                  hintText: _localEsp32
-                      ? 'https://192.168.1.50'
-                      : 'https://incubator.example.com',
-                ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const PageStorageKey('connection-device'),
+              controller: _device,
+              decoration: const InputDecoration(
+                labelText: 'รหัสเครื่อง',
+                hintText: 'incubator-01',
               ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const PageStorageKey('connection-device'),
-                controller: _device,
-                decoration: const InputDecoration(
-                  labelText: 'รหัสเครื่อง',
-                  hintText: 'incubator-01',
-                ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const PageStorageKey('connection-token'),
+              controller: _token,
+              obscureText: true,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: const InputDecoration(
+                labelText: 'รหัสเข้าถึงเซิร์ฟเวอร์',
+                helperText: 'เว้นว่างเพื่อใช้รหัสเดิมของเครื่องนี้',
               ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const PageStorageKey('connection-token'),
-                controller: _token,
-                obscureText: true,
-                autocorrect: false,
-                enableSuggestions: false,
-                decoration: const InputDecoration(
-                  labelText: 'รหัสเข้าถึงเซิร์ฟเวอร์',
-                  helperText: 'เว้นว่างเพื่อใช้รหัสเดิมของเครื่องนี้',
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (!_localEsp32) const Notice('เซิร์ฟเวอร์ภายนอกใช้ HTTPS'),
-              TextButton.icon(
-                onPressed: state.busy
-                    ? null
-                    : () async {
-                        final error = await ref
-                            .read(appControllerProvider.notifier)
-                            .forgetCredentials();
-                        if (context.mounted) {
-                          showFeedback(
-                            context,
-                            error,
-                            success: 'ลบรหัสที่บันทึกแล้ว',
-                          );
-                        }
-                      },
-                icon: const Icon(PhosphorIconsRegular.signOut),
-                label: const Text('ลบรหัสที่บันทึก'),
-              ),
-            ],
+            ),
+            const SizedBox(height: 12),
+            if (!_localEsp32) const Notice('เซิร์ฟเวอร์ภายนอกใช้ HTTPS'),
+            TextButton.icon(
+              onPressed: state.busy
+                  ? null
+                  : () async {
+                      final error = await ref
+                          .read(appControllerProvider.notifier)
+                          .forgetCredentials();
+                      if (context.mounted) {
+                        showFeedback(
+                          context,
+                          error,
+                          success: 'ลบรหัสที่บันทึกแล้ว',
+                        );
+                      }
+                    },
+              icon: const Icon(PhosphorIconsRegular.signOut),
+              label: const Text('ลบรหัสที่บันทึก'),
+            ),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _connecting || state.busy ? null : _connect,
@@ -455,53 +410,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
       const SizedBox(height: 24),
-      if (state.connection.demo) ...[
-        _SettingsGroup(
-          title: 'เครื่องมือทดลอง',
-          subtitle: 'จำลอง pH ผิดปกติและระดับน้ำต่ำ',
-          icon: PhosphorIconsRegular.flask,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SectionHeading('ทดสอบสถานการณ์จำลอง'),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('pH นอกช่วง', style: TextStyle(fontSize: 14)),
-                subtitle: const Text(
-                  'ดูการแจ้งเตือนบนหน้าแรก',
-                  style: TextStyle(fontSize: 12),
-                ),
-                value: _abnormalPh,
-                onChanged: (v) {
-                  setState(() => _abnormalPh = v);
-                  ref
-                      .read(appControllerProvider.notifier)
-                      .demoScenario(ph: v, water: _lowWater);
-                },
-              ),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                title: const Text(
-                  'ระดับน้ำต่ำ',
-                  style: TextStyle(fontSize: 14),
-                ),
-                subtitle: const Text(
-                  'ทดสอบการตัดอุปกรณ์และปฏิเสธคำสั่ง',
-                  style: TextStyle(fontSize: 12),
-                ),
-                value: _lowWater,
-                onChanged: (v) {
-                  setState(() => _lowWater = v);
-                  ref
-                      .read(appControllerProvider.notifier)
-                      .demoScenario(ph: _abnormalPh, water: v);
-                },
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-      ],
     ];
     final groups = content.whereType<_SettingsGroup>().toList();
     if (widget.section != null) {
@@ -517,7 +425,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
     return PageBody(
       children: [
-        const PageTitle('อุปกรณ์ของคุณ'),
+        const PageTitle('เชื่อมต่อเครื่อง'),
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
@@ -540,11 +448,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'เพิ่มอุปกรณ์',
+                          'บอร์ด ETT',
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 4),
-                        const Text('บอร์ดควบคุม ETT', style: AquaType.caption),
+                        const Text(
+                          'QR เดียวสำหรับเซนเซอร์และกล้อง Arducam',
+                          style: AquaType.caption,
+                        ),
                       ],
                     ),
                   ),
@@ -555,7 +466,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 key: const ValueKey('add-device-by-qr'),
                 onPressed: state.busy ? null : _openQrPairing,
                 icon: const Icon(PhosphorIconsRegular.scan),
-                label: const Text('สแกน QR เพื่อเพิ่มอุปกรณ์'),
+                label: const Text('สแกน QR บอร์ด ETT'),
               ),
             ],
           ),
@@ -564,17 +475,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ConnectionOverview(
           state: state,
           onBoard: state.busy || _connecting ? null : _openWifiSetup,
-          onCamera: state.busy
-              ? null
-              : state.usesArducam
-              ? () => showArducamSettings(context, ref)
-              : _openCameraWifi,
-          onDemo: _connecting || state.busy
-              ? null
-              : () {
-                  setState(() => _demo = true);
-                  _connect();
-                },
         ),
         const SizedBox(height: 16),
         const SectionHeading('จัดการ'),
@@ -599,7 +499,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
               Text(
-                'Demo 1',
+                'v0.23.1',
                 style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
             ],

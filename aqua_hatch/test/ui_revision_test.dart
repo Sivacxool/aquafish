@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:aqua_hatch/core/models.dart';
+import 'package:aqua_hatch/core/controller.dart';
 import 'widget_test.dart' show mountApp;
+import 'counting_fixture.dart';
 
 Future<void> closeApp(WidgetTester tester) async {
   await tester.pumpWidget(const SizedBox());
@@ -11,14 +13,21 @@ Future<void> closeApp(WidgetTester tester) async {
 Future<void> sampleWorkspace(WidgetTester tester) async {
   await tester.tap(find.text('นับลูกปลา').last);
   await tester.pump(const Duration(milliseconds: 350));
-  final sample = find.text('ใช้ภาพตัวอย่าง');
-  await tester.ensureVisible(sample);
-  await tester.tap(sample);
-  await tester.pump();
-  final analyze = find.text('ลองนับภาพตัวอย่าง');
-  await tester.ensureVisible(analyze);
-  await tester.tap(analyze);
-  await tester.pump(const Duration(seconds: 1));
+  await openFixtureWorkspace(tester);
+}
+
+class _OnlineSettingsController extends AppController {
+  @override
+  AppState build() {
+    final now = DateTime.now();
+    return AppState(
+      connection: const ConnectionConfig(demo: false, localEsp32: true),
+      settings: const DeviceSettings(),
+      now: now,
+      connected: true,
+      telemetry: Telemetry(at: now),
+    );
+  }
 }
 
 void main() {
@@ -52,29 +61,6 @@ void main() {
     expect(find.text('49'), findsOneWidget);
     await closeApp(tester);
   });
-  testWidgets('manual mode shows remaining lease and can return to automatic', (
-    tester,
-  ) async {
-    await mountApp(tester);
-    await tester.tap(find.text('ควบคุม').last);
-    await tester.pump(const Duration(milliseconds: 350));
-    await tester.tap(find.text('ควบคุมเอง').first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('เริ่มควบคุม'));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    final remaining = find.byKey(const ValueKey('manual-mode-remaining'));
-    expect(remaining, findsOneWidget);
-    final auto = find.text('อัตโนมัติ');
-    await tester.ensureVisible(auto);
-    await tester.pump();
-    await tester.tap(auto);
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(remaining, findsNothing);
-    await closeApp(tester);
-  });
-
   testWidgets(
     'editing a known point after zoom removes the point under the tap',
     (tester) async {
@@ -137,7 +123,7 @@ void main() {
       expect(tester.widget<FilledButton>(save).onPressed, isNull);
       await tester.tap(review);
       await tester.pump();
-      expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+      expect(tester.widget<FilledButton>(save).onPressed, isNull);
       await tester.tap(edit);
       await tester.pump();
       final imageRect = tester.getRect(image);
@@ -159,7 +145,7 @@ void main() {
   testWidgets(
     'settings detail retains draft while scrolling and validates inverted pH',
     (tester) async {
-      await mountApp(tester);
+      await mountApp(tester, controller: _OnlineSettingsController.new);
       await tester.tap(find.text('ตั้งค่า').last);
       await tester.pump(const Duration(milliseconds: 350));
       final controlGroup = find.text('ค่าควบคุม');

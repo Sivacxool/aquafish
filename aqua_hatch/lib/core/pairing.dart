@@ -49,7 +49,7 @@ class PairingBundle {
       if (expectedKind != null && identity.kind != expectedKind) {
         throw FormatException(
           expectedKind == 's3'
-              ? 'นี่คือ QR กล้อง ให้เลือกเพิ่มกล้องแทน'
+              ? 'สแกน QR จากบอร์ด ETT ที่ต่อกล้อง Arducam'
               : 'นี่คือ QR บอร์ดหลัก ให้เลือกเพิ่มบอร์ดหลักแทน',
         );
       }

@@ -13,14 +13,14 @@ class _RemoteSettingsState extends ConsumerState<RemoteSettings> {
   String? _message;
   bool _working = false;
 
-  Future<void> _set(bool camera, bool enabled) async {
+  Future<void> _set(bool enabled) async {
     setState(() {
       _working = true;
       _message = null;
     });
     final error = await ref
         .read(appControllerProvider.notifier)
-        .setRemoteViewing(enabled, camera: camera);
+        .setRemoteViewing(enabled, camera: false);
     if (!mounted) return;
     setState(() {
       _working = false;
@@ -32,7 +32,6 @@ class _RemoteSettingsState extends ConsumerState<RemoteSettings> {
   Widget build(BuildContext context) {
     final state = ref.watch(appControllerProvider);
     final board = state.connection;
-    final camera = state.cameraConnection;
     final enabled = !_working && !state.busy;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -40,25 +39,11 @@ class _RemoteSettingsState extends ConsumerState<RemoteSettings> {
         const Text('เปิดบน Wi-Fi ของอุปกรณ์ · ปิดได้จากทุกเครือข่าย'),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text(
-            state.usesArducam ? 'ดูเซนเซอร์และถ่ายภาพ' : 'ดูค่าเซนเซอร์',
-          ),
+          title: const Text('ดูเซนเซอร์และถ่ายภาพ'),
           value: board.relayOrigin != null,
-          onChanged: enabled && board.identity != null
-              ? (on) => _set(false, on)
-              : null,
+          onChanged: enabled && board.identity != null ? _set : null,
         ),
-        if (!state.usesArducam)
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('ถ่ายภาพจากกล้อง'),
-            value: camera?.relayOrigin != null,
-            onChanged: enabled && camera?.identity != null
-                ? (on) => _set(true, on)
-                : null,
-          ),
-        if (board.identity == null && camera?.identity == null)
-          const Text('สแกน QR ของอุปกรณ์ก่อน'),
+        if (board.identity == null) const Text('สแกน QR บอร์ด ETT ก่อน'),
         if (_working) const LinearProgressIndicator(),
         if (_message != null)
           Text(

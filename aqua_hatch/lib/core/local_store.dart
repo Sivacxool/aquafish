@@ -78,20 +78,7 @@ class LocalStore {
     });
     if (saved != null) return saved;
 
-    final legacyKey = 'batch_v2:${scope(config)}';
-    final legacy = _read(legacyKey, HatchBatch.fromJson);
-    final active =
-        legacy ??
-        (config.demo && !preferences.containsKey(legacyKey)
-            ? HatchBatch(
-                id: 'demo-batch',
-                name: 'รอบฟักตัวอย่าง 01',
-                startedAt: DateTime.now().subtract(
-                  const Duration(hours: 6, minutes: 24),
-                ),
-                eggs: 1200,
-              )
-            : null);
+    final active = _read('batch_v2:${scope(config)}', HatchBatch.fromJson);
     return (rounds: [?active], active: active);
   }
 

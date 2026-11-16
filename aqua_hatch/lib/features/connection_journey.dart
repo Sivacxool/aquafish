@@ -381,7 +381,7 @@ class _ConnectionPreviewScreenState extends State<ConnectionPreviewScreen> {
                     step: _step,
                     title: titles[_step],
                     subtitle: explanations[_step],
-                    device: 'ESP32-WROOM-DA · บอร์ดหลัก',
+                    device: 'ETT WROOM32UE',
                     busy: _step == 3,
                   ),
                   const SizedBox(height: 24),

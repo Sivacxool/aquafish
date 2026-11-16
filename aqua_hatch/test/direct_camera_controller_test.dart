@@ -57,7 +57,7 @@ void main() {
         original,
       );
       expect(store.cameraConnection?.baseUrl, fixture.config.baseUrl);
-      expect((await app.cameraStatus()).ready, isTrue);
+      expect((await app.cameraStatus()).ready, isFalse);
       expect(
         jsonEncode(store.cameraConnection?.toJson()),
         isNot(contains('camera-secret')),

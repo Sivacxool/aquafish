@@ -33,7 +33,7 @@ class PreviewCamera extends UsbCameraClient {
 
 void main() {
   testWidgets(
-    'USB preview freezes its displayed frame without main-board connection',
+    'saved USB camera preference cannot open a separate camera in the app',
     (tester) async {
       await initializeDateFormatting('th');
       tester.view.physicalSize = const Size(1440, 1400);
@@ -53,27 +53,10 @@ void main() {
       );
       await tester.pump();
       await tester.pump();
-      preview.input.add(fixture.captured());
-      await tester.pump();
-      final button = find.byKey(const ValueKey('device-capture-button'));
-      expect(tester.widget<OutlinedButton>(button).onPressed, isNotNull);
-      await tester.ensureVisible(button);
-      await tester.tap(button);
-      await tester.pump();
-      for (
-        var i = 0;
-        i < 50 && find.text('ภาพจากกล้องในเครื่อง').evaluate().isEmpty;
-        i++
-      ) {
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 10)),
-        );
-        await tester.pump();
-      }
-      expect(controller.captures, 0);
-      expect(find.text('ภาพจากกล้องในเครื่อง'), findsOneWidget);
-      expect(find.text('นับด้วยมือ'), findsOneWidget);
-      expect(find.byKey(const ValueKey('usb-resume-preview')), findsOneWidget);
+      final shutter = find.byKey(const ValueKey('device-capture-button'));
+      expect(tester.widget<OutlinedButton>(shutter).onPressed, isNull);
+      expect(find.text('กล้อง USB'), findsNothing);
+      expect(find.byKey(const ValueKey('usb-resume-preview')), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },

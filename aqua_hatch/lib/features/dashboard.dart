@@ -78,14 +78,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final data = state.telemetry;
     final controller = ref.read(appControllerProvider.notifier);
     final stale = !state.fresh;
-    final demo = state.connection.demo || data?.simulated == true;
+    final batch = state.batch;
+    final latestCount = state.counts
+        .where((record) => record.batchId == batch?.id && !record.demo)
+        .firstOrNull;
+    final eggs = batch?.eggs;
+    final hatchingRate = latestCount != null && eggs != null && eggs > 0
+        ? latestCount.count * 100 / eggs
+        : null;
     final history = state.history
         .where(
           (t) => !t.at.isBefore(state.now.subtract(Duration(hours: _hours))),
         )
         .toList();
-    final status = demo
-        ? 'ข้อมูลทดลอง'
+    final status = state.connection.demo
+        ? 'ยังไม่เชื่อมบอร์ด'
         : stale
         ? 'ออฟไลน์'
         : data?.viaRelay == true
@@ -105,7 +112,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 icon: stale
                     ? PhosphorIconsRegular.wifiSlash
                     : PhosphorIconsRegular.circle,
-                color: stale && !demo ? AquaColors.orange : AquaColors.blue,
+                color: stale ? AquaColors.orange : AquaColors.blue,
               ),
             ),
           ],
@@ -162,11 +169,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'เป้าหมาย ${number(state.settings.temperatureTarget)} °C${stale
-                    ? ' · ค่าล่าสุด'
-                    : demo
-                    ? ' · ค่าทดลอง'
-                    : ''}',
+                'เป้าหมาย ${number(state.settings.temperatureTarget)} °C${stale && data != null ? ' · ค่าล่าสุด' : ''}',
                 style: AquaType.caption,
               ),
               const SizedBox(height: 24),
@@ -299,6 +302,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   elapsed(state.batch!.startedAt, state.now),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+              if (batch != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  latestCount == null
+                      ? 'ยังไม่มีผลนับ'
+                      : 'ผลนับล่าสุด ${latestCount.count} ตัว',
+                  key: const ValueKey('hatch-round-count'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                if (eggs != null) Text('ไข่ตั้งต้น $eggs ฟอง'),
+                if (hatchingRate != null)
+                  Text(
+                    'อัตราฟัก ${number(hatchingRate, decimals: 1)}%',
+                    key: const ValueKey('hatch-round-rate'),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+              ],
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,

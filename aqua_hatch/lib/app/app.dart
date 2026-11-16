@@ -204,8 +204,6 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(appControllerProvider);
-    final simulated =
-        state.connection.demo || state.telemetry?.simulated == true;
     final reduced = MediaQuery.disableAnimationsOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -255,11 +253,6 @@ class AppShell extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                            if (simulated)
-                              const Pill(
-                                'โหมดทดลอง',
-                                icon: PhosphorIconsRegular.flask,
-                              ),
                             IconButton(
                               tooltip: 'กิจกรรมและการแจ้งเตือน',
                               onPressed: () {

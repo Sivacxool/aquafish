@@ -6,7 +6,6 @@ import 'relay_origin.dart';
 import 'remote_relay.dart';
 import 'local_store.dart';
 import 'repository.dart';
-import 'demo_repository.dart';
 import 'live_repository.dart';
 import 'esp32_repository.dart';
 import 'credentials.dart';
@@ -39,11 +38,7 @@ final cameraStatusProvider = FutureProvider.autoDispose<DeviceCameraStatus>((
   ref,
 ) async {
   ref.watch(appControllerProvider.select((s) => s.connection));
-  ref.watch(appControllerProvider.select((s) => s.cameraConnection));
   ref.watch(appControllerProvider.select((s) => s.usesArducam));
-  final usb = ref.watch(
-    appControllerProvider.select((s) => s.usbCameraEnabled),
-  );
   Timer? refresh;
   var disposed = false;
   ref.onDispose(() {
@@ -53,10 +48,8 @@ final cameraStatusProvider = FutureProvider.autoDispose<DeviceCameraStatus>((
   try {
     return await ref.read(appControllerProvider.notifier).cameraStatus();
   } catch (_) {
-    return DeviceCameraStatus(
-      message: usb
-          ? 'เปิดตัวรับภาพ USB บนคอม และตรวจสาย USB'
-          : 'ติดต่อกล้องไม่ได้ ตรวจการเชื่อมต่อเซิร์ฟเวอร์',
+    return const DeviceCameraStatus(
+      message: 'ติดต่อบอร์ด ETT ไม่ได้ ตรวจ Wi-Fi',
     );
   } finally {
     if (!disposed) {
@@ -120,7 +113,7 @@ class AppState {
   List<String> get alerts => telemetry?.alerts(settings) ?? [];
   String get connectionLabel {
     if (connection.demo) {
-      return fresh ? 'เครื่องจำลองพร้อมใช้งาน' : 'กำลังเริ่มเครื่องจำลอง';
+      return 'ยังไม่เชื่อมบอร์ด ETT';
     }
     if (telemetry?.simulated == true) {
       return fresh ? 'เซิร์ฟเวอร์ส่งข้อมูลจำลอง' : 'ข้อมูลจำลองขาดการเชื่อมต่อ';
@@ -183,8 +176,6 @@ class AppController extends Notifier<AppState> {
   DeviceRepository? _repository;
   DirectCameraClient? _cameraClient;
   UsbCameraClient? _usbCameraClient;
-  String _cameraToken = '';
-  int _cameraGeneration = 0;
   StreamSubscription<Telemetry>? _subscription;
   Timer? _clock;
   String _token = '';
@@ -234,14 +225,6 @@ class AppController extends Notifier<AppState> {
       _usbCameraClient?.close();
     });
     Future.microtask(() async {
-      final camera = store.cameraConnection;
-      if (camera != null) {
-        try {
-          _cameraToken = await ref.read(credentialStoreProvider).read(camera);
-        } catch (_) {
-          /* The camera can be paired again in settings. */
-        }
-      }
       if (!config.demo) {
         try {
           _token = await ref.read(credentialStoreProvider).read(config);
@@ -264,7 +247,10 @@ class AppController extends Notifier<AppState> {
       settings: store.settings,
       now: DateTime.now(),
       counts: store.counts,
-      history: store.history(config),
+      history: store
+          .history(config)
+          .where((reading) => !reading.simulated)
+          .toList(),
       events: store.events(config),
       batch: hatch.active,
       hatchRounds: hatch.rounds,
@@ -272,6 +258,7 @@ class AppController extends Notifier<AppState> {
   }
 
   void _checkConnection() {
+    if (state.connection.demo) return;
     final fresh = state.fresh;
     if (_wasFresh && !fresh) {
       _event(
@@ -363,13 +350,18 @@ class AppController extends Notifier<AppState> {
       hatchRounds: hatch?.rounds,
       connected: false,
       clearTelemetry: true,
-      history: switched ? _store.history(config) : null,
+      history: switched
+          ? _store
+                .history(config)
+                .where((reading) => !reading.simulated)
+                .toList()
+          : null,
       events: switched ? _store.events(config) : null,
       clearError: true,
     );
-    final repo = config.demo
-        ? DemoRepository(state.settings)
-        : config.localEsp32
+    _repository = null;
+    if (config.demo) return;
+    final repo = config.localEsp32
         ? Esp32Repository(config, _token)
         : LiveRepository(config, _token);
     _repository = repo;
@@ -410,11 +402,7 @@ class AppController extends Notifier<AppState> {
       await repo.connect();
       if (!_disposed && generation == _generation) {
         state = state.copyWith(connected: true);
-        _event(
-          config.demo
-              ? 'เชื่อมต่อเครื่องจำลองแล้ว'
-              : 'เชื่อมต่อเซิร์ฟเวอร์แล้ว',
-        );
+        _event('เชื่อมต่อเครื่องแล้ว');
       }
     } catch (e) {
       if (!_disposed && generation == _generation) {
@@ -538,7 +526,6 @@ class AppController extends Notifier<AppState> {
     _wifiSetupPaused = true;
     // Invalidates in-flight requests, including their guarded finally blocks.
     state = state.copyWith(busy: false);
-    ++_cameraGeneration;
     _cameraClient?.close();
     _cameraClient = null;
     ++_generation;
@@ -739,26 +726,14 @@ class AppController extends Notifier<AppState> {
     return repo.analyze(bytes, filename, video);
   }
 
-  void demoScenario({required bool ph, required bool water}) {
-    final repo = _repository;
-    if (repo is DemoRepository) repo.scenario(ph: ph, water: water);
-  }
-
   ArducamSettings get arducamSettings =>
       _store.arducamSettings(state.connection);
   Future<void> saveArducamSettings(ArducamSettings settings) =>
       _store.saveArducamSettings(state.connection, settings);
 
   Future<DeviceCameraStatus> cameraStatus() async {
-    if (state.usbCameraEnabled && !state.usesArducam) {
-      return _ensureUsbCamera().status();
-    }
     if (_wifiSetupPaused) {
       return const DeviceCameraStatus(message: 'กำลังตั้ง Wi-Fi');
-    }
-    final camera = state.cameraConnection;
-    if (camera != null && !state.usesArducam) {
-      return (await _ensureCamera(camera)).status();
     }
     final repo = _repository;
     if (repo == null) {
@@ -772,39 +747,6 @@ class AppController extends Notifier<AppState> {
     void Function(String)? onProgress,
     bool Function()? cancelled,
   }) async {
-    if (state.usbCameraEnabled && !state.usesArducam) {
-      final generation = _cameraGeneration;
-      final image = await _ensureUsbCamera().capture(
-        requestId,
-        onProgress: onProgress,
-        cancelled: () =>
-            _disposed ||
-            generation != _cameraGeneration ||
-            cancelled?.call() == true,
-      );
-      if (_disposed || generation != _cameraGeneration) {
-        throw StateError('เปลี่ยนการเชื่อมต่อกล้องแล้ว');
-      }
-      _event('ได้รับภาพจากกล้อง USB แล้ว');
-      return image;
-    }
-    final camera = state.cameraConnection;
-    if (camera != null && !state.usesArducam) {
-      final generation = _cameraGeneration;
-      final image = await (await _ensureCamera(camera)).capture(
-        requestId,
-        onProgress: onProgress,
-        cancelled: () =>
-            _disposed ||
-            generation != _cameraGeneration ||
-            cancelled?.call() == true,
-      );
-      if (_disposed || generation != _cameraGeneration) {
-        throw StateError('เปลี่ยนการเชื่อมต่อกล้องแล้ว');
-      }
-      _event('ได้รับภาพจากกล้อง ${image.cameraId} แล้ว');
-      return image;
-    }
     final repo = _repository;
     if (repo == null) throw StateError('ยังไม่เชื่อมต่อเซิร์ฟเวอร์');
     final generation = _generation;
@@ -830,16 +772,6 @@ class AppController extends Notifier<AppState> {
   }
 
   Future<AnalysisResult> analyzeDeviceCapture(String captureId) async {
-    if (state.usbCameraEnabled) {
-      throw StateError(
-        'ภาพ USB พร้อมนับด้วยมือ ส่วน AI ยังไม่มีโมเดลที่ตรวจความแม่นยำแล้ว',
-      );
-    }
-    if (state.cameraConnection != null) {
-      throw StateError(
-        'ภาพจากกล้องตรงนับด้วยมือได้ ส่วน AI ยังต้องติดตั้งโมเดลและบริการประมวลผล',
-      );
-    }
     final repo = _repository;
     if (repo == null) throw StateError('ยังไม่เชื่อมต่อเซิร์ฟเวอร์');
     final generation = _generation;
@@ -877,7 +809,6 @@ class AppController extends Notifier<AppState> {
       if (_disposed) return 'ปิดแอปแล้ว';
       if (camera) {
         await _store.saveCameraConnection(updated);
-        ++_cameraGeneration;
         _cameraClient?.close();
         _cameraClient = null;
         state = state.copyWith(cameraConnection: updated);
@@ -928,11 +859,9 @@ class AppController extends Notifier<AppState> {
       await _store.saveCameraConnection(config);
       await _store.rememberPairedDevice(config);
       await _store.saveUsbCameraEnabled(false);
-      ++_cameraGeneration;
       _cameraClient?.close();
       _cameraClient = candidate;
       candidate = null;
-      _cameraToken = secret;
       state = state.copyWith(cameraConnection: config, usbCameraEnabled: false);
       ref.invalidate(cameraStatusProvider);
       _event('เชื่อมบอร์ดกล้องแล้ว');
@@ -942,20 +871,6 @@ class AppController extends Notifier<AppState> {
     } finally {
       candidate?.close();
     }
-  }
-
-  Future<DirectCameraClient> _ensureCamera(ConnectionConfig config) async {
-    final generation = _cameraGeneration;
-    if (_cameraToken.isEmpty) {
-      _cameraToken = await ref.read(credentialStoreProvider).read(config);
-    }
-    if (_disposed || generation != _cameraGeneration || _wifiSetupPaused) {
-      throw StateError('การเชื่อมต่อกล้องถูกเปลี่ยน');
-    }
-    return _cameraClient ??= ref.read(directCameraFactoryProvider)(
-      config,
-      _cameraToken,
-    );
   }
 
   UsbCameraClient _ensureUsbCamera() =>
@@ -969,7 +884,6 @@ class AppController extends Notifier<AppState> {
       }
       if (_disposed) return 'ปิดแอปแล้ว';
       await _store.saveUsbCameraEnabled(enabled);
-      ++_cameraGeneration;
       state = state.copyWith(usbCameraEnabled: enabled);
       ref.invalidate(cameraStatusProvider);
       return null;

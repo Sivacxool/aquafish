@@ -14,8 +14,6 @@ import 'arducam_settings.dart';
 import '../core/models.dart';
 import '../core/ui.dart';
 import '../core/motion.dart';
-import '../core/camera.dart';
-import '../core/usb_preview.dart';
 
 class CountingScreen extends ConsumerStatefulWidget {
   const CountingScreen({super.key});
@@ -25,8 +23,6 @@ class CountingScreen extends ConsumerStatefulWidget {
 
 class _CountingScreenState extends ConsumerState<CountingScreen> {
   final _transform = TransformationController();
-  DeviceCapture? _usbLastFrame;
-  bool _usbLive = true;
   bool _workspace = false;
   bool _erasing = false;
   double _markerRadius = 2;
@@ -38,8 +34,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   DateTime? _receivedAt;
   int _imageGeneration = 0;
   double _aspect = 1.6;
-  bool _sample = false,
-      _video = false,
+  bool _video = false,
       _busy = false,
       _editing = false,
       _reviewed = false,
@@ -107,7 +102,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
       _bytes = bytes;
       _filename = file.name;
       _video = video;
-      _sample = false;
       _aspect = aspect;
       _reset();
     });
@@ -116,22 +110,9 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   Future<void> _capture() async {
     if (_busy) return;
     final state = ref.read(appControllerProvider);
-    final usb = state.usbCameraEnabled && !state.usesArducam;
-    final shownFrame =
-        usb &&
-            _bytes == null &&
-            !_sample &&
-            _usbLive &&
-            _usbLastFrame != null &&
-            DateTime.now().difference(_usbLastFrame!.receivedAt).abs() <
-                const Duration(seconds: 3)
-        ? _usbLastFrame
-        : null;
     final generation = ++_imageGeneration;
     setState(() {
-      _usbLive = false;
       _busy = true;
-      _sample = false;
       _video = false;
       _bytes = null;
       _captureId = null;
@@ -142,19 +123,17 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
       _reset();
     });
     try {
-      final image =
-          shownFrame ??
-          await ref
-              .read(appControllerProvider.notifier)
-              .captureFromDevice(
-                createId(),
-                cancelled: () => !mounted || generation != _imageGeneration,
-                onProgress: (message) {
-                  if (mounted && generation == _imageGeneration) {
-                    setState(() => _captureProgress = message);
-                  }
-                },
-              );
+      final image = await ref
+          .read(appControllerProvider.notifier)
+          .captureFromDevice(
+            createId(),
+            cancelled: () => !mounted || generation != _imageGeneration,
+            onProgress: (message) {
+              if (mounted && generation == _imageGeneration) {
+                setState(() => _captureProgress = message);
+              }
+            },
+          );
       final codec = await ui.instantiateImageCodec(image.bytes);
       final frame = await codec.getNextFrame();
       final width = frame.image.width;
@@ -212,59 +191,43 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   }
 
   Future<void> _analyze() async {
-    if (_busy || (!_sample && _bytes == null)) return;
+    if (_busy || _bytes == null) return;
     final generation = _imageGeneration;
     setState(() => _busy = true);
     try {
-      if (_sample) {
-        await Future<void>.delayed(const Duration(milliseconds: 700));
-        if (!mounted || generation != _imageGeneration) return;
-        setState(() {
-          _points = List.of(samplePoints);
-          _aiCount = _points.length;
-          _model = 'sample-demo';
-          _hasResult = true;
-          _workspace = true;
-          _transform.value = Matrix4.identity();
-          _reviewed = false;
-          _saved = false;
-          _undo.clear();
-        });
-      } else {
-        final controller = ref.read(appControllerProvider.notifier);
-        final localAnalyzer = ref.read(fishHeadAnalyzerProvider);
-        final result = !_video && localAnalyzer != null
-            ? await localAnalyzer(_bytes!)
-            : _captureId != null
-            ? await controller.analyzeDeviceCapture(_captureId!)
-            : await controller.analyze(_bytes!, _filename, _video);
-        double? aspect;
-        if (result.frameBytes != null) {
-          final codec = await ui.instantiateImageCodec(result.frameBytes!);
-          final frame = await codec.getNextFrame();
-          aspect = frame.image.width / frame.image.height;
-          frame.image.dispose();
-          codec.dispose();
-        }
-        if (!mounted || generation != _imageGeneration) return;
-        setState(() {
-          _points = List.of(result.points);
-          _aiCount = _points.length;
-          _model = result.model;
-          _hasResult = true;
-          _workspace = true;
-          _transform.value = Matrix4.identity();
-          _reviewed = false;
-          _saved = false;
-          _undo.clear();
-          if (result.frameBytes != null) {
-            _bytes = result.frameBytes;
-            _video = false;
-            _filename = 'เฟรมจาก $_filename';
-            _aspect = aspect!;
-          }
-        });
+      final controller = ref.read(appControllerProvider.notifier);
+      final localAnalyzer = ref.read(fishHeadAnalyzerProvider);
+      final result = !_video && localAnalyzer != null
+          ? await localAnalyzer(_bytes!)
+          : _captureId != null
+          ? await controller.analyzeDeviceCapture(_captureId!)
+          : await controller.analyze(_bytes!, _filename, _video);
+      double? aspect;
+      if (result.frameBytes != null) {
+        final codec = await ui.instantiateImageCodec(result.frameBytes!);
+        final frame = await codec.getNextFrame();
+        aspect = frame.image.width / frame.image.height;
+        frame.image.dispose();
+        codec.dispose();
       }
+      if (!mounted || generation != _imageGeneration) return;
+      setState(() {
+        _points = List.of(result.points);
+        _aiCount = _points.length;
+        _model = result.model;
+        _hasResult = true;
+        _workspace = true;
+        _transform.value = Matrix4.identity();
+        _reviewed = false;
+        _saved = false;
+        _undo.clear();
+        if (result.frameBytes != null) {
+          _bytes = result.frameBytes;
+          _video = false;
+          _filename = 'เฟรมจาก $_filename';
+          _aspect = aspect!;
+        }
+      });
     } catch (e) {
       if (mounted && generation == _imageGeneration) {
         showFeedback(
@@ -321,12 +284,8 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
         .saveCount(
           count: _points.length,
           source: _filename,
-          method: _sample
-              ? 'sample-demo'
-              : _aiCount == null
-              ? 'manual'
-              : '$_model + reviewed',
-          demo: _sample,
+          method: _aiCount == null ? 'manual' : '$_model + reviewed',
+          demo: false,
           aiCount: _aiCount,
         );
     if (!mounted) return;
@@ -338,7 +297,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   }
 
   Widget _preview({bool interactive = false}) {
-    if (!_sample && _bytes == null) {
+    if (_bytes == null) {
       return Container(
         key: const ValueKey('camera-empty-preview'),
         width: double.infinity,
@@ -423,10 +382,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (_sample)
-                    CustomPaint(painter: _SampleTrayPainter())
-                  else if (_bytes != null)
-                    Image.memory(_bytes!, fit: BoxFit.fill),
+                  Image.memory(_bytes!, fit: BoxFit.fill),
                   AnimatedBuilder(
                     animation: _transform,
                     builder: (_, _) {
@@ -447,9 +403,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                       left: 10,
                       top: 10,
                       child: Pill(
-                        _sample
-                            ? 'ภาพตัวอย่างจำลอง'
-                            : _captureId != null
+                        _captureId != null
                             ? 'ภาพจากกล้องในเครื่อง'
                             : 'ภาพที่เลือก',
                       ),
@@ -492,94 +446,73 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
     _hasResult = true;
   });
 
-  void _useSample() => setState(() {
-    _imageGeneration++;
-    _captureId = null;
-    _receivedAt = null;
-    _captureProgress = '';
-    _sample = true;
-    _bytes = null;
-    _video = false;
-    _filename = 'ภาพถาดตัวอย่าง';
-    _aspect = 1.6;
-    _reset();
-  });
-
-  Widget _history(AppState state) => Card(
-    child: ExpansionTile(
-      shape: const Border(),
-      collapsedShape: const Border(),
-      title: const Text(
-        'ประวัติผลนับ',
-        style: TextStyle(fontWeight: FontWeight.w700),
-      ),
-      subtitle: Text(
-        '${state.counts.length} รายการ · เก็บในมือถือ',
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
-      children: [
-        if (state.counts.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(18),
-            child: Text('เมื่อบันทึกผลนับ ประวัติจะปรากฏที่นี่'),
-          ),
-        ...state.counts
-            .take(8)
-            .map(
-              (record) => ListTile(
-                title: Text(record.batchName),
-                subtitle: Text(
-                  '${fullTime(record.at)} · ${record.demo
-                      ? 'ตัวอย่างจำลอง'
-                      : record.aiCount == null
-                      ? 'นับด้วยมือ'
-                      : 'AI + ตรวจแก้'}',
-                ),
-                trailing: Text(
-                  '${record.count} ตัว',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: AquaColors.blue,
+  Widget _history(AppState state) {
+    final counts = state.counts.where((record) => !record.demo).toList();
+    return Card(
+      child: ExpansionTile(
+        shape: const Border(),
+        collapsedShape: const Border(),
+        title: const Text(
+          'ประวัติผลนับ',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          '${counts.length} รายการ · เก็บในมือถือ',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        children: [
+          if (counts.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(18),
+              child: Text('เมื่อบันทึกผลนับ ประวัติจะปรากฏที่นี่'),
+            ),
+          ...counts
+              .take(8)
+              .map(
+                (record) => ListTile(
+                  title: Text(record.batchName),
+                  subtitle: Text(
+                    '${fullTime(record.at)} · ${record.aiCount == null ? 'นับด้วยมือ' : 'AI + ตรวจแก้'}',
                   ),
-                ),
-                onTap: () => showDialog<void>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('รายละเอียดผลนับ'),
-                    content: SingleChildScrollView(
-                      child: Text(
-                        'รอบ: ${record.batchName}\nไฟล์: ${record.source}\nวิธี: ${record.method}\nผลก่อนแก้: ${record.aiCount?.toString() ?? 'ไม่ได้ใช้ AI'}\nผลที่ยืนยัน: ${record.count} ตัว\nเวลา: ${fullTime(record.at)}',
-                      ),
+                  trailing: Text(
+                    '${record.count} ตัว',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AquaColors.blue,
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('ปิด'),
+                  ),
+                  onTap: () => showDialog<void>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('รายละเอียดผลนับ'),
+                      content: SingleChildScrollView(
+                        child: Text(
+                          'รอบ: ${record.batchName}\nไฟล์: ${record.source}\nวิธี: ${record.method}\nผลก่อนแก้: ${record.aiCount?.toString() ?? 'ไม่ได้ใช้ AI'}\nผลที่ยืนยัน: ${record.count} ตัว\nเวลา: ${fullTime(record.at)}',
+                        ),
                       ),
-                    ],
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('ปิด'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 
   Widget _input(AppState state) {
     final cameraAsync = ref.watch(cameraStatusProvider);
     final camera = cameraAsync.asData?.value;
-    final usb = state.usbCameraEnabled && !state.usesArducam;
-    final demoCamera =
-        state.connection.demo && state.cameraConnection == null && !usb;
-    final hasImage = _sample || _bytes != null;
-    final directCapture =
-        _captureId != null &&
-        (state.usesArducam || state.cameraConnection != null);
+    final needsBoard = state.connection.demo;
+    final hasImage = _bytes != null;
+    final directCapture = _captureId != null && state.connection.localEsp32;
     final localAI = !_video && ref.watch(fishHeadAnalyzerProvider) != null;
-    final canAI =
-        _sample ||
-        (_bytes != null &&
-            (localAI || (!state.connection.demo && !usb && !directCapture)));
+    final canAI = hasImage && (localAI || (!needsBoard && !directCapture));
     return PageBody(
       children: [
         Row(
@@ -622,13 +555,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      state.usesArducam
-                          ? 'Arducam B0434'
-                          : usb
-                          ? 'กล้อง USB'
-                          : state.cameraConnection != null
-                          ? 'ESP32-CAM'
-                          : 'Arducam B0434',
+                      'Arducam B0434',
                       style: const TextStyle(
                         color: AquaColors.paper,
                         fontSize: 13,
@@ -649,8 +576,8 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                           : () => showArducamSettings(context, ref),
                     ),
                   Text(
-                    demoCamera
-                        ? 'ยังไม่เพิ่มกล้อง'
+                    needsBoard
+                        ? 'ยังไม่เชื่อมบอร์ด'
                         : camera?.ready == true
                         ? 'พร้อมถ่าย'
                         : cameraAsync.isLoading
@@ -680,9 +607,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                   ),
                 ),
               const SizedBox(height: 14),
-              if (usb && _usbLive && !hasImage)
-                UsbLivePreview(onFrame: (frame) => _usbLastFrame = frame)
-              else if (hasImage)
+              if (hasImage)
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 390),
                   child: _preview(),
@@ -709,10 +634,12 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _CaptureAction(
-                    icon: PhosphorIconsRegular.image,
-                    label: 'เลือกภาพ',
-                    onTap: _busy ? null : () => _pick(ImageSource.gallery),
+                  Expanded(
+                    child: _CaptureAction(
+                      icon: PhosphorIconsRegular.image,
+                      label: 'เลือกภาพ',
+                      onTap: _busy ? null : () => _pick(ImageSource.gallery),
+                    ),
                   ),
                   Column(
                     children: [
@@ -724,7 +651,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                           child: OutlinedButton(
                             key: const ValueKey('device-capture-button'),
                             onPressed:
-                                _busy || demoCamera || camera?.ready != true
+                                _busy || needsBoard || camera?.ready != true
                                 ? null
                                 : _capture,
                             style: OutlinedButton.styleFrom(
@@ -757,11 +684,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                       ),
                       const SizedBox(height: 7),
                       Text(
-                        usb && _usbLive && !hasImage
-                            ? 'หยุดภาพ'
-                            : _captureId == null
-                            ? 'ถ่ายภาพ'
-                            : 'ถ่ายใหม่',
+                        _captureId == null ? 'ถ่ายภาพ' : 'ถ่ายใหม่',
                         style: const TextStyle(
                           color: AquaColors.paper,
                           fontSize: 12,
@@ -769,10 +692,14 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                       ),
                     ],
                   ),
-                  _CaptureAction(
-                    icon: PhosphorIconsRegular.scan,
-                    label: 'เพิ่มกล้อง',
-                    onTap: _busy ? null : () => context.go('/settings'),
+                  Expanded(
+                    child: needsBoard
+                        ? _CaptureAction(
+                            icon: PhosphorIconsRegular.scan,
+                            label: 'เชื่อมบอร์ด ETT',
+                            onTap: _busy ? null : () => context.go('/settings'),
+                          )
+                        : const SizedBox.shrink(),
                   ),
                 ],
               ),
@@ -797,8 +724,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
               label: Text(
                 _busy
                     ? 'กำลังประมวลผล…'
-                    : _sample
-                    ? 'ลองนับภาพตัวอย่าง'
                     : !canAI
                     ? 'AI ยังไม่พร้อมใช้งาน'
                     : 'วิเคราะห์ด้วย AI',
@@ -813,28 +738,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                 label: const Text('นับด้วยมือ'),
               ),
             ),
-        ],
-        if (usb && (!_usbLive || hasImage)) ...[
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            key: const ValueKey('usb-resume-preview'),
-            onPressed: _busy
-                ? null
-                : () => setState(() {
-                    ++_imageGeneration;
-                    _bytes = null;
-                    _captureId = null;
-                    _receivedAt = null;
-                    _sample = false;
-                    _video = false;
-                    _captureProgress = '';
-                    _usbLastFrame = null;
-                    _reset();
-                    _usbLive = true;
-                  }),
-            icon: const Icon(PhosphorIconsRegular.videoCamera),
-            label: const Text('กลับไปดูภาพสด USB'),
-          ),
         ],
         const SizedBox(height: 16),
         ExpansionTile(
@@ -864,13 +767,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
             ),
           ],
         ),
-        Center(
-          child: TextButton(
-            onPressed: _busy ? null : _useSample,
-            child: const Text('ใช้ภาพตัวอย่าง'),
-          ),
-        ),
-        if (!demoCamera && camera?.ready != true && !hasImage)
+        if (!needsBoard && camera?.ready != true && !hasImage)
           Center(
             child: TextButton.icon(
               onPressed: cameraAsync.isLoading
@@ -1080,9 +977,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                         ),
                       ),
                       Text(
-                        _sample
-                            ? 'ผลจากภาพตัวอย่าง'
-                            : _aiCount == null
+                        _aiCount == null
                             ? 'นับด้วยมือ'
                             : 'AI ก่อนแก้ $_aiCount ตัว · ตรวจแก้ได้',
                         style: Theme.of(context).textTheme.bodySmall,
@@ -1168,28 +1063,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
           _imageGeneration++;
           _busy = false;
           _bytes = null;
-          _sample = false;
           _video = false;
-          _captureId = null;
-          _receivedAt = null;
-          _captureProgress = '';
-          _filename = 'ยังไม่มีภาพ';
-          _reset();
-        });
-      },
-    );
-    ref.listen<ConnectionConfig?>(
-      appControllerProvider.select((s) => s.cameraConnection),
-      (before, after) {
-        if (before?.baseUrl == after?.baseUrl &&
-            before?.deviceId == after?.deviceId) {
-          return;
-        }
-        setState(() {
-          _imageGeneration++;
-          _busy = false;
-          _bytes = null;
-          _sample = false;
           _captureId = null;
           _receivedAt = null;
           _captureProgress = '';
@@ -1200,69 +1074,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
     );
     return _workspace ? _review(state) : _input(state);
   }
-}
-
-class _SampleTrayPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()
-        ..shader = const LinearGradient(
-          colors: [Color(0xFFD7EAF0), Color(0xFFC0DDE5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(Offset.zero & size),
-    );
-    final tray = RRect.fromRectAndRadius(
-      Rect.fromLTWH(
-        size.width * .03,
-        size.height * .04,
-        size.width * .94,
-        size.height * .92,
-      ),
-      const Radius.circular(20),
-    );
-    canvas.drawRRect(
-      tray,
-      Paint()
-        ..color = const Color(0xFF9BB9C3)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4,
-    );
-    for (final point in samplePoints) {
-      final center = Offset(point.x * size.width, point.y * size.height);
-      final angle = Random((point.x * 1000).round()).nextDouble() * pi;
-      canvas.save();
-      canvas.translate(center.dx, center.dy);
-      canvas.rotate(angle);
-      final scale = size.width / 600;
-      canvas.scale(scale, scale);
-      canvas.drawOval(
-        const Rect.fromLTWH(-7, -3, 14, 6),
-        Paint()..color = const Color(0xFF304951),
-      );
-      canvas.drawPath(
-        Path()
-          ..moveTo(5, 0)
-          ..quadraticBezierTo(13, 5, 18, 1),
-        Paint()
-          ..color = const Color(0xFF304951)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawCircle(
-        const Offset(-4, -1),
-        .8,
-        Paint()..color = Colors.white,
-      );
-      canvas.restore();
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SampleTrayPainter old) => false;
 }
 
 class _PointsPainter extends CustomPainter {
@@ -1334,6 +1145,7 @@ class _CaptureAction extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             label,
+            textAlign: TextAlign.center,
             style: const TextStyle(color: AquaColors.paper, fontSize: 12),
           ),
         ],

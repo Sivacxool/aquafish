@@ -13,15 +13,9 @@ import '../core/ui.dart';
 import 'wifi_setup.dart';
 
 class QrPairingScreen extends ConsumerStatefulWidget {
-  final String? expectedKind;
   final Future<String?> Function(BuildContext)? scanCode;
   final bool scanOnOpen;
-  const QrPairingScreen({
-    super.key,
-    this.expectedKind,
-    this.scanCode,
-    this.scanOnOpen = false,
-  });
+  const QrPairingScreen({super.key, this.scanCode, this.scanOnOpen = false});
   @override
   ConsumerState<QrPairingScreen> createState() => _QrPairingScreenState();
 }
@@ -54,10 +48,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
 
   void _parse(String raw) {
     try {
-      final bundle = PairingBundle.parse(
-        raw,
-        expectedKind: widget.expectedKind,
-      );
+      final bundle = PairingBundle.parse(raw, expectedKind: 's3');
       setState(() {
         _bundle = bundle;
         _error = null;
@@ -128,24 +119,14 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
       if (replace != true || !mounted) return;
     }
     final done = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => WifiSetupScreen(
-          camera: bundle.identity.kind == 'camera',
-          pairing: bundle,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => WifiSetupScreen(pairing: bundle)),
     );
     if (done == true && mounted) Navigator.of(context).pop(true);
   }
 
   Future<void> _openSaved(ConnectionConfig config) async {
     final done = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => WifiSetupScreen(
-          camera: config.identity!.kind == 'camera',
-          savedConfig: config,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => WifiSetupScreen(savedConfig: config)),
     );
     if (done == true && mounted) Navigator.of(context).pop(true);
   }
@@ -156,15 +137,11 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
     final paired = ref
         .read(localStoreProvider)
         .pairedDevices
-        .where(
-          (c) =>
-              widget.expectedKind == null ||
-              c.identity!.kind == widget.expectedKind,
-        )
+        .where((c) => c.identity!.kind == 's3')
         .toList();
     final identity = _bundle?.identity;
     return Scaffold(
-      appBar: AppBar(title: const Text('จับคู่อุปกรณ์')),
+      appBar: AppBar(title: const Text('จับคู่บอร์ด ETT')),
       body: PageBody(
         children: [
           Surface(
@@ -222,9 +199,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    identity.kind == 's3'
-                        ? 'บอร์ดหลัก ESP32'
-                        : 'กล้อง ESP32-CAM',
+                    'บอร์ด ETT WROOM32UE',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -252,12 +227,8 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
           if (paired.isNotEmpty) ...[
             const SizedBox(height: 24),
             const Text(
-              'อุปกรณ์ที่เคยจับคู่',
+              'บอร์ดที่เคยจับคู่',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'เลือกบอร์ดหลักและกล้องที่ต้องการใช้ ขณะนี้แอปอ่านบอร์ดหลักและกล้องอย่างละหนึ่งตัว',
             ),
             ...paired.map(
               (c) => Padding(
@@ -265,11 +236,7 @@ class _QrPairingScreenState extends ConsumerState<QrPairingScreen> {
                 child: Surface(
                   child: ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      c.identity!.kind == 's3'
-                          ? PhosphorIconsRegular.cpu
-                          : PhosphorIconsRegular.camera,
-                    ),
+                    leading: const Icon(PhosphorIconsRegular.cpu),
                     title: Text(c.deviceId),
                     subtitle: Text(c.baseUrl),
                     trailing: const Icon(PhosphorIconsRegular.caretRight),

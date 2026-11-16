@@ -6,22 +6,16 @@ import 'connection_journey.dart';
 
 class ConnectionOverview extends StatelessWidget {
   final AppState state;
-  final VoidCallback? onBoard, onCamera, onDemo;
+  final VoidCallback? onBoard;
 
-  const ConnectionOverview({
-    super.key,
-    required this.state,
-    this.onBoard,
-    this.onCamera,
-    this.onDemo,
-  });
+  const ConnectionOverview({super.key, required this.state, this.onBoard});
 
   @override
   Widget build(BuildContext context) {
     final boardSaved = !state.connection.demo && state.connection.localEsp32;
     final board = _DeviceTile(
       key: const ValueKey('start-board-setup'),
-      title: 'บอร์ดหลัก',
+      title: 'บอร์ด ETT WROOM32UE',
       status: state.fresh && boardSaved
           ? 'ออนไลน์'
           : boardSaved
@@ -30,36 +24,10 @@ class ConnectionOverview extends StatelessWidget {
       icon: PhosphorIconsRegular.cpu,
       onPressed: onBoard,
     );
-    final camera = _DeviceTile(
-      key: const ValueKey('start-camera-setup'),
-      title: state.usesArducam ? 'Arducam B0434' : 'กล้อง',
-      status: state.usesArducam
-          ? 'ตั้งค่ากล้อง'
-          : state.usbCameraEnabled
-          ? 'ใช้ USB'
-          : state.cameraConnection != null
-          ? 'จับคู่แล้ว'
-          : 'เพิ่มกล้อง',
-      icon: PhosphorIconsRegular.camera,
-      onPressed: onCamera,
-    );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) =>
-              constraints.maxWidth >= 310 &&
-                  MediaQuery.textScalerOf(context).scale(14) < 20
-              ? Row(
-                  children: [
-                    Expanded(child: board),
-                    const SizedBox(width: 12),
-                    Expanded(child: camera),
-                  ],
-                )
-              : Column(children: [board, const SizedBox(height: 8), camera]),
-        ),
+        if (boardSaved) board,
         const SizedBox(height: 4),
         Wrap(
           alignment: WrapAlignment.center,
@@ -73,8 +41,6 @@ class ConnectionOverview extends StatelessWidget {
               ),
               child: const Text('วิธีเชื่อมต่อ'),
             ),
-            if (!state.connection.demo)
-              TextButton(onPressed: onDemo, child: const Text('โหมดทดลอง')),
           ],
         ),
       ],

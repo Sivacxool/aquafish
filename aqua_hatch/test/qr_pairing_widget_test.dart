@@ -6,22 +6,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:aqua_hatch/app/theme.dart';
 import 'package:aqua_hatch/core/controller.dart';
 import 'package:aqua_hatch/core/local_store.dart';
+import 'package:aqua_hatch/core/pairing.dart';
 import 'package:aqua_hatch/features/qr_pairing.dart';
 import 'pairing_fixture.dart';
 import 'wifi_setup_test.dart' show WifiTestController;
 
 void main() {
-  Future<void> mount(
-    WidgetTester tester,
-    String raw, {
-    String? expectedKind,
-  }) async {
+  Future<void> mount(WidgetTester tester, String raw) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     SharedPreferences.setMockInitialValues({});
     final store = LocalStore(await SharedPreferences.getInstance());
+    final oldCamera = PairingBundle.parse(
+      jsonEncode(pairingFixture(kind: 'camera')),
+    );
+    await store.rememberPairedDevice(oldCamera.config('https://192.168.1.55'));
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -30,10 +31,7 @@ void main() {
         ],
         child: MaterialApp(
           theme: buildTheme(),
-          home: QrPairingScreen(
-            expectedKind: expectedKind,
-            scanCode: (_) => Future.value(raw),
-          ),
+          home: QrPairingScreen(scanCode: (_) => Future.value(raw)),
         ),
       ),
     );
@@ -48,6 +46,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('scan-device-qr')));
       await tester.pumpAndSettle();
       expect(find.textContaining('s3-aabbccddee01'), findsOneWidget);
+      expect(find.textContaining('cam-'), findsNothing);
+      expect(find.text('ESP32-CAM'), findsNothing);
       expect(find.textContaining('AquaHatch-S3-DDEE01'), findsOneWidget);
       expect(find.textContaining(payload['token'] as String), findsNothing);
       expect(find.byKey(const ValueKey('confirm-device-qr')), findsOneWidget);
@@ -58,11 +58,7 @@ void main() {
   testWidgets('wrong device QR is rejected before starting Wi-Fi setup', (
     tester,
   ) async {
-    await mount(
-      tester,
-      jsonEncode(pairingFixture(kind: 'camera')),
-      expectedKind: 's3',
-    );
+    await mount(tester, jsonEncode(pairingFixture(kind: 'camera')));
     await tester.tap(find.byKey(const ValueKey('scan-device-qr')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('qr-pairing-error')), findsOneWidget);

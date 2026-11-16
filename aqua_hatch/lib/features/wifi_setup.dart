@@ -859,7 +859,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
           Text(
             widget.camera
                 ? 'เพิ่มกล้องเรียบร้อยแล้ว'
-                : 'เพิ่มบอร์ดหลักเรียบร้อยแล้ว',
+                : 'เชื่อมต่อบอร์ด ETT แล้ว',
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
           ),
@@ -867,7 +867,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
           Text(
             widget.camera
                 ? 'ไปที่ “นับลูกปลา” เพื่อถ่ายภาพจากกล้องได้เลย'
-                : 'ดูค่าเซนเซอร์ได้ที่ “ภาพรวม”\nหากมีกล้อง ให้กลับไปเลือก “เพิ่มกล้อง”',
+                : 'ดูค่าน้ำที่ “ภาพรวม” และถ่ายด้วย Arducam ที่ “นับลูกปลา”',
             textAlign: TextAlign.center,
             style: const TextStyle(height: 1.8),
           ),
@@ -909,7 +909,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
       canPop: !_busy,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.camera ? 'เชื่อมต่อกล้อง' : 'เชื่อมต่อบอร์ดหลัก'),
+          title: Text(widget.camera ? 'เชื่อมต่อกล้อง' : 'เชื่อมต่อบอร์ด ETT'),
           automaticallyImplyLeading: !_busy,
         ),
         body: SafeArea(
@@ -928,7 +928,7 @@ class _WifiSetupScreenState extends ConsumerState<WifiSetupScreen> {
                       subtitle: descriptions[_stage],
                       device: widget.camera
                           ? 'ESP32-CAM · กล้อง'
-                          : 'ESP32 · บอร์ดหลัก',
+                          : 'ETT WROOM32UE',
                       busy: _busy,
                       complete: _completed,
                       icon: widget.camera

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,12 +8,15 @@ import 'package:aqua_hatch/app/app.dart';
 import 'package:aqua_hatch/core/controller.dart';
 import 'package:aqua_hatch/core/local_store.dart';
 import 'package:aqua_hatch/core/models.dart';
+import 'package:aqua_hatch/core/fish_head_analyzer.dart';
+import 'counting_fixture.dart';
 
 Future<void> mountApp(
   WidgetTester tester, {
   Size size = const Size(390, 844),
   double textScale = 1,
   SharedPreferences? preferences,
+  AppController Function()? controller,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -32,6 +36,8 @@ Future<void> mountApp(
     ProviderScope(
       overrides: [
         localStoreProvider.overrideWithValue(LocalStore(preferences)),
+        fishHeadAnalyzerProvider.overrideWithValue(analyzeFixture),
+        if (controller != null) appControllerProvider.overrideWith(controller),
       ],
       child: MediaQuery(
         data: MediaQueryData(
@@ -59,7 +65,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 350));
         expect(tester.takeException(), isNull);
         if (label == 'ควบคุม') {
-          expect(find.text('โหมดทดลอง'), findsOneWidget);
+          expect(find.text('โหมดทดลอง'), findsNothing);
         }
         if (label == 'นับลูกปลา') {
           expect(find.text('ภาพนิ่งตามคำสั่ง · ไม่ใช่ภาพสด'), findsNothing);
@@ -93,7 +99,15 @@ void main() {
   testWidgets('delete confirms the round and preserves saved counts', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      'batch_v2:demo': jsonEncode(
+        HatchBatch(
+          id: 'demo-batch',
+          name: 'รอบฟักเดิม',
+          startedAt: DateTime.now(),
+        ).toJson(),
+      ),
+    });
     final preferences = await SharedPreferences.getInstance();
     final store = LocalStore(preferences);
     await store.saveCounts([
@@ -141,18 +155,24 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });
-  testWidgets('sample count requires review and saves count provenance', (
+  testWidgets('imported photo requires review and saves count provenance', (
     tester,
   ) async {
-    await mountApp(tester, size: const Size(1440, 1024));
+    SharedPreferences.setMockInitialValues({
+      'batch_v2:demo': jsonEncode(
+        HatchBatch(
+          id: 'real-round',
+          name: 'รอบบันทึก',
+          startedAt: DateTime.now(),
+          eggs: 80,
+        ).toJson(),
+      ),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await mountApp(tester, size: const Size(1440, 1024), preferences: prefs);
     await tester.tap(find.text('นับลูกปลา').first);
     await tester.pump(const Duration(milliseconds: 350));
-    await tester.tap(find.text('ใช้ภาพตัวอย่าง'));
-    await tester.pump();
-    final analyze = find.text('ลองนับภาพตัวอย่าง');
-    await tester.ensureVisible(analyze);
-    await tester.tap(analyze);
-    await tester.pump(const Duration(seconds: 1));
+    await openFixtureWorkspace(tester);
     expect(find.text('48'), findsOneWidget);
     final saveFinder = find.widgetWithText(FilledButton, 'บันทึกผลนับ');
     expect(tester.widget<FilledButton>(saveFinder).onPressed, isNull);
@@ -170,7 +190,12 @@ void main() {
     ).counts.single;
     expect(persisted.count, 48);
     expect(persisted.aiCount, 48);
-    expect(persisted.demo, isTrue);
+    expect(persisted.demo, isFalse);
+    await tester.tap(find.text('ภาพรวม').first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('hatch-round-rate')));
+    expect(find.text('ผลนับล่าสุด 48 ตัว'), findsOneWidget);
+    expect(find.text('อัตราฟัก 60.0%'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });

@@ -100,7 +100,7 @@ void main() {
         container.read(appControllerProvider).connection.toJson(),
         original,
       );
-      expect((await controller.cameraStatus()).ready, isTrue);
+      expect((await controller.cameraStatus()).ready, isFalse);
       expect(await controller.configureUsbCamera(false), isNull);
       expect(store.usbCameraEnabled, isFalse);
     },

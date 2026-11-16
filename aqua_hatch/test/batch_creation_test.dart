@@ -104,6 +104,21 @@ void main() {
     expect(saved.active?.name, 'รอบใหม่');
     expect(saved.rounds.map((round) => round.name), ['รอบใหม่', 'รอบเดิม']);
 
+    final controller = container.read(appControllerProvider.notifier);
+    expect(find.text('ยังไม่มีผลนับ'), findsOneWidget);
+    expect(
+      await controller.saveCount(
+        count: 15,
+        source: 'gallery',
+        method: 'manual',
+        demo: false,
+      ),
+      isNull,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('ผลนับล่าสุด 15 ตัว'), findsOneWidget);
+    expect(find.byKey(const ValueKey('hatch-round-rate')), findsNothing);
+
     final picker = find.widgetWithText(TextButton, 'เลือกรอบฟัก');
     await tester.ensureVisible(picker);
     await tester.tap(picker);
@@ -117,13 +132,31 @@ void main() {
     expect(restored.active?.startedAt, startedAt);
     expect(restored.active?.eggs, 90);
     expect(restored.rounds.length, 2);
+    expect(find.text('ผลนับล่าสุด 42 ตัว'), findsOneWidget);
+    expect(find.text('อัตราฟัก 46.7%'), findsOneWidget);
+    expect(
+      await controller.saveCount(
+        count: 0,
+        source: 'gallery',
+        method: 'manual',
+        demo: false,
+      ),
+      isNull,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('ผลนับล่าสุด 0 ตัว'), findsOneWidget);
+    expect(find.text('อัตราฟัก 0.0%'), findsOneWidget);
     expect(
       await container.read(appControllerProvider.notifier).deleteBatch('old'),
       isNull,
     );
     expect(store.hatchRounds(store.connection).active?.name, 'รอบใหม่');
-    expect(store.counts.single.batchId, 'old');
-    expect(store.counts.single.count, 42);
+    expect(
+      store.counts
+          .where((record) => record.batchId == 'old')
+          .map((record) => record.count),
+      [0, 42],
+    );
     await tester.pumpWidget(const SizedBox());
     container.dispose();
     await tester.pump();

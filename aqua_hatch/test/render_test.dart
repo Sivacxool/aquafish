@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:aqua_hatch/app/app.dart';
 import 'package:aqua_hatch/core/controller.dart';
 import 'package:aqua_hatch/core/local_store.dart';
+import 'package:aqua_hatch/core/fish_head_analyzer.dart';
+import 'counting_fixture.dart';
 
 void main() {
   testWidgets('render desktop and mobile screens with Thai font', (
@@ -36,6 +38,7 @@ void main() {
         child: ProviderScope(
           overrides: [
             localStoreProvider.overrideWithValue(LocalStore(preferences)),
+            fishHeadAnalyzerProvider.overrideWithValue(analyzeFixture),
           ],
           child: const AquaHatchApp(),
         ),
@@ -72,11 +75,7 @@ void main() {
     await capture('camera-mobile');
     tester.view.physicalSize = const Size(1440, 1024);
     await tester.pump();
-    await tester.tap(find.text('ใช้ภาพตัวอย่าง'));
-    await tester.pump();
-    await tester.ensureVisible(find.text('ลองนับภาพตัวอย่าง'));
-    await tester.tap(find.text('ลองนับภาพตัวอย่าง'));
-    await tester.pump(const Duration(seconds: 1));
+    await openFixtureWorkspace(tester);
     await capture('counting-desktop');
     tester.view.physicalSize = const Size(390, 844);
     await tester.pump();
