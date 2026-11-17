@@ -84,7 +84,11 @@ class MainActivity : FlutterActivity() {
             val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
             require(duration != null && duration in 1..60_000)
             val timeUs = duration * 500
-            val frame = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+            val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+            // Preserve the native size of small frames. Enlarging them makes
+            // the fry larger than the scale used to train the model.
+            val frame = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1 && maxOf(width, height) > 3840) {
                 retriever.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST, 3840, 3840)
             } else {
                 retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
