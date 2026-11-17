@@ -293,12 +293,7 @@ class Telemetry {
       deviceOnline &&
       now.difference(at).inSeconds <= (viaRelay ? 45 : 15) &&
       !at.isAfter(now.add(const Duration(seconds: 5)));
-  double? get tankTemperature {
-    final oxygen = doTemperature;
-    final acidity = phTemperature;
-    if (oxygen == null || acidity == null) return null;
-    return (oxygen + acidity) / 2;
-  }
+  double? get tankTemperature => phTemperature;
 
   bool output(String key) => outputs[key] ?? false;
   List<String> alerts(DeviceSettings settings) {

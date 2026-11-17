@@ -47,7 +47,7 @@ class _WaterReadingsController extends AppController {
         at: now,
         temperature: 26,
         doTemperature: 30,
-        phTemperature: hasPhTemperature ? -13.6 : null,
+        phTemperature: hasPhTemperature ? 27.4 : null,
       ),
     );
   }
@@ -130,16 +130,17 @@ void main() {
     await closeApp(tester);
   });
 
-  testWidgets('individual probe readings fit narrow phones', (tester) async {
+  testWidgets('pH probe and jar readings fit narrow phones', (tester) async {
     await mountApp(
       tester,
       size: const Size(320, 740),
       textScale: 1.3,
       controller: _WaterReadingsController.new,
     );
-    expect(find.text('30.0 °C', findRichText: true), findsOneWidget);
-    expect(find.text('-13.6 °C', findRichText: true), findsOneWidget);
-    expect(find.text('8.2 °C', findRichText: true), findsNothing);
+    expect(find.text('27.4 °C', findRichText: true), findsOneWidget);
+    expect(find.text('28.7 °C', findRichText: true), findsNothing);
+    expect(find.text('30.0 °C', findRichText: true), findsNothing);
+    expect(find.text('DO'), findsNothing);
     expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
     expect(find.text('เป้าหมายอุณหภูมิในน้ำ 28.0 °C'), findsOneWidget);
     expect(find.text('DS18B20'), findsNothing);
@@ -148,7 +149,7 @@ void main() {
     await closeApp(tester);
   });
 
-  testWidgets('missing pH temperature leaves DO and jar readings visible', (
+  testWidgets('missing pH temperature leaves the jar reading visible', (
     tester,
   ) async {
     await mountApp(
@@ -157,8 +158,7 @@ void main() {
     );
     expect(find.text('อุณหภูมิในถัง'), findsOneWidget);
     expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
-    expect(find.text('30.0 °C', findRichText: true), findsOneWidget);
-    expect(find.text('-13.6 °C', findRichText: true), findsNothing);
+    expect(find.text('30.0 °C', findRichText: true), findsNothing);
     await closeApp(tester);
   });
 

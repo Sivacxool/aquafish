@@ -445,8 +445,7 @@ class _IncubatorPainter extends CustomPainter {
 
 enum WaterTrend {
   jarTemperature('ปากโหล °C'),
-  doTemperature('ในถัง · DO °C'),
-  phTemperature('ในถัง · pH °C'),
+  tankTemperature('ในถัง °C'),
   ph('pH');
 
   const WaterTrend(this.label);
@@ -454,8 +453,7 @@ enum WaterTrend {
 
   double? read(Telemetry sample) => switch (this) {
     jarTemperature => sample.temperature,
-    doTemperature => sample.doTemperature,
-    phTemperature => sample.phTemperature,
+    tankTemperature => sample.tankTemperature,
     ph => sample.ph,
   };
 }
