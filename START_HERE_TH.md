@@ -1,4 +1,4 @@
-# เริ่มใช้ Smart Catfish System 0.23.5
+# เริ่มใช้ Smart Catfish System 0.23.6
 
 1. ต่อ Arducam B0434 เข้า ETT ตาม [ผังต่อสาย](ETT_WROOM32UE_SETUP_TH.md#กล้อง-arducam-b0434)
 2. ลงเฟิร์มแวร์ ETT และแอปจาก [หน้าดาวน์โหลด](README.md)

@@ -31,9 +31,9 @@ class _OnlineSettingsController extends AppController {
 }
 
 class _WaterReadingsController extends AppController {
-  _WaterReadingsController({this.hasPhTemperature = true});
+  _WaterReadingsController({this.hasDoTemperature = true});
 
-  final bool hasPhTemperature;
+  final bool hasDoTemperature;
 
   @override
   AppState build() {
@@ -46,8 +46,8 @@ class _WaterReadingsController extends AppController {
       telemetry: Telemetry(
         at: now,
         temperature: 26,
-        doTemperature: 30,
-        phTemperature: hasPhTemperature ? 27.4 : null,
+        doTemperature: hasDoTemperature ? 30 : null,
+        phTemperature: 11.9,
       ),
     );
   }
@@ -130,16 +130,15 @@ void main() {
     await closeApp(tester);
   });
 
-  testWidgets('pH probe and jar readings fit narrow phones', (tester) async {
+  testWidgets('DO probe and jar readings fit narrow phones', (tester) async {
     await mountApp(
       tester,
       size: const Size(320, 740),
       textScale: 1.3,
       controller: _WaterReadingsController.new,
     );
-    expect(find.text('27.4 °C', findRichText: true), findsOneWidget);
-    expect(find.text('28.7 °C', findRichText: true), findsNothing);
-    expect(find.text('30.0 °C', findRichText: true), findsNothing);
+    expect(find.text('30.0 °C', findRichText: true), findsOneWidget);
+    expect(find.text('11.9 °C', findRichText: true), findsNothing);
     expect(find.text('DO'), findsNothing);
     expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
     expect(find.text('เป้าหมายอุณหภูมิในน้ำ 28.0 °C'), findsOneWidget);
@@ -149,16 +148,17 @@ void main() {
     await closeApp(tester);
   });
 
-  testWidgets('missing pH temperature leaves the jar reading visible', (
+  testWidgets('missing DO temperature leaves the jar reading visible', (
     tester,
   ) async {
     await mountApp(
       tester,
-      controller: () => _WaterReadingsController(hasPhTemperature: false),
+      controller: () => _WaterReadingsController(hasDoTemperature: false),
     );
     expect(find.text('อุณหภูมิในถัง'), findsOneWidget);
     expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
     expect(find.text('30.0 °C', findRichText: true), findsNothing);
+    expect(find.text('11.9 °C', findRichText: true), findsNothing);
     await closeApp(tester);
   });
 

@@ -30,7 +30,7 @@ void main() {
       expect(restored.temperature, 28.125);
       expect(restored.doTemperature, 29.5);
       expect(restored.phTemperature, 31.25);
-      expect(restored.tankTemperature, 31.25);
+      expect(restored.tankTemperature, 29.5);
       expect(restored.dissolvedOxygen, 6.78);
       expect(
         restored.temperatureSampledAt?.toUtc().toIso8601String(),
@@ -44,25 +44,23 @@ void main() {
       expect(restored.hardwareReady, false);
       expect(telemetryCsv([restored]), contains('do_mg_l'));
       expect(telemetryCsv([restored]), contains('6.78,ok,ok'));
-      expect(telemetryCsv([restored]), contains('31.25,29.5,31.25'));
+      expect(telemetryCsv([restored]), contains('29.5,29.5,31.25'));
     },
   );
-  test('tank temperature uses only the current pH probe temperature', () {
+  test('tank temperature uses only the current DO probe temperature', () {
     final remote = Telemetry.fromJson({...sample, 'via_relay': true});
-    expect(remote.tankTemperature, 31.25);
+    expect(remote.tankTemperature, 29.5);
     expect(remote.temperature, 28.125);
-    final unavailableDo = Telemetry.fromJson({
-      ...sample,
-      'do_status': 'timeout',
-    });
-    expect(unavailableDo.doTemperature, isNull);
-    expect(unavailableDo.tankTemperature, 31.25);
+    final unavailablePh = Telemetry.fromJson({...sample, 'ph_status': 'stale'});
+    expect(unavailablePh.phTemperature, isNull);
+    expect(unavailablePh.tankTemperature, 29.5);
     for (final missing in [
-      {'ph_temperature_c': null},
-      {'ph_temperature_c': double.nan},
-      {'ph_status': 'stale'},
+      {'do_temperature_c': null},
+      {'do_temperature_c': double.nan},
+      {'do_status': 'stale'},
     ]) {
       final t = Telemetry.fromJson({...sample, ...missing});
+      expect(t.phTemperature, 31.25);
       expect(t.tankTemperature, isNull);
       expect(t.temperature, 28.125);
     }

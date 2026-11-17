@@ -1,10 +1,10 @@
 # AquaHatch Demo 1 — ติดตั้งทดสอบบน iPhone จาก Windows
 
-ไฟล์ **AquaHatch-v0.23.5-iOS-unsigned.ipa** ใช้กับ iPhone ที่มี iOS 16 ขึ้นไปและต้องเซ็นด้วย Apple ID ของเจ้าของก่อนติดตั้งผ่าน Sideloadly
+ไฟล์ **AquaHatch-v0.23.6-iOS-unsigned.ipa** ใช้กับ iPhone ที่มี iOS 16 ขึ้นไปและต้องเซ็นด้วย Apple ID ของเจ้าของก่อนติดตั้งผ่าน Sideloadly
 
 ดาวน์โหลดเฟิร์มแวร์ ETT สำหรับบอร์ดควบคุมและกล้อง Arducam B0434 จาก [หน้าติดตั้ง](README.md) และดู [ผังสาย ETT](ETT_WROOM32UE_SETUP_TH.md)
 
-รุ่น 0.23.5 ใช้ QR ของ ETT สำหรับค่าน้ำและกล้อง Arducam B0434
+รุ่น 0.23.6 ใช้ QR ของ ETT สำหรับค่าน้ำและกล้อง Arducam B0434
 
 ## สิ่งที่เตรียมให้
 
@@ -27,7 +27,7 @@
 
 ## ติดตั้งด้วย Windows และ Apple ID ธรรมดา
 
-1. ดาวน์โหลด [IPA unsigned 0.23.5](https://github.com/Sivacxool/aquafish/releases/download/v0.23.5/AquaHatch-v0.23.5-iOS-unsigned.ipa)
+1. ดาวน์โหลด [IPA unsigned 0.23.6](https://github.com/Sivacxool/aquafish/releases/download/v0.23.6/AquaHatch-v0.23.6-iOS-unsigned.ipa)
 2. ติดตั้ง [Sideloadly จากเว็บไซต์ผู้พัฒนา](https://sideloadly.io/) ตามข้อกำหนด Windows ในหน้านั้น โปรแกรมระบุว่าต้องใช้ iTunes/iCloud รุ่นจากเว็บไซต์ Apple; ตรวจโปรแกรมเดิมก่อนเปลี่ยนหรือถอนการติดตั้ง
 3. เสียบ iPhone ทาง USB ปลดล็อก แล้วกดเชื่อถือคอมพิวเตอร์บน iPhone
 4. เปิด Sideloadly เลือก iPhone และลาก IPA เข้าไป เลือกโหมดติดตั้งด้วย Apple ID
