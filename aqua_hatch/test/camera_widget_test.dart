@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'package:aqua_hatch/core/camera.dart';
 import 'package:aqua_hatch/core/controller.dart';
 import 'package:aqua_hatch/core/fish_head_analyzer.dart';
@@ -84,6 +86,21 @@ class Ov3660Controller extends CameraController {
   );
 }
 
+class _ArducamController extends CameraController {
+  @override
+  AppState build() => super.build().copyWith(
+    telemetry: Telemetry(at: DateTime.now(), embeddedCamera: true),
+  );
+}
+
+class _GalleryPicker extends ImagePickerPlatform {
+  @override
+  Future<XFile?> getImageFromSource({
+    required ImageSource source,
+    ImagePickerOptions options = const ImagePickerOptions(),
+  }) async => XFile.fromData(captured().bytes, name: 'gallery.png');
+}
+
 DeviceCapture captured() => DeviceCapture(
   id: 'capture-from-machine',
   cameraId: 'camera-01',
@@ -97,6 +114,7 @@ Future<void> mount(
   WidgetTester tester,
   CameraController controller, {
   FishHeadAnalyzer? localAnalyzer,
+  FishHeadAnalyzer? fieldAnalyzer,
 }) async {
   await initializeDateFormatting('th');
   tester.view.physicalSize = const Size(1440, 1200);
@@ -107,7 +125,8 @@ Future<void> mount(
     ProviderScope(
       overrides: [
         appControllerProvider.overrideWith(() => controller),
-        fishHeadAnalyzerProvider.overrideWithValue(localAnalyzer),
+        fishHeadAnalyzerProvider(false).overrideWithValue(localAnalyzer),
+        fishHeadAnalyzerProvider(true).overrideWithValue(fieldAnalyzer),
       ],
       child: const MaterialApp(home: Scaffold(body: CountingScreen())),
     ),
@@ -117,6 +136,93 @@ Future<void> mount(
 }
 
 void main() {
+  testWidgets(
+    'full-resolution Arducam uses Field v3 and switching to gallery uses general AI',
+    (tester) async {
+      final controller = _ArducamController();
+      final picker = ImagePickerPlatform.instance;
+      ImagePickerPlatform.instance = _GalleryPicker();
+      addTearDown(() => ImagePickerPlatform.instance = picker);
+      final capture = (await tester.runAsync(() async {
+        final recorder = ui.PictureRecorder();
+        Canvas(recorder).drawColor(Colors.white, BlendMode.src);
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(2048, 1536);
+        final png = await image.toByteData(format: ui.ImageByteFormat.png);
+        image.dispose();
+        picture.dispose();
+        return DeviceCapture(
+          id: 'field-sample',
+          cameraId: 'cam-test',
+          receivedAt: DateTime.now(),
+          bytes: png!.buffer.asUint8List(),
+          width: 2048,
+          height: 1536,
+          sensor: 'Arducam B0434',
+        );
+      }))!;
+      final models = <String>[];
+      await mount(
+        tester,
+        controller,
+        fieldAnalyzer: (bytes) async {
+          expect(bytes, same(capture.bytes));
+          models.add('field');
+          return const AnalysisResult([
+            CountPoint(.42, .34),
+          ], 'aquahatch-fry-heads-field-v3');
+        },
+        localAnalyzer: (bytes) async {
+          expect(bytes, captured().bytes);
+          models.add('general');
+          return const AnalysisResult([
+            CountPoint(.25, .25),
+            CountPoint(.6, .5),
+          ], 'aquahatch-fry-heads-v2');
+        },
+      );
+
+      Future<void> analyzePhoto(String source) async {
+        final wait = Stopwatch()..start();
+        while (find.text(source).evaluate().isEmpty &&
+            wait.elapsed < const Duration(seconds: 5)) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+          await tester.pump();
+        }
+        expect(find.text(source), findsOneWidget);
+        final analyze = find.widgetWithText(FilledButton, 'วิเคราะห์ด้วย AI');
+        await tester.ensureVisible(analyze);
+        await tester.tap(analyze);
+        await tester.pumpAndSettle();
+      }
+
+      await tester.tap(find.byKey(const ValueKey('device-capture-button')));
+      await tester.pump();
+      controller.photo.complete(capture);
+      await analyzePhoto('ภาพจากกล้องในเครื่อง');
+      expect(models, ['field']);
+      expect(find.text('AI ก่อนแก้ 1 ตัว · ตรวจแก้ได้'), findsOneWidget);
+
+      await tester.tap(find.text('เลือกภาพ'));
+      await tester.pumpAndSettle();
+      final gallery = find.text('เลือกภาพ');
+      await tester.ensureVisible(gallery);
+      await tester.tap(gallery);
+      await tester.pump();
+      await analyzePhoto('ภาพที่เลือก');
+      expect(models, ['field', 'general']);
+      expect(find.text('AI ก่อนแก้ 2 ตัว · ตรวจแก้ได้'), findsOneWidget);
+      expect(controller.analyzedId, isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+    variant: TargetPlatformVariant({
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
+  );
+
   testWidgets(
     'OV3660 photo can use local AI and its head markers can be corrected',
     (tester) async {

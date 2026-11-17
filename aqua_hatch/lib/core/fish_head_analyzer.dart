@@ -12,12 +12,14 @@ import 'repository.dart';
 
 typedef FishHeadAnalyzer = Future<AnalysisResult> Function(Uint8List);
 
-final fishHeadAnalyzerProvider = Provider<FishHeadAnalyzer?>((ref) {
+final fishHeadAnalyzerProvider = Provider.family<FishHeadAnalyzer?, bool>((
+  ref,
+  useFieldModel,
+) {
   if (kIsWeb) return null;
   return switch (defaultTargetPlatform) {
-    TargetPlatform.android ||
-    TargetPlatform.iOS ||
-    TargetPlatform.windows => _analyzeFishHeads,
+    TargetPlatform.android || TargetPlatform.iOS || TargetPlatform.windows =>
+      (bytes) => _analyzeFishHeads(bytes, useFieldModel: useFieldModel),
     _ => null,
   };
 });
@@ -34,17 +36,28 @@ const _cameraPhoto = (
   threshold: 0.44,
   radius: 2,
 );
+const _fieldPhoto = (
+  asset: 'assets/models/fishfry_heads_field_v3.onnx',
+  id: 'aquahatch-fry-heads-field-v3',
+  threshold: 0.44,
+  radius: 2,
+);
 const _side = 320;
 const _halo = 32;
 const _step = _side - 2 * _halo;
 const _plane = _side * _side;
 
-Future<AnalysisResult> _analyzeFishHeads(Uint8List bytes) async {
+Future<AnalysisResult> _analyzeFishHeads(
+  Uint8List bytes, {
+  required bool useFieldModel,
+}) async {
   final token = ui.RootIsolateToken.instance!;
   final pixels = await _decode(bytes);
-  final profile = max(pixels.width, pixels.height) <= 2560
-      ? _cameraPhoto
-      : _largePhoto;
+  final profile = switch ((useFieldModel, max(pixels.width, pixels.height))) {
+    (true, _) => _fieldPhoto,
+    (false, <= 2560) => _cameraPhoto,
+    (false, _) => _largePhoto,
+  };
   try {
     final session = await OnnxRuntime().createSessionFromAsset(
       profile.asset,

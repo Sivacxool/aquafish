@@ -20,6 +20,9 @@ with zipfile.ZipFile(path) as archive:
     assert any(n.endswith('/flutter_assets/assets/device/camera_ca.pem') for n in archive.namelist())
     assert any(n.endswith('/flutter_assets/assets/models/fishfry_heads_v1.onnx') for n in archive.namelist())
     assert any(n.endswith('/flutter_assets/assets/models/fishfry_heads_v2.onnx') for n in archive.namelist())
+    field_model = next(n for n in archive.namelist() if n.endswith('/flutter_assets/assets/models/fishfry_heads_field_v3.onnx'))
+    field_source = Path(__file__).resolve().parents[1] / 'assets/models/fishfry_heads_field_v3.onnx'
+    assert hashlib.sha256(archive.read(field_model)).digest() == hashlib.sha256(field_source.read_bytes()).digest()
     names=archive.namelist()
     report={'version':info['CFBundleShortVersionString'],'build':info['CFBundleVersion'],
             'bundle_id':info['CFBundleIdentifier'],'minimum_ios':info.get('MinimumOSVersion'),

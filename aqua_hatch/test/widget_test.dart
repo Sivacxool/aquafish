@@ -36,7 +36,7 @@ Future<void> mountApp(
     ProviderScope(
       overrides: [
         localStoreProvider.overrideWithValue(LocalStore(preferences)),
-        fishHeadAnalyzerProvider.overrideWithValue(analyzeFixture),
+        fishHeadAnalyzerProvider(false).overrideWithValue(analyzeFixture),
         if (controller != null) appControllerProvider.overrideWith(controller),
       ],
       child: MediaQuery(

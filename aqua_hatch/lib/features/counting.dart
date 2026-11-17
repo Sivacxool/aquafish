@@ -30,6 +30,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   double _markerRadius = 2;
   Uint8List? _bytes, _originalJpeg;
   bool _savingPhoto = false, _photoSaved = false;
+  bool _useFieldModel = false;
   String _filename = 'ยังไม่มีภาพ', _model = '';
   String? _captureId;
   String _captureProgress = '';
@@ -73,6 +74,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   void _reset() {
     _workspace = false;
     _originalJpeg = null;
+    _useFieldModel = false;
     _savingPhoto = false;
     _photoSaved = false;
     _transform.value = Matrix4.identity();
@@ -153,6 +155,8 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
       if (!mounted || generation != _imageGeneration) return;
       setState(() {
         _bytes = image.bytes;
+        _useFieldModel =
+            image.sensor == 'Arducam B0434' && width == 2048 && height == 1536;
         _originalJpeg = PhotoGallery.isJpeg(image.bytes) ? image.bytes : null;
         _aspect = width / height;
         _captureId = image.id;
@@ -228,7 +232,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
     setState(() => _busy = true);
     try {
       final controller = ref.read(appControllerProvider.notifier);
-      final localAnalyzer = ref.read(fishHeadAnalyzerProvider);
+      final localAnalyzer = ref.read(fishHeadAnalyzerProvider(_useFieldModel));
       final result = !_video && localAnalyzer != null
           ? await localAnalyzer(_bytes!)
           : _captureId != null
@@ -543,7 +547,8 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
     final needsBoard = state.connection.demo;
     final hasImage = _bytes != null;
     final directCapture = _captureId != null && state.connection.localEsp32;
-    final localAI = !_video && ref.watch(fishHeadAnalyzerProvider) != null;
+    final localAI =
+        !_video && ref.watch(fishHeadAnalyzerProvider(_useFieldModel)) != null;
     final canAI = hasImage && (localAI || (!needsBoard && !directCapture));
     return PageBody(
       children: [
