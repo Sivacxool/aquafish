@@ -7,7 +7,7 @@ import '../core/ui.dart';
 import '../core/models.dart';
 
 String telemetryCsv(List<Telemetry> samples) => [
-  'timestamp_utc,temperature_c,ph,ph_calibrated,water_level_ok,simulated,do_mg_l,temperature_status,do_status,temperature_sampled_at,do_sampled_at,ph_status,ph_adc_voltage,ph_sampled_at,tank_temperature_c,do_temperature_c,ph_temperature_c',
+  'timestamp_utc,temperature_c,ph,ph_calibrated,water_level_ok,simulated,do_mg_l,temperature_status,do_status,temperature_sampled_at,do_sampled_at,ph_status,ph_adc_voltage,ph_sampled_at,tank_temperature_c,do_temperature_c,ph_temperature_c,water_temperature_c,water_temperature_count,jar_temperature_c,fry_tank_temperature_c,reservoir_temperature_c,ds18b20_temperature_status,do_temperature_status,ph_temperature_status',
   ...samples.map(
     (t) => [
       t.at.toUtc().toIso8601String(),
@@ -27,6 +27,12 @@ String telemetryCsv(List<Telemetry> samples) => [
       t.tankTemperature ?? '',
       t.doTemperature ?? '',
       t.phTemperature ?? '',
+      t.averageTemperature ?? '',
+      t.temperaturePointCount,
+      ...t.temperaturePoints.map((p) => p.celsius ?? ''),
+      t.temperaturePoints[1].readingStatus,
+      t.temperaturePoints[0].readingStatus,
+      t.temperaturePoints[2].readingStatus,
     ].join(','),
   ),
 ].join('\r\n');
@@ -151,7 +157,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       '${fullTime(t.at)}${t.simulated ? ' · จำลอง' : ''}',
                     ),
                     subtitle: Text(
-                      'ในถัง ${number(t.tankTemperature)} °C   •   ปากโหล ${number(t.temperature)} °C\nDO ${number(t.dissolvedOxygen, decimals: 2)} mg/L   •   pH ${number(t.ph)}${t.phCalibrated ? '' : ' (ยังไม่สอบเทียบ)'}   •   น้ำ ${t.waterLevelOk == null
+                      'เฉลี่ย ${number(t.averageTemperature)} °C (${t.temperaturePointCount}/3 จุด)\nจาร์ ${number(t.temperaturePoints[0].celsius)} °C · ลูกปลา ${number(t.tankTemperature)} °C · พักน้ำ ${number(t.temperaturePoints[2].celsius)} °C\nDO ${number(t.dissolvedOxygen, decimals: 2)} mg/L   •   pH ${number(t.ph)}${t.phCalibrated ? '' : ' (ยังไม่สอบเทียบ)'}   •   น้ำ ${t.waterLevelOk == null
                           ? 'ไม่ทราบ'
                           : t.waterLevelOk!
                           ? 'ปกติ'

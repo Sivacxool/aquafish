@@ -5,6 +5,7 @@
 #include "ett_boot_sound.h"
 #include "sensor_bus.h"
 #include "sensor_temperature.h"
+#include "water_temperature.h"
 
 namespace fill_control {
 constexpr uint8_t ExpanderAddress = 0x38;
@@ -39,8 +40,9 @@ bool writeRelays(uint8_t outputs) {
 }
 
 void updatePolicy(uint32_t now) {
+  const auto water = water_temperature::current();
   policy.update(digitalRead(FloatPin) == LOW,
-                temperature_sensor::currentCelsius(), temperatureTarget.load(), now);
+                water.controlCelsius(), temperatureTarget.load(), now, water.maximum);
 }
 
 bool applyOutputs() {

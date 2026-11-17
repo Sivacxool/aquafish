@@ -1,7 +1,7 @@
 name: aqua_hatch
 description: แอปภาษาไทยสำหรับเครื่องฟักไข่ปลาดุกอัจฉริยะ
 publish_to: 'none'
-version: 0.24.1+2038
+version: 0.25.0+2039
 
 environment:
   sdk: ^3.12.0

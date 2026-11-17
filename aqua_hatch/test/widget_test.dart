@@ -17,6 +17,7 @@ Future<void> mountApp(
   double textScale = 1,
   SharedPreferences? preferences,
   AppController Function()? controller,
+  GlobalKey? captureKey,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -44,7 +45,7 @@ Future<void> mountApp(
           size: size,
           textScaler: TextScaler.linear(textScale),
         ),
-        child: const AquaHatchApp(),
+        child: RepaintBoundary(key: captureKey, child: const AquaHatchApp()),
       ),
     ),
   );

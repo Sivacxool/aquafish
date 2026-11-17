@@ -8,6 +8,7 @@
 #include <freertos/semphr.h>
 
 namespace ph_sensor {
+temperature_fusion::Reading temperatureReading() { return {}; }
 namespace {
 // ADS1115: A0 single ended, +/-4.096V PGA, single shot, 128 SPS,
 // comparator disabled. PGA range does NOT permit input above ADC VDD.

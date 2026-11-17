@@ -19,6 +19,7 @@ AquaIdentity boardIdentity;
 #include "sensor_do.h"
 #include "sensor_ph.h"
 #include "sensor_config.h"
+#include "water_temperature.h"
 #if defined(AQUAHATCH_ET_WROOM32UE)
 #include "ett_fill_control.h"
 #else
@@ -26,9 +27,9 @@ AquaIdentity boardIdentity;
 #endif
 
 #if defined(AQUAHATCH_ET_WROOM32UE)
-static const char VERSION[] = "0.24.0-ett32ue.beta1";
+static const char VERSION[] = "0.25.0-ett32ue.beta2";
 #else
-static const char VERSION[] = "0.24.0-wroom-da.beta1";
+static const char VERSION[] = "0.25.0-wroom-da.beta2";
 #endif
 Preferences prefs;
 httpd_handle_t httpsServer = nullptr;
@@ -94,6 +95,9 @@ void snapshot(JsonDocument &doc) {
   temperature_sensor::append(t);
   oxygen_sensor::append(t);
   ph_sensor::append(t);
+#if defined(AQUAHATCH_ET_WROOM32UE)
+  water_temperature::append(t);
+#endif
   t["water_level_ok"] = nullptr;
   t["simulated"] = false;
   t["device_online"] = true; t["hardware_ready"] = false;
@@ -122,6 +126,9 @@ void serialStatus(const char *type = "status") {
   temperature_sensor::append(doc["telemetry"].to<JsonObject>());
   oxygen_sensor::append(doc["telemetry"].as<JsonObject>());
   ph_sensor::append(doc["telemetry"].as<JsonObject>());
+#if defined(AQUAHATCH_ET_WROOM32UE)
+  water_temperature::append(doc["telemetry"].as<JsonObject>());
+#endif
   fill_control::append(doc["telemetry"].as<JsonObject>(), true);
   doc["free_heap"] = ESP.getFreeHeap(); doc["command_count"] = commandCount;
   doc["wifi_status"] = (int)WiFi.status();

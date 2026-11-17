@@ -59,7 +59,8 @@ class _WaterReadingsController extends AppController {
         at: now,
         temperature: 26,
         doTemperature: hasDoTemperature ? 30 : null,
-        phTemperature: 11.9,
+        phTemperature: 28,
+        averagedTemperatureControl: true,
       ),
     );
   }
@@ -167,8 +168,7 @@ void main() {
     await mountApp(tester);
     final navTop = tester.getRect(find.byType(NavigationBar)).top;
     for (final label in [
-      'อุณหภูมิในถัง',
-      'อุณหภูมิที่ปากโหล',
+      'อุณหภูมิเฉลี่ย',
       'ออกซิเจน · DO',
       'ความเป็นกรด–ด่าง',
       'ระดับน้ำ',
@@ -182,37 +182,52 @@ void main() {
     await closeApp(tester);
   });
 
-  testWidgets('DO probe and jar readings fit narrow phones', (tester) async {
+  testWidgets('Beta2 average opens all three locations on narrow phones', (
+    tester,
+  ) async {
     await mountApp(
       tester,
       size: const Size(320, 740),
       textScale: 1.3,
       controller: _WaterReadingsController.new,
     );
-    expect(find.text('30.0 °C', findRichText: true), findsOneWidget);
-    expect(find.text('11.9 °C', findRichText: true), findsNothing);
-    expect(find.text('DO'), findsNothing);
-    expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
+    expect(find.text('28.0 °C', findRichText: true), findsOneWidget);
+    expect(find.text('3/3 จุด'), findsOneWidget);
     expect(find.text('เป้าหมายอุณหภูมิในน้ำ 28.0 °C'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('temperature-average-card')));
+    await tester.pumpAndSettle();
+    for (final label in ['แมคโดนัลด์จาร์', 'ถังพักลูกปลา', 'ถังพักน้ำ']) {
+      expect(find.text(label), findsOneWidget);
+    }
+    expect(find.text('30.0 °C', findRichText: true), findsOneWidget);
+    expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
     expect(find.text('DS18B20'), findsNothing);
-    expect(find.textContaining('เฉลี่ย'), findsNothing);
     expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip('ปิด'));
+    await tester.pumpAndSettle();
+    expect(find.text('อุณหภูมิแต่ละจุด'), findsNothing);
     await closeApp(tester);
   });
 
-  testWidgets('missing DO temperature leaves the jar reading visible', (
-    tester,
-  ) async {
-    await mountApp(
-      tester,
-      controller: () => _WaterReadingsController(hasDoTemperature: false),
-    );
-    expect(find.text('อุณหภูมิในถัง'), findsOneWidget);
-    expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
-    expect(find.text('30.0 °C', findRichText: true), findsNothing);
-    expect(find.text('11.9 °C', findRichText: true), findsNothing);
-    await closeApp(tester);
-  });
+  testWidgets(
+    'missing jar probe shows a partial average and unavailable location',
+    (tester) async {
+      await mountApp(
+        tester,
+        controller: () => _WaterReadingsController(hasDoTemperature: false),
+      );
+      expect(find.text('27.0 °C', findRichText: true), findsOneWidget);
+      expect(find.text('2/3 จุด'), findsOneWidget);
+      expect(find.text('รออีก 1 จุด · Auto พัก'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('temperature-average-card')));
+      await tester.pumpAndSettle();
+      expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
+      expect(find.text('30.0 °C', findRichText: true), findsNothing);
+      expect(find.text('ถังพักน้ำ'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await closeApp(tester);
+    },
+  );
 
   testWidgets(
     'phone review keeps image, editing controls and save together; edits require review again',

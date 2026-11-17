@@ -235,12 +235,44 @@ class EttControlStatus {
   };
 }
 
+class WaterTemperaturePoint {
+  final String id, label;
+  final double? value;
+  final String? status;
+  final DateTime? sampledAt;
+  const WaterTemperaturePoint({
+    required this.id,
+    required this.label,
+    this.value,
+    this.status,
+    this.sampledAt,
+  });
+  double? get celsius {
+    final v = value;
+    return (status == null || status == 'ok') &&
+            v != null &&
+            v.isFinite &&
+            v >= 0 &&
+            v <= 50
+        ? v
+        : null;
+  }
+
+  String get readingStatus => celsius != null
+      ? 'ok'
+      : status == null || status == 'ok'
+      ? (value == null ? 'unavailable' : 'invalid_value')
+      : status!;
+}
+
 class Telemetry {
   final PhSensorInfo phSensor;
   final DateTime at;
   final double? temperature, dissolvedOxygen, ph;
   final double? doTemperature, phTemperature;
   final String? temperatureStatus, dissolvedOxygenStatus;
+  final String? dsTemperatureStatus, doTemperatureStatus, phTemperatureStatus;
+  final bool averagedTemperatureControl;
   final DateTime? temperatureSampledAt, dissolvedOxygenSampledAt;
   final bool? waterLevelOk;
   final FillStatus? fill;
@@ -268,6 +300,10 @@ class Telemetry {
     this.phTemperature,
     this.temperatureStatus,
     this.dissolvedOxygenStatus,
+    this.dsTemperatureStatus,
+    this.doTemperatureStatus,
+    this.phTemperatureStatus,
+    this.averagedTemperatureControl = false,
     this.temperatureSampledAt,
     this.dissolvedOxygenSampledAt,
     this.ph,
@@ -293,14 +329,54 @@ class Telemetry {
       deviceOnline &&
       now.difference(at).inSeconds <= (viaRelay ? 45 : 15) &&
       !at.isAfter(now.add(const Duration(seconds: 5)));
-  double? get tankTemperature => doTemperature;
+  List<WaterTemperaturePoint> get temperaturePoints => [
+    WaterTemperaturePoint(
+      id: 'jar',
+      label: 'แมคโดนัลด์จาร์',
+      value: doTemperature,
+      status: doTemperatureStatus ?? dissolvedOxygenStatus,
+      sampledAt: dissolvedOxygenSampledAt,
+    ),
+    WaterTemperaturePoint(
+      id: 'fry_tank',
+      label: 'ถังพักลูกปลา',
+      value: temperature,
+      status: dsTemperatureStatus ?? temperatureStatus,
+      sampledAt: temperatureSampledAt,
+    ),
+    WaterTemperaturePoint(
+      id: 'reservoir',
+      label: 'ถังพักน้ำ',
+      value: phTemperature,
+      status:
+          phTemperatureStatus ?? (phSensor.supported ? phSensor.status : null),
+      sampledAt: phSensor.sampledAt,
+    ),
+  ];
+  int get temperaturePointCount =>
+      temperaturePoints.where((p) => p.celsius != null).length;
+  bool get temperatureControlReady => temperaturePointCount == 3;
+  double? get averageTemperature {
+    final values = temperaturePoints
+        .map((p) => p.celsius)
+        .whereType<double>()
+        .toList();
+    return values.isEmpty
+        ? null
+        : values.reduce((a, b) => a + b) / values.length;
+  }
+
+  // The DS18B20 is now in the fry holding tank. The DO probe is at the jar.
+  double? get tankTemperature => temperaturePoints[1].celsius;
 
   bool output(String key) => outputs[key] ?? false;
   List<String> alerts(DeviceSettings settings) {
     final result = <String>[];
-    if (temperature == null) {
+    if (averageTemperature == null) {
       result.add('อ่านค่าอุณหภูมิไม่ได้');
-    } else if ((temperature! - settings.temperatureTarget).abs() > 1) {
+    } else if (!temperatureControlReady && averagedTemperatureControl) {
+      result.add('อุณหภูมิไม่ครบ 3 จุด ระบบอุณหภูมิอัตโนมัติพัก');
+    } else if ((averageTemperature! - settings.temperatureTarget).abs() > 1) {
       result.add('อุณหภูมิออกนอกช่วงที่ตั้งไว้');
     }
     if (ph == null) {
@@ -327,6 +403,15 @@ class Telemetry {
     'do_temperature_c': doTemperature,
     'ph_temperature_c': phTemperature,
     'temperature_status': temperatureStatus,
+    'ds18b20_temperature_status': temperaturePoints[1].readingStatus,
+    'do_temperature_status': temperaturePoints[0].readingStatus,
+    'ph_temperature_status': temperaturePoints[2].readingStatus,
+    'water_temperature_c': averageTemperature,
+    'water_temperature_count': temperaturePointCount,
+    'water_temperature_expected': 3,
+    'temperature_control_ready': temperatureControlReady,
+    if (averagedTemperatureControl)
+      'temperature_control_source': 'three_point_average',
     'do_status': dissolvedOxygenStatus,
     'temperature_sampled_at': temperatureSampledAt?.toUtc().toIso8601String(),
     'do_sampled_at': dissolvedOxygenSampledAt?.toUtc().toIso8601String(),
@@ -363,6 +448,14 @@ class Telemetry {
           : null;
     }
 
+    String? temperatureState(String state, String fallback, String ageKey) {
+      final age = j[ageKey];
+      if (age is num && (!age.isFinite || age < 0 || age > 10000)) {
+        return 'stale';
+      }
+      return j[state] as String? ?? j[fallback] as String?;
+    }
+
     return Telemetry(
       phSensor: PhSensorInfo.fromJson(j),
       at: DateTime.parse(j['timestamp'] as String).toLocal(),
@@ -372,6 +465,23 @@ class Telemetry {
       phTemperature: sensorReading('ph_temperature_c', 'ph_status'),
       temperatureStatus: j['temperature_status'] as String?,
       dissolvedOxygenStatus: j['do_status'] as String?,
+      averagedTemperatureControl:
+          j['temperature_control_source'] == 'three_point_average',
+      dsTemperatureStatus: temperatureState(
+        'ds18b20_temperature_status',
+        'temperature_status',
+        'temperature_age_ms',
+      ),
+      doTemperatureStatus: temperatureState(
+        'do_temperature_status',
+        'do_status',
+        'do_temperature_age_ms',
+      ),
+      phTemperatureStatus: temperatureState(
+        'ph_temperature_status',
+        'ph_status',
+        'ph_temperature_age_ms',
+      ),
       temperatureSampledAt: DateTime.tryParse(
         j['temperature_sampled_at']?.toString() ?? '',
       )?.toLocal(),

@@ -91,6 +91,12 @@ void processReply() {
 }
 }
 bool enabled() { return DO_ENABLED; }
+temperature_fusion::Reading temperatureReading() {
+  portENTER_CRITICAL(&guard);
+  const Sample copy = latest;
+  portEXIT_CRITICAL(&guard);
+  return {copy.temperatureC, copy.acquiredMs, copy.status};
+}
 void begin() {
   if (!DO_ENABLED && !PH_RS485_ENABLED) return;
   if constexpr (DO_DIRECTION_PIN >= 0) {

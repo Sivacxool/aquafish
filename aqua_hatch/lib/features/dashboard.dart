@@ -7,6 +7,7 @@ import '../core/controller.dart';
 import '../core/sensor_status.dart';
 import '../core/ui.dart';
 import 'history.dart';
+import 'water_temperature.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -15,7 +16,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  WaterTrend _trend = WaterTrend.jarTemperature;
+  WaterTrend _trend = WaterTrend.averageTemperature;
   int _hours = 1;
   final _trendSection = GlobalKey();
 
@@ -138,50 +139,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'อุณหภูมิ',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  if (stale && data != null)
-                    const Text('ค่าล่าสุด', style: AquaType.caption),
-                  IconButton(
-                    tooltip: 'สถานะเครื่อง',
-                    onPressed: () => _details(state),
-                    icon: const Icon(
-                      PhosphorIconsRegular.arrowUpRight,
-                      size: 20,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _TemperatureReading(
-                        label: 'อุณหภูมิในถัง',
-                        value: data?.tankTemperature,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _TemperatureReading(
-                        label: 'อุณหภูมิที่ปากโหล',
-                        value: data?.temperature,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              WaterTemperatureCard(data: data, fresh: state.fresh),
               const SizedBox(height: 10),
               Text(
                 'เป้าหมายอุณหภูมิในน้ำ ${number(state.settings.temperatureTarget)} °C',
@@ -419,54 +377,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ],
     );
   }
-}
-
-class _TemperatureReading extends StatelessWidget {
-  const _TemperatureReading({required this.label, required this.value});
-
-  final String label;
-  final double? value;
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: AquaColors.sage,
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: AquaType.caption.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AquaColors.navy,
-            ),
-          ),
-          const Spacer(),
-          const SizedBox(height: 8),
-          AnimatedSwitcher(
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : AquaMotion.fade,
-            child: Text.rich(
-              key: ValueKey(value),
-              TextSpan(
-                text: number(value),
-                children: [
-                  if (value != null)
-                    const TextSpan(text: ' °C', style: AquaType.caption),
-                ],
-              ),
-              style: AquaType.metric.copyWith(fontSize: 32, height: 1.2),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 class _Reading extends StatelessWidget {

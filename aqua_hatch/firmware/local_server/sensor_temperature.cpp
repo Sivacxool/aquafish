@@ -110,6 +110,10 @@ float currentCelsius() {
   const Sample copy = latestSample();
   return isStale(copy) ? NAN : copy.value;
 }
+temperature_fusion::Reading temperatureReading() {
+  const Sample copy = latestSample();
+  return {copy.value, copy.acquiredMs, copy.status};
+}
 
 void append(JsonObject telemetry) {
   const Sample copy = latestSample();

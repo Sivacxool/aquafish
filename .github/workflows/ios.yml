@@ -53,6 +53,8 @@ jobs:
           build/ios-delivery/test-ett-relays
           c++ -std=c++17 -Wall -Wextra -Werror ../tools/test_ett_beta1.cpp -o build/ios-delivery/test-ett-beta1
           build/ios-delivery/test-ett-beta1
+          c++ -std=c++17 -Wall -Wextra -Werror ../tools/test_temperature_fusion.cpp -o build/ios-delivery/test-temperature-fusion
+          build/ios-delivery/test-temperature-fusion
       - name: Verify main S3 certificate with Apple trust policy
         run: |
           set -o pipefail

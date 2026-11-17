@@ -56,7 +56,8 @@ class Policy {
   static constexpr float HysteresisC = .5f;
   static constexpr float MaxHeaterC = 35.0f;
 
-  void update(bool needsWater, float temperature, float target, uint32_t now) {
+  void update(bool needsWater, float temperature, float target, uint32_t now,
+              float hottestTemperature = NAN) {
     if (!floatKnown_ || needsWater_ != needsWater) {
       floatKnown_ = true;
       needsWater_ = needsWater;
@@ -67,6 +68,7 @@ class Policy {
       lowStable_ = true;
     }
     temperature_ = temperature;
+    hottestTemperature_ = isfinite(hottestTemperature) ? hottestTemperature : temperature;
     now_ = now;
     if (manual_ && now - manualStarted_ >= ManualMs) setMode(false);
 
@@ -78,7 +80,7 @@ class Policy {
       heater_ = fan_ = false;
       return;
     }
-    heater_ = temperature_ < target &&
+    heater_ = hottestTemperature_ < MaxHeaterC && temperature_ < target &&
               (heater_ || temperature_ < target - HysteresisC);
     fan_ = temperature_ > target &&
            (fan_ || temperature_ > target + HysteresisC);
@@ -147,7 +149,7 @@ class Policy {
   }
 
   bool manualHeatAllowed() const {
-    return temperatureValid() && temperature_ < MaxHeaterC;
+    return temperatureValid() && hottestTemperature_ < MaxHeaterC;
   }
 
   bool manual_ = false;
@@ -161,5 +163,6 @@ class Policy {
   uint32_t manualStarted_ = 0;
   uint32_t now_ = 0;
   float temperature_ = NAN;
+  float hottestTemperature_ = NAN;
 };
 }  // namespace ett_relays

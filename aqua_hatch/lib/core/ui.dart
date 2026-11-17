@@ -444,8 +444,10 @@ class _IncubatorPainter extends CustomPainter {
 }
 
 enum WaterTrend {
+  averageTemperature('เฉลี่ย °C'),
   jarTemperature('ปากโหล °C'),
-  tankTemperature('ในถัง °C'),
+  tankTemperature('ถังพักลูกปลา °C'),
+  reservoirTemperature('ถังพักน้ำ °C'),
   ph('pH'),
   dissolvedOxygen('DO · mg/L');
 
@@ -456,8 +458,10 @@ enum WaterTrend {
 
   double? read(Telemetry sample) {
     final value = switch (this) {
-      jarTemperature => sample.temperature,
+      averageTemperature => sample.averageTemperature,
+      jarTemperature => sample.temperaturePoints[0].celsius,
       tankTemperature => sample.tankTemperature,
+      reservoirTemperature => sample.temperaturePoints[2].celsius,
       ph => sample.ph,
       dissolvedOxygen =>
         sample.dissolvedOxygenStatus == null ||

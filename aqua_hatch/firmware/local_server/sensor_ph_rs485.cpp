@@ -46,6 +46,12 @@ bool calibrate(float, bool, String &message) {
   message = "สอบเทียบที่กล่องหัววัด pH RS485 ตามคู่มือของหัววัด";
   return false;
 }
+temperature_fusion::Reading temperatureReading() {
+  portENTER_CRITICAL(&guard);
+  const Sample copy = latest;
+  portEXIT_CRITICAL(&guard);
+  return {copy.temperatureC, copy.acquiredMs, copy.status};
+}
 
 void append(JsonObject telemetry) {
   portENTER_CRITICAL(&guard);
