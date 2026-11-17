@@ -168,7 +168,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                'เป้าหมายที่ปากโหล ${number(state.settings.temperatureTarget)} °C',
+                'เป้าหมายอุณหภูมิในน้ำ ${number(state.settings.temperatureTarget)} °C',
                 style: AquaType.caption,
               ),
               const SizedBox(height: 16),

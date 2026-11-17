@@ -141,6 +141,7 @@ void main() {
     );
     expect(find.text('29.0 °C', findRichText: true), findsOneWidget);
     expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
+    expect(find.text('เป้าหมายอุณหภูมิในน้ำ 28.0 °C'), findsOneWidget);
     expect(find.text('DS18B20'), findsNothing);
     expect(find.textContaining('เฉลี่ย'), findsNothing);
     expect(tester.takeException(), isNull);
