@@ -85,8 +85,12 @@ uint8_t registerValue(const ImageSetting &setting, int level) {
 }
 const char *failure = "";
 
-void transact() {
-  bus.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+constexpr uint32_t RegisterClockHz = 1000000;
+constexpr uint32_t FastBurstClockHz = 4000000;
+uint32_t burstClockHz = 0;
+
+void transact(uint32_t clockHz = RegisterClockHz) {
+  bus.beginTransaction(SPISettings(clockHz, MSBFIRST, SPI_MODE0));
   digitalWrite(Cs, LOW);
 }
 
@@ -102,8 +106,8 @@ void writeRegister(uint8_t address, uint8_t value) {
   endTransaction();
 }
 
-uint8_t readRegister(uint8_t address) {
-  transact();
+uint8_t readRegister(uint8_t address, uint32_t clockHz = RegisterClockHz) {
+  transact(clockHz);
   bus.transfer(address);
   bus.transfer(0);
   const uint8_t value = bus.transfer(0);
@@ -230,10 +234,26 @@ void tick() {
   }
 }
 
+uint32_t selectBurstClock() {
+  if (burstClockHz) return burstClockHz;
+  // The module recommends 8 MHz. Leave margin on the ETT's wired connection.
+  for (int sample = 0; sample < 3; ++sample) {
+    if (readRegister(SensorId, FastBurstClockHz) != sensorId)
+      return burstClockHz = RegisterClockHz;
+  }
+  return burstClockHz = FastBurstClockHz;
+}
+
+bool useSafeBurstClock() {
+  if (burstClockHz != FastBurstClockHz) return false;
+  burstClockHz = RegisterClockHz;
+  return true;
+}
+
 size_t read(uint8_t *bytes, size_t capacity) {
   if (phase != Phase::Ready || offset >= total) return 0;
   const size_t length = std::min<size_t>(capacity, total - offset);
-  transact();
+  transact(selectBurstClock());
   bus.transfer(BurstRead);
   if (!offset) bus.transfer(0);  // The first burst has a dummy byte.
   bus.transferBytes(nullptr, bytes, length);

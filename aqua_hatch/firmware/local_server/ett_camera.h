@@ -131,34 +131,38 @@ Submit submit(const JsonDocument &options, JsonDocument &reply) {
   return Submit::accepted;
 }
 
-bool savePhoto(Photo &photo) {
+enum class SaveResult { saved, malformed, failed };
+
+SaveResult savePhoto(Photo &photo) {
   const size_t total = arducam_b0434::total;
-  if (total > PhotoLimit || total < 4) return false;
-  if (LittleFS.exists(PhotoPath) && !LittleFS.remove(PhotoPath)) return false;
+  if (total > PhotoLimit || total < 4) return SaveResult::failed;
+  if (LittleFS.exists(PhotoPath) && !LittleFS.remove(PhotoPath)) return SaveResult::failed;
   File file = LittleFS.open(PhotoPath, FILE_WRITE);
-  if (!file) return false;
+  if (!file) return SaveResult::failed;
   uint8_t bytes[2048];
   size_t written = 0;
   while (written < total) {
     const size_t count = arducam_b0434::read(bytes, sizeof(bytes));
-    if (!count || file.write(bytes, count) != count) return false;
+    if (!count || file.write(bytes, count) != count) return SaveResult::failed;
     written += count;
     vTaskDelay(1);
   }
   file.close();
   file = LittleFS.open(PhotoPath, FILE_READ);
-  if (!file || file.size() != total) return false;
+  if (!file || file.size() != total) return SaveResult::failed;
 
   // The module can pad the FIFO. Keep the JPEG from SOI to the last EOI.
   const size_t border = std::min<size_t>(total, 258);
-  if (file.read(bytes, border) != border) return false;
+  if (file.read(bytes, border) != border) return SaveResult::failed;
   size_t start = 0;
   while (start + 1 < border && !(bytes[start] == 0xff && bytes[start + 1] == 0xd8)) ++start;
-  if (start + 1 == border || !file.seek(total - border) || file.read(bytes, border) != border) return false;
+  if (start + 1 == border) return SaveResult::malformed;
+  if (!file.seek(total - border) || file.read(bytes, border) != border) return SaveResult::failed;
   size_t last = border - 1;
   while (last && !(bytes[last - 1] == 0xff && bytes[last] == 0xd9)) --last;
   const size_t end = total - border + last + 1;
-  if (!last || end < start + 4 || !file.seek(start)) return false;
+  if (!last || end < start + 4) return SaveResult::malformed;
+  if (!file.seek(start)) return SaveResult::failed;
 
   mbedtls_sha256_context hash;
   mbedtls_sha256_init(&hash);
@@ -171,11 +175,20 @@ bool savePhoto(Photo &photo) {
   unsigned char digest[32];
   valid = valid && mbedtls_sha256_finish(&hash, digest) == 0;
   mbedtls_sha256_free(&hash);
-  if (!valid) return false;
+  if (!valid) return SaveResult::failed;
   char hex[65];
   for (size_t i = 0; i < sizeof(digest); ++i) snprintf(hex + 2 * i, 3, "%02x", digest[i]);
   photo = {start, end - start, String(hex), nowIso()};
-  return !photo.receivedAt.isEmpty();
+  return photo.receivedAt.isEmpty() ? SaveResult::failed : SaveResult::saved;
+}
+
+bool captureFrame(bool fullSize, const arducam_b0434::ImageConfig &config) {
+  arducam_b0434::begin(fullSize, config);
+  while (arducam_b0434::working()) {
+    arducam_b0434::tick();
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+  return arducam_b0434::phase == arducam_b0434::Phase::Ready;
 }
 
 void run(void *) {
@@ -201,14 +214,20 @@ void run(void *) {
       }
     }
     if (capture) {
-      arducam_b0434::begin(fullSize, config);
-      while (arducam_b0434::working()) {
-        arducam_b0434::tick();
-        vTaskDelay(pdMS_TO_TICKS(10));
-      }
       Photo photo;
-      const bool captured = arducam_b0434::phase == arducam_b0434::Phase::Ready;
-      const bool saved = captured && savePhoto(photo);
+      const uint32_t started = millis();
+      bool captured = captureFrame(fullSize, config);
+      const uint32_t exposureMs = millis() - started;
+      SaveResult result = captured ? savePhoto(photo) : SaveResult::failed;
+      const bool retry = result == SaveResult::malformed && arducam_b0434::useSafeBurstClock();
+      if (retry) {
+        captured = captureFrame(fullSize, config);
+        result = captured ? savePhoto(photo) : SaveResult::failed;
+      }
+      const bool saved = result == SaveResult::saved;
+      Serial.printf("ARDUCAM_CAPTURE saved=%d jpeg_bytes=%u spi_hz=%lu exposure_ms=%lu total_ms=%lu retry=%d\n",
+        saved, static_cast<unsigned>(photo.length), static_cast<unsigned long>(arducam_b0434::burstClockHz),
+        static_cast<unsigned long>(exposureMs), static_cast<unsigned long>(millis() - started), retry);
       if (!saved) LittleFS.remove(PhotoPath);
       online.store(captured || arducam_b0434::validSensor(arducam_b0434::sensorId));
       for (;;) {

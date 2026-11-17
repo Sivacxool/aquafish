@@ -1,21 +1,21 @@
 #pragma once
 
 namespace ett_camera {
-void relayCapture(const String &url, const aqua_relay::Keys &keys) {
-  if (!configured) return;
+int relayCapture(const String &url, const aqua_relay::Keys &keys) {
+  if (!configured) return 0;
   const String endpoint = url + "/v1/cameras/" + keys.room + "/agent";
   JsonDocument snapshot;
   status(snapshot);
   String state, response;
   serializeJson(snapshot, state);
-  if (aqua_relay::postJson(endpoint, keys.writer, state, &response) != 200 ||
-      url != aqua_relay::origin(prefs)) return;
+  const int code = aqua_relay::postJson(endpoint, keys.writer, state, &response);
+  if (code != 200 || url != aqua_relay::origin(prefs)) return code;
 
   JsonDocument incoming, options, metadata;
-  if (deserializeJson(incoming, response) || !incoming["job"].is<JsonObject>()) return;
+  if (deserializeJson(incoming, response) || !incoming["job"].is<JsonObject>()) return code;
   options.set(incoming["job"]);
   const String id = options["capture_id"] | "";
-  if (!validId(id)) return;
+  if (!validId(id)) return code;
 
   int uploaded = 0;
   if (submit(options, metadata) == Submit::accepted) {
@@ -46,5 +46,6 @@ void relayCapture(const String &url, const aqua_relay::Keys &keys) {
   if (uploaded != 200 && url == aqua_relay::origin(prefs)) {
     aqua_relay::postJson(endpoint + "/error/" + id, keys.writer, "{}");
   }
+  return code;
 }
 }

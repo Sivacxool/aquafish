@@ -6,7 +6,7 @@
 | --- | --- |
 | Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.23.2/AquaHatch-v0.23.2-Android.apk) |
 | iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.23.2/AquaHatch-v0.23.2-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
-| ETT WROOM32UE + B0434 | [FirstBoot ZIP](https://github.com/Sivacxool/aquafish/releases/download/v0.23.0/AquaHatch-ETT-WROOM32UE-v0.23.0-FirstBoot.zip) |
+| ETT WROOM32UE + B0434 | [FirstBoot ZIP](https://github.com/Sivacxool/aquafish/releases/download/v0.23.0-ett32ue.2/AquaHatch-ETT-WROOM32UE-v0.23.0-ett32ue.2-FirstBoot.zip) |
 
 ## เริ่มใช้งาน
 

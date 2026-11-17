@@ -13,15 +13,31 @@ uint32_t lastQueued = 0;
 
 void sender(void *) {
   const aqua_relay::Keys keys(API_TOKEN);
+#if defined(AQUAHATCH_ET_WROOM32UE)
+  const TickType_t wait = pdMS_TO_TICKS(200);
+  uint32_t lastCameraPoll = 0;
+  uint32_t cameraInterval = 4000;
+#else
+  const TickType_t wait = portMAX_DELAY;
+#endif
   for (;;) {
     Upload *next = nullptr;
-    if (xQueueReceive(pending, &next, portMAX_DELAY) != pdTRUE) continue;
-    std::unique_ptr<Upload> upload(next);
-    if (upload->origin != aqua_relay::origin(prefs) || WiFi.status() != WL_CONNECTED) continue;
-    lastResult.store(aqua_relay::postJson(
-      upload->origin + "/v1/readings/" + keys.room, keys.writer, upload->body));
+    if (xQueueReceive(pending, &next, wait) == pdTRUE) {
+      std::unique_ptr<Upload> upload(next);
+      if (upload->origin == aqua_relay::origin(prefs) && WiFi.status() == WL_CONNECTED) {
+        lastResult.store(aqua_relay::postJson(
+          upload->origin + "/v1/readings/" + keys.room, keys.writer, upload->body));
+      }
+    }
 #if defined(AQUAHATCH_ET_WROOM32UE)
-    if (upload->origin == aqua_relay::origin(prefs)) ett_camera::relayCapture(upload->origin, keys);
+    // Schedule camera jobs independently of the 12-second telemetry upload.
+    if (millis() - lastCameraPoll >= cameraInterval) {
+      const String url = aqua_relay::origin(prefs);
+      const int code = !url.isEmpty() && WiFi.status() == WL_CONNECTED && time(nullptr) >= 1735689600
+        ? ett_camera::relayCapture(url, keys) : 0;
+      cameraInterval = code == 200 || code == 0 ? 4000 : 12000;
+      lastCameraPoll = millis();
+    }
 #endif
   }
 }
