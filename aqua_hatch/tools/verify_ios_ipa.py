@@ -7,6 +7,7 @@ with zipfile.ZipFile(path) as archive:
     assert archive.testzip() is None, 'Corrupt IPA archive'
     info=plistlib.loads(archive.read('Payload/Runner.app/Info.plist'))
     assert info['CFBundleIdentifier']=='th.ac.aquahatch.aquaHatch'
+    assert info['CFBundleDisplayName']=='AquaHatch'
     expected_version = sys.argv[2] if len(sys.argv) > 2 else '0.19.0'
     assert info['CFBundleShortVersionString'] == expected_version
     assert info['NSLocalNetworkUsageDescription']
@@ -25,7 +26,7 @@ with zipfile.ZipFile(path) as archive:
     assert hashlib.sha256(archive.read(field_model)).digest() == hashlib.sha256(field_source.read_bytes()).digest()
     names=archive.namelist()
     report={'version':info['CFBundleShortVersionString'],'build':info['CFBundleVersion'],
-            'bundle_id':info['CFBundleIdentifier'],'minimum_ios':info.get('MinimumOSVersion'),
+            'bundle_id':info['CFBundleIdentifier'],'display_name':info['CFBundleDisplayName'],'minimum_ios':info.get('MinimumOSVersion'),
             'architecture':'arm64','supported_platforms':info.get('CFBundleSupportedPlatforms'),
             'local_network_description_present':True,'arbitrary_transport_loads_allowed':False,
             'device_and_camera_ca_included':True,'archive_files':len(names),

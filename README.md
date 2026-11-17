@@ -1,11 +1,11 @@
-# Smart Catfish System · AquaHatch Beta1
+# AquaHatch Beta1.1
 
 ระบบเครื่องฟักไข่ปลาดุกด้วยบอร์ด ET-ESP32 WROOM32UE, กล้อง Arducam B0434 และแอป Flutter สำหรับ Android/iOS
 
 | ชุดติดตั้ง | ดาวน์โหลด |
 | --- | --- |
-| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/Beta1/AquaHatch-Beta1-Android.apk) |
-| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/Beta1/AquaHatch-Beta1-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
+| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/Beta1.1/AquaHatch-Beta1.1-Android.apk) |
+| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/Beta1.1/AquaHatch-Beta1.1-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
 | ETT WROOM32UE + B0434 | [FirstBoot ZIP](https://github.com/Sivacxool/aquafish/releases/download/Beta1/AquaHatch-Beta1-ETT-WROOM32UE-FirstBoot.zip) |
 
 ## เริ่มใช้งาน
@@ -16,7 +16,9 @@
 4. เปิด **นับลูกปลา** ตั้งความละเอียดหรือค่ากล้องด้วยไอคอนปรับค่า กดถ่าย แล้วเลือก AI หรือแก้จุดนับด้วยมือก่อนบันทึกผล
 5. เมื่อต้องใช้จากเครือข่ายอื่น เพิ่มสิทธิ์ห้องกล้องของ ETT ใน Cloudflare แล้วเปิด **ตั้งค่า → ดูจากระยะไกล** ตาม [คู่มือ](REMOTE_SETUP_TH.md)
 
-## Beta1
+## Beta1.1
+
+ชื่อแอปบน Android, iPhone, หน้ากำลังเปิด และส่วนหัวแอปใช้ **AquaHatch**
 
 - แอปใช้ Field v3 ซึ่งนับจากจุดหัวบน heatmap ตามแนวคิด DEKNet สำหรับภาพจากกล้อง ภาพที่เลือก และเฟรมจากคลิปบน Android/iOS
 - แตะค่าทันทีที่ **ออกซิเจน · DO** เพื่อเปิดแนวโน้ม mg/L เลือกช่วง 1, 6 หรือ 24 ชั่วโมง แอปเก็บข้อมูลขณะเปิดใช้งาน

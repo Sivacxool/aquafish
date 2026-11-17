@@ -1,6 +1,6 @@
 {
-    "name": "aqua_hatch",
-    "short_name": "aqua_hatch",
+    "name": "AquaHatch",
+    "short_name": "AquaHatch",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

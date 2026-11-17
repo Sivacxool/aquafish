@@ -495,11 +495,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Column(
             children: [
               Text(
-                'Smart Catfish System',
+                'AquaHatch',
                 style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
               Text(
-                'Beta1',
+                'Beta1.1',
                 style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
             ],

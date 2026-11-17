@@ -88,7 +88,7 @@ class _AquaHatchAppState extends ConsumerState<AquaHatchApp> {
 
   @override
   Widget build(BuildContext context) => MaterialApp.router(
-    title: 'Smart Catfish System',
+    title: 'AquaHatch',
     debugShowCheckedModeBanner: false,
     theme: buildTheme(),
     locale: const Locale('th', 'TH'),
@@ -245,7 +245,7 @@ class AppShell extends ConsumerWidget {
                             const SizedBox(width: 8),
                             const Expanded(
                               child: Text(
-                                'Smart Catfish',
+                                'AquaHatch',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 16,

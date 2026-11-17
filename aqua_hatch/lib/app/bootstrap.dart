@@ -89,7 +89,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Smart Catfish',
+                  'AquaHatch',
                   style: TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w500,
