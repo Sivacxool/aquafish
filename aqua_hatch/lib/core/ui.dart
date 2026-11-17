@@ -443,16 +443,28 @@ class _IncubatorPainter extends CustomPainter {
   bool shouldRepaint(covariant _IncubatorPainter old) => false;
 }
 
+enum WaterTrend {
+  jarTemperature('ปากโหล °C'),
+  tankTemperature('ในถัง °C'),
+  ph('pH');
+
+  const WaterTrend(this.label);
+  final String label;
+
+  double? read(Telemetry sample) => switch (this) {
+    jarTemperature => sample.temperature,
+    tankTemperature => sample.tankTemperature,
+    ph => sample.ph,
+  };
+}
+
 class TrendChart extends StatelessWidget {
   final List<Telemetry> history;
-  final bool ph;
-  const TrendChart({super.key, required this.history, this.ph = false});
+  final WaterTrend trend;
+  const TrendChart({super.key, required this.history, required this.trend});
   @override
   Widget build(BuildContext context) {
-    final values = history
-        .map((t) => ph ? t.ph : t.temperature)
-        .whereType<double>()
-        .toList();
+    final values = history.map(trend.read).whereType<double>().toList();
     if (values.length < 2) {
       return const SizedBox(
         height: 185,
@@ -493,10 +505,10 @@ class TrendChart extends StatelessWidget {
                   size: const Size(double.infinity, 185),
                   painter: _TrendPainter(
                     history,
-                    ph,
+                    trend,
                     minY,
                     maxY,
-                    ph ? AquaColors.teal : AquaColors.blue,
+                    trend == WaterTrend.ph ? AquaColors.teal : AquaColors.blue,
                   ),
                 ),
               ),
@@ -531,10 +543,10 @@ class TrendChart extends StatelessWidget {
 
 class _TrendPainter extends CustomPainter {
   final List<Telemetry> samples;
-  final bool ph;
+  final WaterTrend trend;
   final double minY, maxY;
   final Color color;
-  _TrendPainter(this.samples, this.ph, this.minY, this.maxY, this.color);
+  _TrendPainter(this.samples, this.trend, this.minY, this.maxY, this.color);
   @override
   void paint(Canvas canvas, Size size) {
     final grid = Paint()
@@ -551,7 +563,7 @@ class _TrendPainter extends CustomPainter {
       samples.last.at.difference(samples.first.at).inMilliseconds,
     );
     for (var i = 0; i < samples.length; i++) {
-      final value = ph ? samples[i].ph : samples[i].temperature;
+      final value = trend.read(samples[i]);
       if (value == null) {
         connected = false;
         continue;

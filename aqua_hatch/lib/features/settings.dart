@@ -499,7 +499,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
               Text(
-                'v0.23.2',
+                'v0.23.3',
                 style: TextStyle(color: AquaColors.muted, fontSize: 12),
               ),
             ],

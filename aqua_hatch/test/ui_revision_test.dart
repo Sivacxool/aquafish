@@ -30,6 +30,29 @@ class _OnlineSettingsController extends AppController {
   }
 }
 
+class _WaterReadingsController extends AppController {
+  _WaterReadingsController({this.hasPhTemperature = true});
+
+  final bool hasPhTemperature;
+
+  @override
+  AppState build() {
+    final now = DateTime.now();
+    return AppState(
+      connection: const ConnectionConfig(demo: false, localEsp32: true),
+      settings: const DeviceSettings(),
+      now: now,
+      connected: true,
+      telemetry: Telemetry(
+        at: now,
+        temperature: 26,
+        doTemperature: 30,
+        phTemperature: hasPhTemperature ? 28 : null,
+      ),
+    );
+  }
+}
+
 void main() {
   testWidgets('nearby fry heads can be added separately and erased precisely', (
     tester,
@@ -86,13 +109,14 @@ void main() {
     },
   );
 
-  testWidgets('all four water readings fit above navigation at 390x844', (
+  testWidgets('all five water readings fit above navigation at 390x844', (
     tester,
   ) async {
     await mountApp(tester);
     final navTop = tester.getRect(find.byType(NavigationBar)).top;
     for (final label in [
-      'อุณหภูมิน้ำ',
+      'อุณหภูมิในถัง',
+      'อุณหภูมิที่ปากโหล',
       'ออกซิเจน · DO',
       'ความเป็นกรด–ด่าง',
       'ระดับน้ำ',
@@ -103,6 +127,34 @@ void main() {
         reason: label,
       );
     }
+    await closeApp(tester);
+  });
+
+  testWidgets('tank average and jar readings fit narrow phones', (
+    tester,
+  ) async {
+    await mountApp(
+      tester,
+      size: const Size(320, 740),
+      textScale: 1.3,
+      controller: _WaterReadingsController.new,
+    );
+    expect(find.text('29.0 °C', findRichText: true), findsOneWidget);
+    expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await closeApp(tester);
+  });
+
+  testWidgets('missing pH temperature leaves the jar reading visible', (
+    tester,
+  ) async {
+    await mountApp(
+      tester,
+      controller: () => _WaterReadingsController(hasPhTemperature: false),
+    );
+    expect(find.text('รอค่า DO และ pH'), findsOneWidget);
+    expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
+    expect(find.text('30.0 °C', findRichText: true), findsNothing);
     await closeApp(tester);
   });
 

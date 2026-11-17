@@ -11,6 +11,9 @@ void main() {
     'temperature_status': 'ok',
     'temperature_sampled_at': '2026-10-30T09:00:01Z',
     'do_mg_l': 6.78,
+    'do_temperature_c': 29.5,
+    'ph_temperature_c': 31.25,
+    'ph_status': 'ok',
     'do_status': 'ok',
     'do_sampled_at': '2026-10-30T09:00:00Z',
     'simulated': false,
@@ -25,6 +28,9 @@ void main() {
       await store.saveHistory(device, [Telemetry.fromJson(sample)]);
       final restored = store.history(device).single;
       expect(restored.temperature, 28.125);
+      expect(restored.doTemperature, 29.5);
+      expect(restored.phTemperature, 31.25);
+      expect(restored.tankTemperature, 30.375);
       expect(restored.dissolvedOxygen, 6.78);
       expect(
         restored.temperatureSampledAt?.toUtc().toIso8601String(),
@@ -38,8 +44,25 @@ void main() {
       expect(restored.hardwareReady, false);
       expect(telemetryCsv([restored]), contains('do_mg_l'));
       expect(telemetryCsv([restored]), contains('6.78,ok,ok'));
+      expect(telemetryCsv([restored]), contains('30.375,29.5,31.25'));
     },
   );
+  test('tank average requires current pH and DO temperatures', () {
+    final remote = Telemetry.fromJson({...sample, 'via_relay': true});
+    expect(remote.tankTemperature, 30.375);
+    expect(remote.temperature, 28.125);
+    for (final missing in [
+      {'ph_temperature_c': null},
+      {'do_temperature_c': null},
+      {'ph_temperature_c': double.nan},
+      {'ph_status': 'stale'},
+      {'do_status': 'timeout'},
+    ]) {
+      final t = Telemetry.fromJson({...sample, ...missing});
+      expect(t.tankTemperature, isNull);
+      expect(t.temperature, 28.125);
+    }
+  });
   test('errors and stale sensors never display a previous numeric reading', () {
     for (final status in ['timeout', 'stale', 'crc_error', 'not_configured']) {
       final t = Telemetry.fromJson({

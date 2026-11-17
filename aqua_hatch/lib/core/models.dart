@@ -239,6 +239,7 @@ class Telemetry {
   final PhSensorInfo phSensor;
   final DateTime at;
   final double? temperature, dissolvedOxygen, ph;
+  final double? doTemperature, phTemperature;
   final String? temperatureStatus, dissolvedOxygenStatus;
   final DateTime? temperatureSampledAt, dissolvedOxygenSampledAt;
   final bool? waterLevelOk;
@@ -263,6 +264,8 @@ class Telemetry {
     required this.at,
     this.temperature,
     this.dissolvedOxygen,
+    this.doTemperature,
+    this.phTemperature,
     this.temperatureStatus,
     this.dissolvedOxygenStatus,
     this.temperatureSampledAt,
@@ -290,6 +293,13 @@ class Telemetry {
       deviceOnline &&
       now.difference(at).inSeconds <= (viaRelay ? 45 : 15) &&
       !at.isAfter(now.add(const Duration(seconds: 5)));
+  double? get tankTemperature {
+    final oxygen = doTemperature;
+    final acidity = phTemperature;
+    if (oxygen == null || acidity == null) return null;
+    return (oxygen + acidity) / 2;
+  }
+
   bool output(String key) => outputs[key] ?? false;
   List<String> alerts(DeviceSettings settings) {
     final result = <String>[];
@@ -319,6 +329,8 @@ class Telemetry {
     'timestamp': at.toUtc().toIso8601String(),
     'temperature_c': temperature,
     'do_mg_l': dissolvedOxygen,
+    'do_temperature_c': doTemperature,
+    'ph_temperature_c': phTemperature,
     'temperature_status': temperatureStatus,
     'do_status': dissolvedOxygenStatus,
     'temperature_sampled_at': temperatureSampledAt?.toUtc().toIso8601String(),
@@ -361,6 +373,8 @@ class Telemetry {
       at: DateTime.parse(j['timestamp'] as String).toLocal(),
       temperature: sensorReading('temperature_c', 'temperature_status'),
       dissolvedOxygen: sensorReading('do_mg_l', 'do_status', minimum: 0),
+      doTemperature: sensorReading('do_temperature_c', 'do_status'),
+      phTemperature: sensorReading('ph_temperature_c', 'ph_status'),
       temperatureStatus: j['temperature_status'] as String?,
       dissolvedOxygenStatus: j['do_status'] as String?,
       temperatureSampledAt: DateTime.tryParse(

@@ -15,7 +15,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  bool _phChart = false;
+  WaterTrend _trend = WaterTrend.jarTemperature;
   int _hours = 1;
   void _details(AppState state) {
     showModalBottomSheet<void>(
@@ -118,7 +118,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         Surface(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -126,13 +126,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 children: [
                   const Expanded(
                     child: Text(
-                      'อุณหภูมิน้ำ',
+                      'อุณหภูมิ',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
+                  if (stale && data != null)
+                    const Text('ค่าล่าสุด', style: AquaType.caption),
                   IconButton(
                     tooltip: 'สถานะเครื่อง',
                     onPressed: () => _details(state),
@@ -143,38 +145,39 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.end,
-                spacing: 8,
-                children: [
-                  AnimatedSwitcher(
-                    duration: MediaQuery.disableAnimationsOf(context)
-                        ? Duration.zero
-                        : AquaMotion.fade,
-                    child: Text(
-                      number(data?.temperature),
-                      key: ValueKey(data?.temperature),
-                      style: AquaType.metric.copyWith(fontSize: 60),
+              const SizedBox(height: 4),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _TemperatureReading(
+                        label: 'อุณหภูมิในถัง',
+                        value: data?.tankTemperature,
+                        source: data?.tankTemperature == null
+                            ? 'รอค่า DO และ pH'
+                            : 'เฉลี่ย DO และ pH',
+                      ),
                     ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      '°C',
-                      style: TextStyle(fontSize: 20, color: AquaColors.muted),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _TemperatureReading(
+                        label: 'อุณหภูมิที่ปากโหล',
+                        value: data?.temperature,
+                        source: 'DS18B20',
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
-                'เป้าหมาย ${number(state.settings.temperatureTarget)} °C${stale && data != null ? ' · ค่าล่าสุด' : ''}',
+                'เป้าหมายที่ปากโหล ${number(state.settings.temperatureTarget)} °C',
                 style: AquaType.caption,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               const Divider(height: 1),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -349,17 +352,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SectionHeading(
-                'แนวโน้มคุณภาพน้ำ',
-                trailing: DropdownButton<bool>(
-                  value: _phChart,
-                  underline: const SizedBox.shrink(),
-                  items: const [
-                    DropdownMenuItem(value: false, child: Text('°C')),
-                    DropdownMenuItem(value: true, child: Text('pH')),
-                  ],
-                  onChanged: (v) => setState(() => _phChart = v ?? false),
-                ),
+              const SectionHeading('แนวโน้มคุณภาพน้ำ'),
+              DropdownButton<WaterTrend>(
+                value: _trend,
+                items: [
+                  for (final trend in WaterTrend.values)
+                    DropdownMenuItem(value: trend, child: Text(trend.label)),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _trend = value);
+                },
               ),
               Wrap(
                 spacing: 8,
@@ -374,7 +376,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     .toList(),
               ),
               const SizedBox(height: 16),
-              TrendChart(history: history, ph: _phChart),
+              TrendChart(history: history, trend: _trend),
               Wrap(
                 spacing: 8,
                 children: [
@@ -404,6 +406,60 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ],
     );
   }
+}
+
+class _TemperatureReading extends StatelessWidget {
+  const _TemperatureReading({
+    required this.label,
+    required this.value,
+    required this.source,
+  });
+
+  final String label, source;
+  final double? value;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: AquaColors.sage,
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AquaType.caption.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AquaColors.navy,
+            ),
+          ),
+          const Spacer(),
+          const SizedBox(height: 8),
+          AnimatedSwitcher(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : AquaMotion.fade,
+            child: Text.rich(
+              key: ValueKey(value),
+              TextSpan(
+                text: number(value),
+                children: [
+                  if (value != null)
+                    const TextSpan(text: ' °C', style: AquaType.caption),
+                ],
+              ),
+              style: AquaType.metric.copyWith(fontSize: 32, height: 1.2),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(source, style: AquaType.caption),
+        ],
+      ),
+    ),
+  );
 }
 
 class _Reading extends StatelessWidget {

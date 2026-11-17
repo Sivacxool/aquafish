@@ -7,7 +7,7 @@ import '../core/ui.dart';
 import '../core/models.dart';
 
 String telemetryCsv(List<Telemetry> samples) => [
-  'timestamp_utc,temperature_c,ph,ph_calibrated,water_level_ok,simulated,do_mg_l,temperature_status,do_status,temperature_sampled_at,do_sampled_at,ph_status,ph_adc_voltage,ph_sampled_at',
+  'timestamp_utc,temperature_c,ph,ph_calibrated,water_level_ok,simulated,do_mg_l,temperature_status,do_status,temperature_sampled_at,do_sampled_at,ph_status,ph_adc_voltage,ph_sampled_at,tank_temperature_c,do_temperature_c,ph_temperature_c',
   ...samples.map(
     (t) => [
       t.at.toUtc().toIso8601String(),
@@ -24,6 +24,9 @@ String telemetryCsv(List<Telemetry> samples) => [
       t.phSensor.supported ? t.phSensor.status : '',
       t.phSensor.adcVoltage ?? '',
       t.phSensor.sampledAt?.toUtc().toIso8601String() ?? '',
+      t.tankTemperature ?? '',
+      t.doTemperature ?? '',
+      t.phTemperature ?? '',
     ].join(','),
   ),
 ].join('\r\n');
@@ -150,7 +153,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       '${fullTime(t.at)}${t.simulated ? ' · จำลอง' : ''}',
                     ),
                     subtitle: Text(
-                      '${number(t.temperature)} °C   •   DO ${number(t.dissolvedOxygen, decimals: 2)} mg/L\npH ${number(t.ph)}${t.phCalibrated ? '' : ' (ยังไม่สอบเทียบ)'}   •   น้ำ ${t.waterLevelOk == null
+                      'ในถัง ${number(t.tankTemperature)} °C   •   ปากโหล ${number(t.temperature)} °C\nDO ${number(t.dissolvedOxygen, decimals: 2)} mg/L   •   pH ${number(t.ph)}${t.phCalibrated ? '' : ' (ยังไม่สอบเทียบ)'}   •   น้ำ ${t.waterLevelOk == null
                           ? 'ไม่ทราบ'
                           : t.waterLevelOk!
                           ? 'ปกติ'
