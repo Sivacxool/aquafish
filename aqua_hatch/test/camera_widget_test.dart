@@ -94,11 +94,13 @@ class _ArducamController extends CameraController {
 }
 
 class _GalleryPicker extends ImagePickerPlatform {
+  XFile photo = XFile.fromData(captured().bytes, name: 'gallery.png');
+
   @override
   Future<XFile?> getImageFromSource({
     required ImageSource source,
     ImagePickerOptions options = const ImagePickerOptions(),
-  }) async => XFile.fromData(captured().bytes, name: 'gallery.png');
+  }) async => photo;
 }
 
 DeviceCapture captured() => DeviceCapture(
@@ -137,12 +139,13 @@ Future<void> mount(
 
 void main() {
   testWidgets(
-    'full-resolution Arducam uses Field v3 and switching to gallery uses general AI',
+    'Field v3 can analyze direct and saved Arducam photos without replacing the general model',
     (tester) async {
       final controller = _ArducamController();
-      final picker = ImagePickerPlatform.instance;
-      ImagePickerPlatform.instance = _GalleryPicker();
-      addTearDown(() => ImagePickerPlatform.instance = picker);
+      final originalPicker = ImagePickerPlatform.instance;
+      final picker = _GalleryPicker();
+      ImagePickerPlatform.instance = picker;
+      addTearDown(() => ImagePickerPlatform.instance = originalPicker);
       final capture = (await tester.runAsync(() async {
         final recorder = ui.PictureRecorder();
         Canvas(recorder).drawColor(Colors.white, BlendMode.src);
@@ -166,11 +169,11 @@ void main() {
         tester,
         controller,
         fieldAnalyzer: (bytes) async {
-          expect(bytes, same(capture.bytes));
+          expect(bytes, capture.bytes);
           models.add('field');
           return const AnalysisResult([
             CountPoint(.42, .34),
-          ], 'aquahatch-fry-heads-field-v3');
+          ], fieldFishHeadModelId);
         },
         localAnalyzer: (bytes) async {
           expect(bytes, captured().bytes);
@@ -182,7 +185,7 @@ void main() {
         },
       );
 
-      Future<void> analyzePhoto(String source) async {
+      Future<void> waitForPhoto(String source) async {
         final wait = Stopwatch()..start();
         while (find.text(source).evaluate().isEmpty &&
             wait.elapsed < const Duration(seconds: 5)) {
@@ -192,28 +195,61 @@ void main() {
           await tester.pump();
         }
         expect(find.text(source), findsOneWidget);
+      }
+
+      Future<void> analyzePhoto() async {
         final analyze = find.widgetWithText(FilledButton, 'วิเคราะห์ด้วย AI');
         await tester.ensureVisible(analyze);
         await tester.tap(analyze);
         await tester.pumpAndSettle();
       }
 
+      Future<void> chooseFromGallery(String modelLabel) async {
+        await tester.tap(find.text('เลือกภาพ'));
+        await tester.pumpAndSettle();
+        final gallery = find.text('เลือกภาพ');
+        await tester.ensureVisible(gallery);
+        await tester.tap(gallery);
+        await tester.pump();
+        await waitForPhoto(modelLabel);
+        expect(find.text('ภาพที่เลือก'), findsOneWidget);
+        await tester.pumpAndSettle();
+      }
+
+      final fieldResult = find.text('AI เครื่องฟักก่อนแก้ 1 ตัว · ตรวจแก้ได้');
       await tester.tap(find.byKey(const ValueKey('device-capture-button')));
       await tester.pump();
       controller.photo.complete(capture);
-      await analyzePhoto('ภาพจากกล้องในเครื่อง');
+      await waitForPhoto('ภาพจากกล้องในเครื่อง');
+      await analyzePhoto();
       expect(models, ['field']);
-      expect(find.text('AI ก่อนแก้ 1 ตัว · ตรวจแก้ได้'), findsOneWidget);
+      expect(fieldResult, findsOneWidget);
 
-      await tester.tap(find.text('เลือกภาพ'));
-      await tester.pumpAndSettle();
-      final gallery = find.text('เลือกภาพ');
-      await tester.ensureVisible(gallery);
-      await tester.tap(gallery);
-      await tester.pump();
-      await analyzePhoto('ภาพที่เลือก');
+      await chooseFromGallery('AI ทั่วไป');
+      await analyzePhoto();
       expect(models, ['field', 'general']);
       expect(find.text('AI ก่อนแก้ 2 ตัว · ตรวจแก้ได้'), findsOneWidget);
+
+      picker.photo = XFile.fromData(
+        capture.bytes,
+        path: 'AquaHatch_capture-1.JPG',
+      );
+      await chooseFromGallery('AI เครื่องฟัก');
+      await analyzePhoto();
+      expect(models, ['field', 'general', 'field']);
+      expect(fieldResult, findsOneWidget);
+
+      picker.photo = XFile.fromData(capture.bytes, path: 'picker-temp.jpg');
+      await chooseFromGallery('AI ทั่วไป');
+      final model = find.byKey(const ValueKey('count-photo-model'));
+      await tester.ensureVisible(model);
+      await tester.tap(model);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ภาพจากเครื่องฟัก'));
+      await tester.pumpAndSettle();
+      await analyzePhoto();
+      expect(models, ['field', 'general', 'field', 'field']);
+      expect(fieldResult, findsOneWidget);
       expect(controller.analyzedId, isNull);
       await tester.pumpWidget(const SizedBox());
     },

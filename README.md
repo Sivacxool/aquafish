@@ -1,11 +1,11 @@
-# Smart Catfish System · AquaHatch 0.23.7
+# Smart Catfish System · AquaHatch 0.23.8
 
 ระบบเครื่องฟักไข่ปลาดุกด้วยบอร์ด ET-ESP32 WROOM32UE, กล้อง Arducam B0434 และแอป Flutter สำหรับ Android/iOS
 
 | ชุดติดตั้ง | ดาวน์โหลด |
 | --- | --- |
-| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.23.7/AquaHatch-v0.23.7-Android.apk) |
-| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.23.7/AquaHatch-v0.23.7-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
+| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/v0.23.8/AquaHatch-v0.23.8-Android.apk) |
+| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/v0.23.8/AquaHatch-v0.23.8-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
 | ETT WROOM32UE + B0434 | [FirstBoot ZIP](https://github.com/Sivacxool/aquafish/releases/download/v0.23.0-ett32ue.2/AquaHatch-ETT-WROOM32UE-v0.23.0-ett32ue.2-FirstBoot.zip) |
 
 ## เริ่มใช้งาน

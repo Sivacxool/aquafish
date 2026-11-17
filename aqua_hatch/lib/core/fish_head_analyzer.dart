@@ -36,9 +36,10 @@ const _cameraPhoto = (
   threshold: 0.44,
   radius: 2,
 );
+const fieldFishHeadModelId = 'aquahatch-fry-heads-field-v3';
 const _fieldPhoto = (
   asset: 'assets/models/fishfry_heads_field_v3.onnx',
-  id: 'aquahatch-fry-heads-field-v3',
+  id: fieldFishHeadModelId,
   threshold: 0.44,
   radius: 2,
 );

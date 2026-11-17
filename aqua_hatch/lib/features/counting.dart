@@ -96,10 +96,17 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
     }
     final bytes = await file.readAsBytes();
     double aspect = 1.6;
+    var fieldPhoto = false;
     if (!video) {
       final codec = await ui.instantiateImageCodec(bytes);
       final frame = await codec.getNextFrame();
-      aspect = frame.image.width / frame.image.height;
+      final width = frame.image.width;
+      final height = frame.image.height;
+      aspect = width / height;
+      fieldPhoto =
+          width == 2048 &&
+          height == 1536 &&
+          PhotoGallery.hasCaptureFileName(file.name);
       frame.image.dispose();
       codec.dispose();
     }
@@ -112,6 +119,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
       _video = video;
       _aspect = aspect;
       _reset();
+      _useFieldModel = fieldPhoto;
     });
   }
 
@@ -217,7 +225,10 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
               source: source,
               maxDuration: const Duration(seconds: 60),
             )
-          : await picker.pickImage(source: source, imageQuality: 95);
+          : await picker.pickImage(
+              source: source,
+              imageQuality: source == ImageSource.camera ? 95 : null,
+            );
       if (file != null) await _load(file, video: video);
     } catch (e) {
       if (mounted) {
@@ -799,10 +810,49 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
           ),
           if (!_video)
             Center(
-              child: TextButton.icon(
-                onPressed: _busy ? null : _manualCount,
-                icon: const Icon(PhosphorIconsRegular.handTap),
-                label: const Text('นับด้วยมือ'),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                children: [
+                  TextButton.icon(
+                    onPressed: _busy ? null : _manualCount,
+                    icon: const Icon(PhosphorIconsRegular.handTap),
+                    label: const Text('นับด้วยมือ'),
+                  ),
+                  if (_captureId == null && localAI)
+                    PopupMenuButton<bool>(
+                      key: const ValueKey('count-photo-model'),
+                      tooltip: 'เลือก AI ตามแหล่งภาพ',
+                      enabled: !_busy,
+                      initialValue: _useFieldModel,
+                      onSelected: (useField) =>
+                          setState(() => _useFieldModel = useField),
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          value: true,
+                          child: Text('ภาพจากเครื่องฟัก'),
+                        ),
+                        PopupMenuItem(value: false, child: Text('ภาพทั่วไป')),
+                      ],
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _useFieldModel ? 'AI เครื่องฟัก' : 'AI ทั่วไป',
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.keyboard_arrow_down, size: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
         ],
@@ -1046,6 +1096,8 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                       Text(
                         _aiCount == null
                             ? 'นับด้วยมือ'
+                            : _model == fieldFishHeadModelId
+                            ? 'AI เครื่องฟักก่อนแก้ $_aiCount ตัว · ตรวจแก้ได้'
                             : 'AI ก่อนแก้ $_aiCount ตัว · ตรวจแก้ได้',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),

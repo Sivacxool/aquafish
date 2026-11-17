@@ -3,6 +3,13 @@ import 'package:flutter/services.dart';
 
 class PhotoGallery {
   static const _channel = MethodChannel('th.ac.aquahatch/gallery');
+  static final _captureFileName = RegExp(
+    r'^AquaHatch_[A-Za-z0-9_-]{1,64}\.jpe?g$',
+    caseSensitive: false,
+  );
+
+  static bool hasCaptureFileName(String name) =>
+      _captureFileName.hasMatch(name);
 
   static bool get supported =>
       !kIsWeb &&
