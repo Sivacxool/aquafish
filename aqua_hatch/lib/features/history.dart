@@ -79,17 +79,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             padding: const EdgeInsets.all(18),
             child: Column(
               children: [
-                Text(
-                  state.connection.localEsp32
-                      ? 'แอปเก็บค่าเซนเซอร์สูงสุด 1,440 จุด ประมาณ 1 จุดต่อนาทีขณะเปิดแอป บอร์ด S3 รุ่นนี้ยังไม่มีประวัติย้อนหลังเมื่อปิดแอป'
-                      : 'มือถือเก็บสูงสุด 1,440 จุด ประมาณ 1 จุดต่อนาที ขณะเปิดแอป ส่วน Gateway เก็บต่อเนื่องแม้ปิดแอปเมื่อเซิร์ฟเวอร์ยังทำงาน',
+                const Text(
+                  'แอปบันทึกค่าน้ำประมาณ 1 จุดต่อนาทีขณะเปิดแอป สูงสุด 1,440 จุด',
                 ),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 12,
                   runSpacing: 8,
                   children: [
-                    if (!state.connection.demo)
+                    if (!state.connection.demo && !state.connection.localEsp32)
                       OutlinedButton.icon(
                         onPressed: _loading ? null : _refresh,
                         icon: const Icon(PhosphorIconsRegular.arrowClockwise),

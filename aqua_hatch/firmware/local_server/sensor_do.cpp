@@ -70,10 +70,13 @@ void processReply() {
 #endif
   renke_do::Reading reading;
   const auto result = renke_do::decode(received, used, DO_ADDRESS, reading);
-  if (result != renke_do::Result::ok) {
-    failure(result == renke_do::Result::exception ? "modbus_exception" :
-            result == renke_do::Result::invalid_value ? "invalid_value" : "crc_error");
-    return;
+  switch (result) {
+    case renke_do::Result::exception: failure("modbus_exception"); return;
+    case renke_do::Result::invalid_value: failure("invalid_value"); return;
+    case renke_do::Result::wrong_device: failure("wrong_device"); return;
+    case renke_do::Result::length_error: failure("invalid_response"); return;
+    case renke_do::Result::crc_error: failure("crc_error"); return;
+    case renke_do::Result::ok: break;
   }
   const time_t acquiredUnix = time(nullptr);
   const uint32_t acquiredMs = millis();
@@ -100,11 +103,9 @@ void tick() {
   if (!DO_ENABLED && !PH_RS485_ENABLED) return;
   uint32_t now = millis();
   if (waiting) {
-    while (wire.available()) {
-      if (used >= sizeof(received)) { failure("crc_error"); break; }
+    while (used < sizeof(received) && wire.available()) {
       received[used++] = wire.read();
     }
-    if (!waiting) return;
     if constexpr (DO_DIRECTION_PIN < 0) {
       // The on-board transceiver can echo our request before the reply.
       if (used >= sizeof(requestFrame) &&
@@ -113,9 +114,13 @@ void tick() {
         memmove(received, received + sizeof(requestFrame), used);
       }
     }
-    const size_t expected = used >= 2 && (received[1] & 0x80)
-        ? 5 : 5 + 2 * (readingPh ? PH_REGISTERS : DO_REGISTERS);
-    if (used >= expected) { processReply(); return; }
+    const size_t frameSize = renke_do::replySize(
+      received, used, readingPh ? PH_REGISTERS : DO_REGISTERS);
+    if (frameSize != 0) {
+      used = frameSize;
+      processReply();
+      return;
+    }
     if (now - startedAt >= RESPONSE_MS) failure("timeout");
     return;
   }

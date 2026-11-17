@@ -4,6 +4,8 @@ import android.Manifest
 import android.annotation.TargetApi
 import android.content.ContentValues
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.media.MediaScannerConnection
 import android.os.Build
 import android.os.Environment
@@ -15,6 +17,7 @@ import android.net.NetworkCapabilities
 import android.provider.Settings
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 
@@ -22,6 +25,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         configureGallery(flutterEngine)
+        configureVideoFrame(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "th.ac.aquahatch/wifi")
             .setMethodCallHandler { call, result ->
                 val manager = getSystemService(ConnectivityManager::class.java)
@@ -44,6 +48,58 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun configureVideoFrame(flutterEngine: FlutterEngine) {
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "th.ac.aquahatch/video_frame")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "read") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                val path = call.arguments as? String
+                if (path.isNullOrBlank()) {
+                    result.error("invalid_clip", "อ่านเฟรมจากคลิปไม่ได้", null)
+                    return@setMethodCallHandler
+                }
+                Thread {
+                    try {
+                        val bytes = readVideoFrame(path)
+                        runOnUiThread { result.success(bytes) }
+                    } catch (_: IllegalArgumentException) {
+                        runOnUiThread {
+                            result.error("invalid_clip", "เลือกคลิปที่อ่านได้และยาวไม่เกิน 60 วินาที", null)
+                        }
+                    } catch (_: Exception) {
+                        runOnUiThread { result.error("frame_failed", "อ่านเฟรมจากคลิปไม่ได้", null) }
+                    }
+                }.start()
+            }
+    }
+
+    private fun readVideoFrame(path: String): ByteArray {
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(path)
+            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+            require(duration != null && duration in 1..60_000)
+            val timeUs = duration * 500
+            val frame = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                retriever.getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST, 3840, 3840)
+            } else {
+                retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST)
+            } ?: throw IOException("Video frame unavailable")
+            try {
+                return ByteArrayOutputStream().use {
+                    if (!frame.compress(Bitmap.CompressFormat.JPEG, 95, it)) throw IOException("JPEG encoding failed")
+                    it.toByteArray()
+                }
+            } finally {
+                frame.recycle()
+            }
+        } finally {
+            retriever.release()
+        }
     }
 
     private fun configureGallery(flutterEngine: FlutterEngine) {

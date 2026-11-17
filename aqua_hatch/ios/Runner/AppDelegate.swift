@@ -1,3 +1,4 @@
+import AVFoundation
 import Flutter
 import Photos
 import UIKit
@@ -13,6 +14,41 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    let videoFrame = FlutterMethodChannel(
+      name: "th.ac.aquahatch/video_frame",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    videoFrame.setMethodCallHandler { call, result in
+      guard call.method == "read" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard let path = call.arguments as? String, !path.isEmpty else {
+        result(FlutterError(code: "invalid_clip", message: "อ่านเฟรมจากคลิปไม่ได้", details: nil))
+        return
+      }
+      Task { @MainActor in
+        do {
+          let asset = AVURLAsset(url: URL(fileURLWithPath: path))
+          let duration = try await asset.load(.duration)
+          guard duration.seconds.isFinite, duration.seconds > 0, duration.seconds <= 60 else {
+            result(FlutterError(code: "invalid_clip", message: "เลือกคลิปที่อ่านได้และยาวไม่เกิน 60 วินาที", details: nil))
+            return
+          }
+          let generator = AVAssetImageGenerator(asset: asset)
+          generator.appliesPreferredTrackTransform = true
+          generator.maximumSize = CGSize(width: 3840, height: 3840)
+          let frame = try await generator.image(at: CMTimeMultiplyByFloat64(duration, multiplier: 0.5))
+          guard let jpeg = UIImage(cgImage: frame.image).jpegData(compressionQuality: 0.95) else {
+            throw CocoaError(.fileReadCorruptFile)
+          }
+          result(FlutterStandardTypedData(bytes: jpeg))
+        } catch {
+          result(FlutterError(code: "frame_failed", message: "อ่านเฟรมจากคลิปไม่ได้", details: nil))
+        }
+      }
+    }
 
     let gallery = FlutterMethodChannel(
       name: "th.ac.aquahatch/gallery",

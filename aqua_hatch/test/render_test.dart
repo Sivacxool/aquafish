@@ -38,7 +38,7 @@ void main() {
         child: ProviderScope(
           overrides: [
             localStoreProvider.overrideWithValue(LocalStore(preferences)),
-            fishHeadAnalyzerProvider(false).overrideWithValue(analyzeFixture),
+            fishHeadAnalyzerProvider.overrideWithValue(analyzeFixture),
           ],
           child: const AquaHatchApp(),
         ),

@@ -435,7 +435,7 @@ class AppController extends Notifier<AppState> {
 
   Future<String?> loadServerHistory() async {
     final repo = _repository;
-    if (repo is! LiveRepository) return null;
+    if (repo is! LiveRepository) return 'เครื่องนี้ไม่มีประวัติบนเซิร์ฟเวอร์';
     final generation = _generation;
     try {
       final samples = await repo.loadHistory();

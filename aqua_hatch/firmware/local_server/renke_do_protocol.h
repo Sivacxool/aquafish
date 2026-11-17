@@ -24,6 +24,13 @@ inline void request(uint8_t address, uint8_t (&frame)[8], uint8_t registers = 6)
   uint16_t crc = crc16(frame, 6);
   frame[6] = crc & 0xff; frame[7] = crc >> 8;
 }
+// The UART FIFO can contain bytes after a complete reply. Decode only the
+// response belonging to the current request, after removing local echo.
+inline size_t replySize(const uint8_t *frame, size_t received, uint8_t registers) {
+  if (received < 2) return 0;
+  const size_t expected = frame[1] == 0x83 ? 5 : 5 + 2 * registers;
+  return received >= expected ? expected : 0;
+}
 inline float bigFloat(const uint8_t *bytes) {
   uint32_t bits = (uint32_t(bytes[0]) << 24) | (uint32_t(bytes[1]) << 16) |
                   (uint32_t(bytes[2]) << 8) | uint32_t(bytes[3]);

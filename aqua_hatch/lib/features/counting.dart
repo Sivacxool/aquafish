@@ -16,6 +16,7 @@ import '../core/models.dart';
 import '../core/ui.dart';
 import '../core/motion.dart';
 import '../core/photo_gallery.dart';
+import '../core/video_frame.dart';
 
 class CountingScreen extends ConsumerStatefulWidget {
   const CountingScreen({super.key});
@@ -30,7 +31,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   double _markerRadius = 2;
   Uint8List? _bytes, _originalJpeg;
   bool _savingPhoto = false, _photoSaved = false;
-  bool _useFieldModel = false;
   String _filename = 'ยังไม่มีภาพ', _model = '';
   String? _captureId;
   String _captureProgress = '';
@@ -38,8 +38,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   DateTime? _receivedAt;
   int _imageGeneration = 0;
   double _aspect = 1.6;
-  bool _video = false,
-      _busy = false,
+  bool _busy = false,
       _editing = false,
       _reviewed = false,
       _hasResult = false,
@@ -60,7 +59,19 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
           !_busy &&
           _imageGeneration == 0 &&
           data.files?.isNotEmpty == true) {
-        await _load(data.files!.first, video: data.type == RetrieveType.video);
+        final generation = ++_imageGeneration;
+        setState(() => _busy = true);
+        try {
+          await _load(
+            data.files!.first,
+            generation: generation,
+            video: data.type == RetrieveType.video,
+          );
+        } finally {
+          if (mounted && generation == _imageGeneration) {
+            setState(() => _busy = false);
+          }
+        }
       }
     } catch (_) {}
   }
@@ -74,7 +85,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   void _reset() {
     _workspace = false;
     _originalJpeg = null;
-    _useFieldModel = false;
     _savingPhoto = false;
     _photoSaved = false;
     _transform.value = Matrix4.identity();
@@ -89,37 +99,45 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
     _model = '';
   }
 
-  Future<void> _load(XFile file, {bool video = false}) async {
-    final generation = ++_imageGeneration;
+  Future<Size> _imageSize(Uint8List bytes) async {
+    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+    try {
+      final descriptor = await ui.ImageDescriptor.encoded(buffer);
+      try {
+        if (descriptor.width * descriptor.height > 20000000) {
+          throw StateError('เลือกภาพขนาดไม่เกิน 20 ล้านพิกเซล');
+        }
+        return Size(descriptor.width.toDouble(), descriptor.height.toDouble());
+      } finally {
+        descriptor.dispose();
+      }
+    } finally {
+      buffer.dispose();
+    }
+  }
+
+  Future<void> _load(
+    XFile file, {
+    required int generation,
+    bool video = false,
+  }) async {
     if (await file.length() > 50 * 1024 * 1024) {
       throw StateError('เลือกไฟล์ขนาดไม่เกิน 50 MB');
     }
-    final bytes = await file.readAsBytes();
-    double aspect = 1.6;
-    var fieldPhoto = false;
-    if (!video) {
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
-      final width = frame.image.width;
-      final height = frame.image.height;
-      aspect = width / height;
-      fieldPhoto =
-          width == 2048 &&
-          height == 1536 &&
-          PhotoGallery.hasCaptureFileName(file.name);
-      frame.image.dispose();
-      codec.dispose();
-    }
+    final bytes = video
+        ? await VideoFrame.read(file.path)
+        : await file.readAsBytes();
+    final size = await _imageSize(bytes);
     if (!mounted || generation != _imageGeneration) return;
     setState(() {
       _captureId = null;
       _receivedAt = null;
+      _captureProgress = '';
+      _captureDetails = '';
       _bytes = bytes;
-      _filename = file.name;
-      _video = video;
-      _aspect = aspect;
+      _filename = video ? 'เฟรมจาก ${file.name}' : file.name;
+      _aspect = size.aspectRatio;
       _reset();
-      _useFieldModel = fieldPhoto;
     });
   }
 
@@ -129,7 +147,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
     final generation = ++_imageGeneration;
     setState(() {
       _busy = true;
-      _video = false;
       _bytes = null;
       _captureId = null;
       _receivedAt = null;
@@ -150,23 +167,16 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
               }
             },
           );
-      final codec = await ui.instantiateImageCodec(image.bytes);
-      final frame = await codec.getNextFrame();
-      final width = frame.image.width;
-      final height = frame.image.height;
-      frame.image.dispose();
-      codec.dispose();
+      final size = await _imageSize(image.bytes);
       if (state.usesArducam &&
-          (image.width != width || image.height != height)) {
+          (image.width != size.width || image.height != size.height)) {
         throw StateError('ขนาด JPEG ไม่ตรงกับค่าที่ตั้งไว้');
       }
       if (!mounted || generation != _imageGeneration) return;
       setState(() {
         _bytes = image.bytes;
-        _useFieldModel =
-            image.sensor == 'Arducam B0434' && width == 2048 && height == 1536;
         _originalJpeg = PhotoGallery.isJpeg(image.bytes) ? image.bytes : null;
-        _aspect = width / height;
+        _aspect = size.aspectRatio;
         _captureId = image.id;
         _receivedAt = image.receivedAt;
         _filename = 'กล้อง ${image.cameraId} / ${image.id}';
@@ -218,6 +228,9 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   }
 
   Future<void> _pick(ImageSource source, {bool video = false}) async {
+    if (_busy) return;
+    final generation = ++_imageGeneration;
+    setState(() => _busy = true);
     try {
       final picker = ImagePicker();
       final file = video
@@ -229,34 +242,32 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
               source: source,
               imageQuality: source == ImageSource.camera ? 95 : null,
             );
-      if (file != null) await _load(file, video: video);
+      if (file != null && mounted && generation == _imageGeneration) {
+        await _load(file, generation: generation, video: video);
+      }
+    } on PlatformException catch (error) {
+      if (mounted && generation == _imageGeneration) {
+        showFeedback(context, error.message ?? 'เปิดไฟล์ที่เลือกไม่ได้');
+      }
     } catch (e) {
-      if (mounted) {
+      if (mounted && generation == _imageGeneration) {
         showFeedback(context, e.toString().replaceFirst('Bad state: ', ''));
+      }
+    } finally {
+      if (mounted && generation == _imageGeneration) {
+        setState(() => _busy = false);
       }
     }
   }
 
   Future<void> _analyze() async {
-    if (_busy || _bytes == null) return;
+    final bytes = _bytes;
+    final analyze = ref.read(fishHeadAnalyzerProvider);
+    if (_busy || bytes == null || analyze == null) return;
     final generation = _imageGeneration;
     setState(() => _busy = true);
     try {
-      final controller = ref.read(appControllerProvider.notifier);
-      final localAnalyzer = ref.read(fishHeadAnalyzerProvider(_useFieldModel));
-      final result = !_video && localAnalyzer != null
-          ? await localAnalyzer(_bytes!)
-          : _captureId != null
-          ? await controller.analyzeDeviceCapture(_captureId!)
-          : await controller.analyze(_bytes!, _filename, _video);
-      double? aspect;
-      if (result.frameBytes != null) {
-        final codec = await ui.instantiateImageCodec(result.frameBytes!);
-        final frame = await codec.getNextFrame();
-        aspect = frame.image.width / frame.image.height;
-        frame.image.dispose();
-        codec.dispose();
-      }
+      final result = await analyze(bytes);
       if (!mounted || generation != _imageGeneration) return;
       setState(() {
         _points = List.of(result.points);
@@ -268,12 +279,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
         _reviewed = false;
         _saved = false;
         _undo.clear();
-        if (result.frameBytes != null) {
-          _bytes = result.frameBytes;
-          _video = false;
-          _filename = 'เฟรมจาก $_filename';
-          _aspect = aspect!;
-        }
       });
     } catch (e) {
       if (mounted && generation == _imageGeneration) {
@@ -290,7 +295,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
   }
 
   void _tap(Offset position, Size size) {
-    if (!_editing || _busy || _video) return;
+    if (!_editing || _busy) return;
     final point = CountPoint(
       (position.dx / size.width).clamp(0, 1),
       (position.dy / size.height).clamp(0, 1),
@@ -382,35 +387,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
               ),
             ),
           ],
-        ),
-      );
-    }
-    if (_video) {
-      return Container(
-        height: 180,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: AquaColors.background,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                PhosphorIconsRegular.fileVideo,
-                size: 44,
-                color: AquaColors.blue,
-              ),
-              const SizedBox(height: 8),
-              Text(_filename, maxLines: 2, overflow: TextOverflow.ellipsis),
-              const Text(
-                'วิเคราะห์เพื่อเลือกเฟรมจากคลิป',
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
         ),
       );
     }
@@ -557,10 +533,7 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
     final camera = cameraAsync.asData?.value;
     final needsBoard = state.connection.demo;
     final hasImage = _bytes != null;
-    final directCapture = _captureId != null && state.connection.localEsp32;
-    final localAI =
-        !_video && ref.watch(fishHeadAnalyzerProvider(_useFieldModel)) != null;
-    final canAI = hasImage && (localAI || (!needsBoard && !directCapture));
+    final canAI = hasImage && ref.watch(fishHeadAnalyzerProvider) != null;
     return PageBody(
       children: [
         Row(
@@ -808,53 +781,13 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
               ),
             ),
           ),
-          if (!_video)
-            Center(
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                children: [
-                  TextButton.icon(
-                    onPressed: _busy ? null : _manualCount,
-                    icon: const Icon(PhosphorIconsRegular.handTap),
-                    label: const Text('นับด้วยมือ'),
-                  ),
-                  if (_captureId == null && localAI)
-                    PopupMenuButton<bool>(
-                      key: const ValueKey('count-photo-model'),
-                      tooltip: 'เลือก AI ตามแหล่งภาพ',
-                      enabled: !_busy,
-                      initialValue: _useFieldModel,
-                      onSelected: (useField) =>
-                          setState(() => _useFieldModel = useField),
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(
-                          value: true,
-                          child: Text('ภาพจากเครื่องฟัก'),
-                        ),
-                        PopupMenuItem(value: false, child: Text('ภาพทั่วไป')),
-                      ],
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _useFieldModel ? 'AI เครื่องฟัก' : 'AI ทั่วไป',
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.keyboard_arrow_down, size: 14),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+          Center(
+            child: TextButton.icon(
+              onPressed: _busy ? null : _manualCount,
+              icon: const Icon(PhosphorIconsRegular.handTap),
+              label: const Text('นับด้วยมือ'),
             ),
+          ),
         ],
         const SizedBox(height: 16),
         ExpansionTile(
@@ -873,13 +806,14 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                   icon: const Icon(PhosphorIconsRegular.camera, size: 18),
                   label: const Text('กล้องมือถือ'),
                 ),
-                OutlinedButton.icon(
-                  onPressed: _busy
-                      ? null
-                      : () => _pick(ImageSource.gallery, video: true),
-                  icon: const Icon(PhosphorIconsRegular.filmStrip, size: 18),
-                  label: const Text('เลือกคลิป'),
-                ),
+                if (VideoFrame.supported)
+                  OutlinedButton.icon(
+                    onPressed: _busy
+                        ? null
+                        : () => _pick(ImageSource.gallery, video: true),
+                    icon: const Icon(PhosphorIconsRegular.filmStrip, size: 18),
+                    label: const Text('เลือกคลิป'),
+                  ),
               ],
             ),
           ],
@@ -1096,8 +1030,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
                       Text(
                         _aiCount == null
                             ? 'นับด้วยมือ'
-                            : _model == fieldFishHeadModelId
-                            ? 'AI เครื่องฟักก่อนแก้ $_aiCount ตัว · ตรวจแก้ได้'
                             : 'AI ก่อนแก้ $_aiCount ตัว · ตรวจแก้ได้',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
@@ -1182,7 +1114,6 @@ class _CountingScreenState extends ConsumerState<CountingScreen> {
           _imageGeneration++;
           _busy = false;
           _bytes = null;
-          _video = false;
           _captureId = null;
           _receivedAt = null;
           _captureProgress = '';

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -101,6 +102,13 @@ class _GalleryPicker extends ImagePickerPlatform {
     required ImageSource source,
     ImagePickerOptions options = const ImagePickerOptions(),
   }) async => photo;
+
+  @override
+  Future<XFile?> getVideo({
+    required ImageSource source,
+    CameraDevice preferredCameraDevice = CameraDevice.rear,
+    Duration? maxDuration,
+  }) async => XFile.fromData(await photo.readAsBytes(), path: 'sample.mp4');
 }
 
 DeviceCapture captured() => DeviceCapture(
@@ -116,7 +124,6 @@ Future<void> mount(
   WidgetTester tester,
   CameraController controller, {
   FishHeadAnalyzer? localAnalyzer,
-  FishHeadAnalyzer? fieldAnalyzer,
 }) async {
   await initializeDateFormatting('th');
   tester.view.physicalSize = const Size(1440, 1200);
@@ -127,8 +134,7 @@ Future<void> mount(
     ProviderScope(
       overrides: [
         appControllerProvider.overrideWith(() => controller),
-        fishHeadAnalyzerProvider(false).overrideWithValue(localAnalyzer),
-        fishHeadAnalyzerProvider(true).overrideWithValue(fieldAnalyzer),
+        fishHeadAnalyzerProvider.overrideWithValue(localAnalyzer),
       ],
       child: const MaterialApp(home: Scaffold(body: CountingScreen())),
     ),
@@ -139,7 +145,7 @@ Future<void> mount(
 
 void main() {
   testWidgets(
-    'Field v3 can analyze direct and saved Arducam photos without replacing the general model',
+    'One model analyzes Arducam captures, gallery photos, and local clip frames',
     (tester) async {
       final controller = _ArducamController();
       final originalPicker = ImagePickerPlatform.instance;
@@ -164,24 +170,24 @@ void main() {
           sensor: 'Arducam B0434',
         );
       }))!;
-      final models = <String>[];
+      final galleryFrame = captured().bytes;
+      final imageSizes = <int>[];
+      const channel = MethodChannel('th.ac.aquahatch/video_frame');
+      final messenger = tester.binding.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        expect(call.method, 'read');
+        expect(call.arguments, 'sample.mp4');
+        return galleryFrame;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
       await mount(
         tester,
         controller,
-        fieldAnalyzer: (bytes) async {
-          expect(bytes, capture.bytes);
-          models.add('field');
+        localAnalyzer: (bytes) async {
+          imageSizes.add(bytes.length);
           return const AnalysisResult([
             CountPoint(.42, .34),
           ], fieldFishHeadModelId);
-        },
-        localAnalyzer: (bytes) async {
-          expect(bytes, captured().bytes);
-          models.add('general');
-          return const AnalysisResult([
-            CountPoint(.25, .25),
-            CountPoint(.6, .5),
-          ], 'aquahatch-fry-heads-v2');
         },
       );
 
@@ -202,54 +208,47 @@ void main() {
         await tester.ensureVisible(analyze);
         await tester.tap(analyze);
         await tester.pumpAndSettle();
+        expect(find.text('AI ก่อนแก้ 1 ตัว · ตรวจแก้ได้'), findsOneWidget);
       }
 
-      Future<void> chooseFromGallery(String modelLabel) async {
-        await tester.tap(find.text('เลือกภาพ'));
-        await tester.pumpAndSettle();
+      Future<void> pickGalleryPhoto() async {
         final gallery = find.text('เลือกภาพ');
         await tester.ensureVisible(gallery);
         await tester.tap(gallery);
         await tester.pump();
-        await waitForPhoto(modelLabel);
-        expect(find.text('ภาพที่เลือก'), findsOneWidget);
-        await tester.pumpAndSettle();
+        await waitForPhoto('ภาพที่เลือก');
       }
 
-      final fieldResult = find.text('AI เครื่องฟักก่อนแก้ 1 ตัว · ตรวจแก้ได้');
       await tester.tap(find.byKey(const ValueKey('device-capture-button')));
       await tester.pump();
       controller.photo.complete(capture);
       await waitForPhoto('ภาพจากกล้องในเครื่อง');
       await analyzePhoto();
-      expect(models, ['field']);
-      expect(fieldResult, findsOneWidget);
 
-      await chooseFromGallery('AI ทั่วไป');
-      await analyzePhoto();
-      expect(models, ['field', 'general']);
-      expect(find.text('AI ก่อนแก้ 2 ตัว · ตรวจแก้ได้'), findsOneWidget);
-
-      picker.photo = XFile.fromData(
-        capture.bytes,
-        path: 'AquaHatch_capture-1.JPG',
-      );
-      await chooseFromGallery('AI เครื่องฟัก');
-      await analyzePhoto();
-      expect(models, ['field', 'general', 'field']);
-      expect(fieldResult, findsOneWidget);
-
-      picker.photo = XFile.fromData(capture.bytes, path: 'picker-temp.jpg');
-      await chooseFromGallery('AI ทั่วไป');
-      final model = find.byKey(const ValueKey('count-photo-model'));
-      await tester.ensureVisible(model);
-      await tester.tap(model);
+      await tester.tap(find.text('เลือกภาพ'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('ภาพจากเครื่องฟัก'));
-      await tester.pumpAndSettle();
+      await pickGalleryPhoto();
+      expect(find.byKey(const ValueKey('count-photo-model')), findsNothing);
       await analyzePhoto();
-      expect(models, ['field', 'general', 'field', 'field']);
-      expect(fieldResult, findsOneWidget);
+
+      await tester.tap(find.text('เลือกภาพ'));
+      await tester.pumpAndSettle();
+      final sources = find.text('แหล่งภาพอื่น');
+      await tester.ensureVisible(sources);
+      await tester.tap(sources);
+      await tester.pumpAndSettle();
+      final video = find.text('เลือกคลิป');
+      await tester.ensureVisible(video);
+      await tester.tap(video);
+      await tester.pump();
+      await waitForPhoto('ภาพที่เลือก');
+      await analyzePhoto();
+
+      expect(imageSizes, [
+        capture.bytes.length,
+        galleryFrame.length,
+        galleryFrame.length,
+      ]);
       expect(controller.analyzedId, isNull);
       await tester.pumpWidget(const SizedBox());
     },
@@ -312,48 +311,54 @@ void main() {
     }),
   );
 
-  testWidgets(
-    'embedded camera is primary, works without main telemetry, and analyzes captured ID',
-    (tester) async {
-      final controller = CameraController();
-      await mount(tester, controller);
-      expect(find.text('ภาพตัวอย่างจำลอง'), findsNothing);
-      final captureButton = find.byKey(const ValueKey('device-capture-button'));
-      expect(tester.widget<OutlinedButton>(captureButton).onPressed, isNotNull);
-      await tester.ensureVisible(captureButton);
-      await tester.tap(captureButton);
-      await tester.pump();
-      expect(controller.captures, 1);
-      expect(tester.widget<OutlinedButton>(captureButton).onPressed, isNull);
-      controller.photo.complete(captured());
-      // Native image decoding needs real event-loop time. Wait for the visible
-      // result instead of assuming it finishes within a fixed 150 ms under load.
-      final decoding = Stopwatch()..start();
-      while (find.text('ภาพจากกล้องในเครื่อง').evaluate().isEmpty &&
-          decoding.elapsed < const Duration(seconds: 5)) {
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 10)),
-        );
-        await tester.pump();
-      }
-      expect(
-        find.text('ภาพจากกล้องในเครื่อง'),
-        findsOneWidget,
-        reason: tester
-            .widgetList<Text>(find.byType(Text))
-            .map((t) => t.data)
-            .join('\n'),
+  testWidgets('camera works without main telemetry and uses the local model', (
+    tester,
+  ) async {
+    final controller = CameraController();
+    await mount(
+      tester,
+      controller,
+      localAnalyzer: (bytes) async {
+        expect(bytes, captured().bytes);
+        return const AnalysisResult([CountPoint(.5, .5)], fieldFishHeadModelId);
+      },
+    );
+    expect(find.text('ภาพตัวอย่างจำลอง'), findsNothing);
+    final captureButton = find.byKey(const ValueKey('device-capture-button'));
+    expect(tester.widget<OutlinedButton>(captureButton).onPressed, isNotNull);
+    await tester.ensureVisible(captureButton);
+    await tester.tap(captureButton);
+    await tester.pump();
+    expect(controller.captures, 1);
+    expect(tester.widget<OutlinedButton>(captureButton).onPressed, isNull);
+    controller.photo.complete(captured());
+    // Native image decoding needs real event-loop time. Wait for the visible
+    // result instead of assuming it finishes within a fixed 150 ms under load.
+    final decoding = Stopwatch()..start();
+    while (find.text('ภาพจากกล้องในเครื่อง').evaluate().isEmpty &&
+        decoding.elapsed < const Duration(seconds: 5)) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
       );
-      final aiButton = find.widgetWithText(FilledButton, 'วิเคราะห์ด้วย AI');
-      await tester.ensureVisible(aiButton);
-      await tester.tap(aiButton);
       await tester.pump();
-      expect(controller.analyzedId, 'capture-from-machine');
-      expect(find.text('1'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      await tester.pumpWidget(const SizedBox());
-    },
-  );
+    }
+    expect(
+      find.text('ภาพจากกล้องในเครื่อง'),
+      findsOneWidget,
+      reason: tester
+          .widgetList<Text>(find.byType(Text))
+          .map((t) => t.data)
+          .join('\n'),
+    );
+    final aiButton = find.widgetWithText(FilledButton, 'วิเคราะห์ด้วย AI');
+    await tester.ensureVisible(aiButton);
+    await tester.tap(aiButton);
+    await tester.pump();
+    expect(controller.analyzedId, isNull);
+    expect(find.text('1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets('a photo returning after switching machines is discarded', (
     tester,

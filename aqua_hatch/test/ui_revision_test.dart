@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:aqua_hatch/core/models.dart';
 import 'package:aqua_hatch/core/controller.dart';
+import 'package:aqua_hatch/core/ui.dart';
+import 'package:aqua_hatch/features/history.dart';
 import 'widget_test.dart' show mountApp;
 import 'counting_fixture.dart';
 
@@ -43,6 +45,16 @@ class _WaterReadingsController extends AppController {
       settings: const DeviceSettings(),
       now: now,
       connected: true,
+      history: [
+        Telemetry(
+          at: now.subtract(const Duration(minutes: 2)),
+          dissolvedOxygen: 5.24,
+        ),
+        Telemetry(
+          at: now.subtract(const Duration(minutes: 1)),
+          dissolvedOxygen: 5.64,
+        ),
+      ],
       telemetry: Telemetry(
         at: now,
         temperature: 26,
@@ -54,6 +66,46 @@ class _WaterReadingsController extends AppController {
 }
 
 void main() {
+  testWidgets(
+    'DO opens the oxygen trend and local history has no server download',
+    (tester) async {
+      await mountApp(tester, controller: () => _WaterReadingsController());
+      await tester.tap(find.byKey(const ValueKey('dissolved-oxygen-card')));
+      await tester.pumpAndSettle();
+      final trend = tester.widget<TrendChart>(find.byType(TrendChart));
+      expect(trend.trend, WaterTrend.dissolvedOxygen);
+      expect(trend.history.map(trend.trend.read), [5.24, 5.64]);
+      final history = find.text('ประวัติคุณภาพน้ำ');
+      await tester.ensureVisible(history);
+      await tester.tap(history);
+      await tester.pumpAndSettle();
+      expect(find.byType(HistoryScreen), findsOneWidget);
+      expect(find.text('โหลดจากเซิร์ฟเวอร์'), findsNothing);
+      await closeApp(tester);
+    },
+  );
+
+  test(
+    'DO trend allows zero and skips missing, stale, and invalid readings',
+    () {
+      final now = DateTime.now();
+      final read = WaterTrend.dissolvedOxygen.read;
+      expect(read(Telemetry(at: now, dissolvedOxygen: 0)), 0);
+      expect(
+        read(
+          Telemetry(
+            at: now,
+            dissolvedOxygen: 6,
+            dissolvedOxygenStatus: 'stale',
+          ),
+        ),
+        isNull,
+      );
+      expect(read(Telemetry(at: now, dissolvedOxygen: double.nan)), isNull);
+      expect(read(Telemetry(at: now)), isNull);
+    },
+  );
+
   testWidgets('nearby fry heads can be added separately and erased precisely', (
     tester,
   ) async {

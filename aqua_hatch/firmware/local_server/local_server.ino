@@ -26,9 +26,9 @@ AquaIdentity boardIdentity;
 #endif
 
 #if defined(AQUAHATCH_ET_WROOM32UE)
-static const char VERSION[] = "0.23.0-ett32ue.2";
+static const char VERSION[] = "0.24.0-ett32ue.beta1";
 #else
-static const char VERSION[] = "0.17.0-wroom-da.pump.1";
+static const char VERSION[] = "0.24.0-wroom-da.beta1";
 #endif
 Preferences prefs;
 httpd_handle_t httpsServer = nullptr;
@@ -469,6 +469,9 @@ void loop() {
   }
   bool connected=WiFi.status()==WL_CONNECTED;
   if (connected && !wasConnected) {
+#if defined(AQUAHATCH_ET_WROOM32UE)
+    fill_control::wifiConnected();
+#endif
     configTime(0,0,"pool.ntp.org","time.nist.gov");
     MDNS.end(); MDNS.begin(boardIdentity.mdnsName().c_str()); MDNS.addService("https","tcp",443);
     startTls(); serialStatus("wifi_connected");

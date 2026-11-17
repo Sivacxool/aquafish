@@ -446,16 +446,32 @@ class _IncubatorPainter extends CustomPainter {
 enum WaterTrend {
   jarTemperature('ปากโหล °C'),
   tankTemperature('ในถัง °C'),
-  ph('pH');
+  ph('pH'),
+  dissolvedOxygen('DO · mg/L');
 
   const WaterTrend(this.label);
   final String label;
 
-  double? read(Telemetry sample) => switch (this) {
-    jarTemperature => sample.temperature,
-    tankTemperature => sample.tankTemperature,
-    ph => sample.ph,
-  };
+  int get decimals => this == dissolvedOxygen ? 2 : 1;
+
+  double? read(Telemetry sample) {
+    final value = switch (this) {
+      jarTemperature => sample.temperature,
+      tankTemperature => sample.tankTemperature,
+      ph => sample.ph,
+      dissolvedOxygen =>
+        sample.dissolvedOxygenStatus == null ||
+                sample.dissolvedOxygenStatus == 'ok'
+            ? sample.dissolvedOxygen
+            : null,
+    };
+    if (value == null ||
+        !value.isFinite ||
+        (this == dissolvedOxygen && value < 0)) {
+      return null;
+    }
+    return value;
+  }
 }
 
 class TrendChart extends StatelessWidget {
@@ -470,13 +486,15 @@ class TrendChart extends StatelessWidget {
         height: 185,
         child: Center(
           child: Text(
-            'กำลังเก็บข้อมูลสำหรับกราฟ…',
+            'รอข้อมูลเพิ่มสำหรับกราฟ',
             style: TextStyle(color: AquaColors.muted),
           ),
         ),
       );
     }
-    final minY = values.reduce(min) - .4, maxY = values.reduce(max) + .4;
+    final lower = values.reduce(min) - .4;
+    final minY = trend == WaterTrend.dissolvedOxygen ? max(0.0, lower) : lower;
+    final maxY = values.reduce(max) + .4;
     return Column(
       children: [
         SizedBox(
@@ -484,13 +502,15 @@ class TrendChart extends StatelessWidget {
           child: Row(
             children: [
               SizedBox(
-                width: 35,
+                width: 44,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(
                     4,
                     (i) => Text(
-                      (maxY - (maxY - minY) * i / 3).toStringAsFixed(1),
+                      (maxY - (maxY - minY) * i / 3).toStringAsFixed(
+                        trend.decimals,
+                      ),
                       style: const TextStyle(
                         fontSize: 12,
                         color: AquaColors.muted,
@@ -517,16 +537,12 @@ class TrendChart extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Padding(
-          padding: const EdgeInsets.only(left: 40),
+          padding: const EdgeInsets.only(left: 49),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 shortTime(history.first.at),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              Text(
-                'ข้อมูลที่รับในช่วงนี้',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               Text(

@@ -12,63 +12,38 @@ import 'repository.dart';
 
 typedef FishHeadAnalyzer = Future<AnalysisResult> Function(Uint8List);
 
-final fishHeadAnalyzerProvider = Provider.family<FishHeadAnalyzer?, bool>((
-  ref,
-  useFieldModel,
-) {
+final fishHeadAnalyzerProvider = Provider<FishHeadAnalyzer?>((ref) {
   if (kIsWeb) return null;
   return switch (defaultTargetPlatform) {
-    TargetPlatform.android || TargetPlatform.iOS || TargetPlatform.windows =>
-      (bytes) => _analyzeFishHeads(bytes, useFieldModel: useFieldModel),
+    TargetPlatform.android ||
+    TargetPlatform.iOS ||
+    TargetPlatform.windows => _analyzeFishHeads,
     _ => null,
   };
 });
 
-const _largePhoto = (
-  asset: 'assets/models/fishfry_heads_v1.onnx',
-  id: 'aquahatch-fry-heads-v1',
-  threshold: .34,
-  radius: 3,
-);
-const _cameraPhoto = (
-  asset: 'assets/models/fishfry_heads_v2.onnx',
-  id: 'aquahatch-fry-heads-v2',
-  threshold: 0.44,
-  radius: 2,
-);
 const fieldFishHeadModelId = 'aquahatch-fry-heads-field-v3';
-const _fieldPhoto = (
-  asset: 'assets/models/fishfry_heads_field_v3.onnx',
-  id: fieldFishHeadModelId,
-  threshold: 0.44,
-  radius: 2,
-);
+const _modelAsset = 'assets/models/fishfry_heads_field_v3.onnx';
+const _threshold = .44;
+const _peakRadius = 2;
 const _side = 320;
 const _halo = 32;
 const _step = _side - 2 * _halo;
 const _plane = _side * _side;
 
-Future<AnalysisResult> _analyzeFishHeads(
-  Uint8List bytes, {
-  required bool useFieldModel,
-}) async {
+Future<AnalysisResult> _analyzeFishHeads(Uint8List bytes) async {
   final token = ui.RootIsolateToken.instance!;
   final pixels = await _decode(bytes);
-  final profile = switch ((useFieldModel, max(pixels.width, pixels.height))) {
-    (true, _) => _fieldPhoto,
-    (false, <= 2560) => _cameraPhoto,
-    (false, _) => _largePhoto,
-  };
   try {
     final session = await OnnxRuntime().createSessionFromAsset(
-      profile.asset,
+      _modelAsset,
       options: OrtSessionOptions(intraOpNumThreads: 3),
     );
     try {
       final points = await Isolate.run(
-        () => _infer(pixels, session, token, profile.threshold, profile.radius),
+        () => _infer(pixels, session, token, _threshold, _peakRadius),
       );
-      return AnalysisResult(points, profile.id);
+      return AnalysisResult(points, fieldFishHeadModelId);
     } finally {
       await session.close();
     }

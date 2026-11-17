@@ -17,6 +17,22 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   WaterTrend _trend = WaterTrend.jarTemperature;
   int _hours = 1;
+  final _trendSection = GlobalKey();
+
+  void _showOxygenTrend() {
+    setState(() => _trend = WaterTrend.dissolvedOxygen);
+    final section = _trendSection.currentContext;
+    if (section != null) {
+      Scrollable.ensureVisible(
+        section,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : AquaMotion.fade,
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
   void _details(AppState state) {
     showModalBottomSheet<void>(
       context: context,
@@ -183,7 +199,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       label: 'ออกซิเจน · DO',
                       value: number(data?.dissolvedOxygen, decimals: 2),
                       unit: 'mg/L',
-                      onTap: () => _details(state),
+                      onTap: _showOxygenTrend,
                     ),
                   ),
                   const SizedBox(width: 24),
@@ -345,6 +361,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         const SizedBox(height: 16),
         Surface(
+          key: _trendSection,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

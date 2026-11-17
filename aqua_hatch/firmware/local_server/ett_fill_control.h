@@ -2,16 +2,20 @@
 
 #include <atomic>
 #include "ett_relay_policy.h"
+#include "ett_boot_sound.h"
 #include "sensor_bus.h"
 #include "sensor_temperature.h"
 
 namespace fill_control {
 constexpr uint8_t ExpanderAddress = 0x38;
 constexpr int FloatPin = 13;
+constexpr int BuzzerPin = 17;  // Active high on the ET-ESP32 WROOM 32UE V1.
 constexpr uint32_t RelayRefreshMs = 250;
 
 ett_relays::Policy policy;
 ett_relays::ThermalRelayDelay thermalDelay;
+ett_relays::BootSound bootSound;
+std::atomic<bool> wifiSoundPending{false};
 SemaphoreHandle_t policyLock = nullptr;
 std::atomic<bool> ready{false};
 std::atomic<float> temperatureTarget{NAN};
@@ -40,11 +44,15 @@ void updatePolicy(uint32_t now) {
 }
 
 bool applyOutputs() {
-  const uint8_t outputs = thermalDelay.portValue(policy.portValue(), millis());
+  const uint32_t now = millis();
+  const uint8_t startupOutputs = bootSound.portValue(
+    policy.portValue(), policy.needsWater() && policy.fillEnabled(), now);
+  const uint8_t outputs = thermalDelay.portValue(startupOutputs, now);
   if (outputs == lastOutputs && millis() - lastWriteAt < RelayRefreshMs) return true;
   if (writeRelays(outputs)) return true;
   ready = false;
   thermalDelay = {};
+  bootSound.cancelPump();
   policy.resetAfterIoFault();
   return false;
 }
@@ -58,12 +66,16 @@ void service(void *) {
       updatePolicy(millis());
       applyOutputs();
     }
+    if (wifiSoundPending.exchange(false)) bootSound.wifiConnected();
+    digitalWrite(BuzzerPin, bootSound.buzzerOn(millis()) ? HIGH : LOW);
     xSemaphoreGive(policyLock);
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
 void begin() {
+  pinMode(BuzzerPin, OUTPUT);
+  digitalWrite(BuzzerPin, LOW);
   pinMode(FloatPin, INPUT_PULLUP);
   if (!sensor_bus::begin()) return;
   policyLock = xSemaphoreCreateMutex();
@@ -71,6 +83,8 @@ void begin() {
     xTaskCreate(service, "aqua-relays", 3072, nullptr, 3, nullptr);
   }
 }
+
+void wifiConnected() { wifiSoundPending.store(true); }
 
 void setTemperatureTarget(float target) {
   temperatureTarget = target >= 20.0f && target <= 35.0f ? target : NAN;
