@@ -449,11 +449,13 @@ class Telemetry {
     }
 
     String? temperatureState(String state, String fallback, String ageKey) {
+      final status = j[state] as String? ?? j[fallback] as String?;
+      if (status != null && status != 'ok') return status;
       final age = j[ageKey];
       if (age is num && (!age.isFinite || age < 0 || age > 10000)) {
         return 'stale';
       }
-      return j[state] as String? ?? j[fallback] as String?;
+      return status;
     }
 
     return Telemetry(

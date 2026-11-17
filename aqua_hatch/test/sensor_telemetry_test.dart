@@ -95,8 +95,10 @@ void main() {
         final t = Telemetry.fromJson({
           ...sample,
           'ph_temperature_status': status,
+          'ph_temperature_age_ms': 100000,
         });
         expect(t.temperaturePoints.last.celsius, isNull);
+        expect(t.temperaturePoints.last.readingStatus, status);
         expect(t.averageTemperature, 28.8125);
       }
       for (final value in [
