@@ -154,9 +154,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       child: _TemperatureReading(
                         label: 'อุณหภูมิในถัง',
                         value: data?.tankTemperature,
-                        source: data?.tankTemperature == null
-                            ? 'รอค่า DO และ pH'
-                            : 'เฉลี่ย DO และ pH',
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -164,7 +161,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       child: _TemperatureReading(
                         label: 'อุณหภูมิที่ปากโหล',
                         value: data?.temperature,
-                        source: 'DS18B20',
                       ),
                     ),
                   ],
@@ -409,13 +405,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 }
 
 class _TemperatureReading extends StatelessWidget {
-  const _TemperatureReading({
-    required this.label,
-    required this.value,
-    required this.source,
-  });
+  const _TemperatureReading({required this.label, required this.value});
 
-  final String label, source;
+  final String label;
   final double? value;
 
   @override
@@ -454,8 +446,6 @@ class _TemperatureReading extends StatelessWidget {
               style: AquaType.metric.copyWith(fontSize: 32, height: 1.2),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(source, style: AquaType.caption),
         ],
       ),
     ),

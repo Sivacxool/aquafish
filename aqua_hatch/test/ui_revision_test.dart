@@ -141,6 +141,8 @@ void main() {
     );
     expect(find.text('29.0 °C', findRichText: true), findsOneWidget);
     expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
+    expect(find.text('DS18B20'), findsNothing);
+    expect(find.textContaining('เฉลี่ย'), findsNothing);
     expect(tester.takeException(), isNull);
     await closeApp(tester);
   });
@@ -152,7 +154,7 @@ void main() {
       tester,
       controller: () => _WaterReadingsController(hasPhTemperature: false),
     );
-    expect(find.text('รอค่า DO และ pH'), findsOneWidget);
+    expect(find.text('อุณหภูมิในถัง'), findsOneWidget);
     expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
     expect(find.text('30.0 °C', findRichText: true), findsNothing);
     await closeApp(tester);
