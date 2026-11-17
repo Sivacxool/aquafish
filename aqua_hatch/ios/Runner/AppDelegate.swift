@@ -36,9 +36,15 @@ import UIKit
             result(FlutterError(code: "invalid_clip", message: "เลือกคลิปที่อ่านได้และยาวไม่เกิน 60 วินาที", details: nil))
             return
           }
+          guard let track = try await asset.loadTracks(withMediaType: .video).first else {
+            throw CocoaError(.fileReadCorruptFile)
+          }
+          let size = try await track.load(.naturalSize)
           let generator = AVAssetImageGenerator(asset: asset)
           generator.appliesPreferredTrackTransform = true
-          generator.maximumSize = CGSize(width: 3840, height: 3840)
+          if max(size.width, size.height) > 3840 {
+            generator.maximumSize = CGSize(width: 3840, height: 3840)
+          }
           let frame = try await generator.image(at: CMTimeMultiplyByFloat64(duration, multiplier: 0.5))
           guard let jpeg = UIImage(cgImage: frame.image).jpegData(compressionQuality: 0.95) else {
             throw CocoaError(.fileReadCorruptFile)
