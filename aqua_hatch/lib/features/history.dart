@@ -153,13 +153,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       '${fullTime(t.at)}${t.simulated ? ' · จำลอง' : ''}',
                     ),
                     subtitle: Text(
-                      'ในถัง ${number(t.tankTemperature)} °C   •   ปากโหล ${number(t.temperature)} °C\nDO ${number(t.dissolvedOxygen, decimals: 2)} mg/L   •   pH ${number(t.ph)}${t.phCalibrated ? '' : ' (ยังไม่สอบเทียบ)'}   •   น้ำ ${t.waterLevelOk == null
+                      'ในถัง DO ${number(t.doTemperature)} °C   •   pH ${number(t.phTemperature)} °C\nปากโหล ${number(t.temperature)} °C\nDO ${number(t.dissolvedOxygen, decimals: 2)} mg/L   •   pH ${number(t.ph)}${t.phCalibrated ? '' : ' (ยังไม่สอบเทียบ)'}   •   น้ำ ${t.waterLevelOk == null
                           ? 'ไม่ทราบ'
                           : t.waterLevelOk!
                           ? 'ปกติ'
                           : 'ต่ำ'}',
                     ),
-                    isThreeLine: true,
                   );
                 },
               ),

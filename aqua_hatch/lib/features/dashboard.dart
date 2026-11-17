@@ -151,16 +151,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
-                      child: _TemperatureReading(
+                      child: _TemperatureCard(
                         label: 'อุณหภูมิในถัง',
-                        value: data?.tankTemperature,
+                        readings: [
+                          _ProbeTemperature(
+                            label: 'DO',
+                            value: data?.doTemperature,
+                          ),
+                          const SizedBox(height: 4),
+                          _ProbeTemperature(
+                            label: 'pH',
+                            value: data?.phTemperature,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: _TemperatureReading(
+                      child: _TemperatureCard(
                         label: 'อุณหภูมิที่ปากโหล',
-                        value: data?.temperature,
+                        readings: [
+                          _TemperatureValue(data?.temperature, fontSize: 32),
+                        ],
                       ),
                     ),
                   ],
@@ -404,11 +416,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-class _TemperatureReading extends StatelessWidget {
-  const _TemperatureReading({required this.label, required this.value});
+class _TemperatureCard extends StatelessWidget {
+  const _TemperatureCard({required this.label, required this.readings});
 
   final String label;
-  final double? value;
+  final List<Widget> readings;
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
@@ -430,24 +442,51 @@ class _TemperatureReading extends StatelessWidget {
           ),
           const Spacer(),
           const SizedBox(height: 8),
-          AnimatedSwitcher(
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? Duration.zero
-                : AquaMotion.fade,
-            child: Text.rich(
-              key: ValueKey(value),
-              TextSpan(
-                text: number(value),
-                children: [
-                  if (value != null)
-                    const TextSpan(text: ' °C', style: AquaType.caption),
-                ],
-              ),
-              style: AquaType.metric.copyWith(fontSize: 32, height: 1.2),
-            ),
-          ),
+          ...readings,
         ],
       ),
+    ),
+  );
+}
+
+class _ProbeTemperature extends StatelessWidget {
+  const _ProbeTemperature({required this.label, required this.value});
+
+  final String label;
+  final double? value;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Text(label, style: AquaType.caption),
+      const SizedBox(width: 8),
+      Expanded(
+        child: _TemperatureValue(value, fontSize: 20, align: TextAlign.end),
+      ),
+    ],
+  );
+}
+
+class _TemperatureValue extends StatelessWidget {
+  const _TemperatureValue(this.value, {required this.fontSize, this.align});
+
+  final double? value;
+  final double fontSize;
+  final TextAlign? align;
+
+  @override
+  Widget build(BuildContext context) => Text.rich(
+    TextSpan(
+      text: number(value),
+      children: [
+        if (value != null) const TextSpan(text: ' °C', style: AquaType.caption),
+      ],
+    ),
+    textAlign: align,
+    style: AquaType.metric.copyWith(
+      fontSize: fontSize,
+      letterSpacing: -.5,
+      height: 1.2,
     ),
   );
 }
