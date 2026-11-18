@@ -59,7 +59,7 @@ class _WaterReadingsController extends AppController {
         at: now,
         temperature: 26,
         doTemperature: hasDoTemperature ? 30 : null,
-        phTemperature: 28,
+        phTemperature: 11.9,
         averagedTemperatureControl: true,
       ),
     );
@@ -182,7 +182,7 @@ void main() {
     await closeApp(tester);
   });
 
-  testWidgets('Beta2 average opens all three locations on narrow phones', (
+  testWidgets('Beta3 average opens both locations on narrow phones', (
     tester,
   ) async {
     await mountApp(
@@ -192,11 +192,11 @@ void main() {
       controller: _WaterReadingsController.new,
     );
     expect(find.text('28.0 °C', findRichText: true), findsOneWidget);
-    expect(find.text('3/3 จุด'), findsOneWidget);
+    expect(find.text('2/2 จุด'), findsOneWidget);
     expect(find.text('เป้าหมายอุณหภูมิในน้ำ 28.0 °C'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('temperature-average-card')));
     await tester.pumpAndSettle();
-    for (final label in ['แมคโดนัลด์จาร์', 'ถังพักลูกปลา', 'ถังพักน้ำ']) {
+    for (final label in ['แมคโดนัลด์จาร์', 'ถังพักน้ำ']) {
       expect(find.text(label), findsOneWidget);
     }
     expect(find.text('30.0 °C', findRichText: true), findsOneWidget);
@@ -216,12 +216,18 @@ void main() {
         tester,
         controller: () => _WaterReadingsController(hasDoTemperature: false),
       );
-      expect(find.text('27.0 °C', findRichText: true), findsOneWidget);
-      expect(find.text('2/3 จุด'), findsOneWidget);
+      expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
+      expect(find.text('1/2 จุด'), findsOneWidget);
       expect(find.text('รออีก 1 จุด · Auto พัก'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('temperature-average-card')));
       await tester.pumpAndSettle();
-      expect(find.text('26.0 °C', findRichText: true), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('temperature-point-reservoir')),
+          matching: find.text('26.0 °C'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('30.0 °C', findRichText: true), findsNothing);
       expect(find.text('ถังพักน้ำ'), findsOneWidget);
       expect(tester.takeException(), isNull);

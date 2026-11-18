@@ -1,6 +1,6 @@
 # Smart Catfish System · iOS 16+
 
-ดาวน์โหลด [IPA unsigned Beta2](https://github.com/Sivacxool/aquafish/releases/download/Beta2/AquaHatch-Beta2-iOS-unsigned.ipa)
+ดาวน์โหลด [IPA unsigned Beta3](https://github.com/Sivacxool/aquafish/releases/download/Beta3/AquaHatch-Beta3-iOS-unsigned.ipa)
 
 เซ็นไฟล์ IPA ก่อนติดตั้ง [วิธีติดตั้งบน iPhone](../IOS_INSTALL_TH.md)
 

@@ -1,6 +1,6 @@
 # Smart Catfish System · Android
 
-[APK Universal Beta2](https://github.com/Sivacxool/aquafish/releases/download/Beta2/AquaHatch-Beta2-Android.apk)
+[APK Universal Beta3](https://github.com/Sivacxool/aquafish/releases/download/Beta3/AquaHatch-Beta3-Android.apk)
 
 จับคู่ ETT ตัวเดียวเพื่ออ่านเซนเซอร์และถ่ายภาพจาก Arducam B0434 ใช้ลายเซ็นแพ็กเกจเดิมเมื่ออัปเดตแอปทับ
 

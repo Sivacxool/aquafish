@@ -10,7 +10,6 @@ constexpr uint32_t StaleMs = 10000;
 portMUX_TYPE guard = portMUX_INITIALIZER_UNLOCKED;
 struct Sample {
   float ph = NAN;
-  float temperatureC = NAN;
   uint32_t acquiredMs = 0;
   time_t acquiredUnix = 0;
   const char *status = "converting";
@@ -27,9 +26,8 @@ void recordModbusReply(const uint8_t *registers) {
     recordModbusFailure("ph_out_of_range");
     return;
   }
-  const float temperature = int16_t(word(registers)) / 10.0f;
-  const Sample sample{ph, temperature >= -20.0f && temperature <= 80.0f ? temperature : NAN,
-                      millis(), time(nullptr), "ok"};
+  // Register 0 is unused. The pH measurement remains in register 1.
+  const Sample sample{ph, millis(), time(nullptr), "ok"};
   portENTER_CRITICAL(&guard);
   latest = sample;
   portEXIT_CRITICAL(&guard);
@@ -46,12 +44,6 @@ bool calibrate(float, bool, String &message) {
   message = "สอบเทียบที่กล่องหัววัด pH RS485 ตามคู่มือของหัววัด";
   return false;
 }
-temperature_fusion::Reading temperatureReading() {
-  portENTER_CRITICAL(&guard);
-  const Sample copy = latest;
-  portEXIT_CRITICAL(&guard);
-  return {copy.temperatureC, copy.acquiredMs, copy.status};
-}
 
 void append(JsonObject telemetry) {
   portENTER_CRITICAL(&guard);
@@ -60,12 +52,10 @@ void append(JsonObject telemetry) {
   const bool stale = isfinite(sample.ph) && millis() - sample.acquiredMs > StaleMs;
   telemetry["ph"] = nullptr;
   telemetry["ph_source"] = "rs485";
-  telemetry["ph_temperature_c"] = nullptr;
   telemetry["ph_sampled_at"] = nullptr;
   telemetry["ph_status"] = stale ? "stale" : sample.status;
   if (isfinite(sample.ph) && !stale) {
     telemetry["ph"] = sample.ph;
-    if (isfinite(sample.temperatureC)) telemetry["ph_temperature_c"] = sample.temperatureC;
   }
   if (sample.acquiredUnix >= 1735689600) {
     struct tm utc;

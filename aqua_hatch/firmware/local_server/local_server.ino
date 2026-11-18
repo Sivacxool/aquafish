@@ -27,7 +27,7 @@ AquaIdentity boardIdentity;
 #endif
 
 #if defined(AQUAHATCH_ET_WROOM32UE)
-static const char VERSION[] = "0.25.0-ett32ue.beta2";
+static const char VERSION[] = "0.26.0-ett32ue.beta3";
 #else
 static const char VERSION[] = "0.25.0-wroom-da.beta2";
 #endif
@@ -102,7 +102,7 @@ void snapshot(JsonDocument &doc) {
   t["simulated"] = false;
   t["device_online"] = true; t["hardware_ready"] = false;
 #if defined(AQUAHATCH_ET_WROOM32UE)
-  t["hardware_message"] = "อ่าน DS18B20 / DO และ pH ผ่าน RS485";
+  t["hardware_message"] = "อ่านอุณหภูมิจาก DS18B20 และ DO · อ่าน pH ผ่าน RS485";
 #else
   t["hardware_message"] = oxygen_sensor::enabled()
     ? "อ่าน DS18B20 / DO / pH ADS1115"

@@ -28,8 +28,10 @@ class WaterTemperatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final average = data?.averageTemperature;
-    final count = data?.temperaturePointCount ?? 0;
+    final needsUpdate = data?.needsTemperatureFirmwareUpdate == true;
+    final average = needsUpdate ? null : data?.averageTemperature;
+    final count = needsUpdate ? 0 : data?.temperaturePointCount ?? 0;
+    const total = Telemetry.waterTemperaturePointTotal;
     return Material(
       color: AquaColors.sage,
       borderRadius: BorderRadius.circular(16),
@@ -51,7 +53,8 @@ class WaterTemperatureCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text('$count/3 จุด', style: AquaType.caption),
+                  if (!needsUpdate)
+                    Text('$count/$total จุด', style: AquaType.caption),
                   const SizedBox(width: 8),
                   const Icon(PhosphorIconsRegular.arrowUpRight, size: 20),
                 ],
@@ -73,14 +76,16 @@ class WaterTemperatureCard extends StatelessWidget {
                   style: AquaType.metric,
                 ),
               ),
-              if (!fresh && data != null || count < 3) ...[
+              if (needsUpdate || !fresh && data != null || count < total) ...[
                 const SizedBox(height: 8),
                 Text(
-                  !fresh && data != null
+                  needsUpdate
+                      ? 'อัปเดตเฟิร์มแวร์ Beta3'
+                      : !fresh && data != null
                       ? 'ข้อมูลล่าสุด'
                       : count == 0
                       ? 'รอข้อมูลอุณหภูมิ'
-                      : 'รออีก ${3 - count} จุด${data?.averagedTemperatureControl == true ? ' · Auto พัก' : ''}',
+                      : 'รออีก ${total - count} จุด${data?.averagedTemperatureControl == true ? ' · Auto พัก' : ''}',
                   style: AquaType.caption,
                 ),
               ],
@@ -99,6 +104,7 @@ class WaterTemperatureDetails extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(appControllerProvider);
     final data = state.telemetry;
+    final needsUpdate = data?.needsTemperatureFirmwareUpdate == true;
     final points =
         data?.temperaturePoints ?? Telemetry(at: state.now).temperaturePoints;
     final count = data?.temperaturePointCount ?? 0;
@@ -118,20 +124,24 @@ class WaterTemperatureDetails extends ConsumerWidget {
               ),
             ],
           ),
-          Text(
-            'เฉลี่ย ${number(data?.averageTemperature)} °C · $count/3 จุด',
-            style: AquaType.reading.copyWith(fontSize: 20),
-          ),
+          if (needsUpdate)
+            const Text('อัปเดตเฟิร์มแวร์ Beta3 เพื่อดูอุณหภูมิตามจุดใหม่')
+          else
+            Text(
+              'เฉลี่ย ${number(data?.averageTemperature)} °C · $count/${Telemetry.waterTemperaturePointTotal} จุด',
+              style: AquaType.reading.copyWith(fontSize: 20),
+            ),
           const SizedBox(height: 8),
           if (!state.fresh && data != null)
             const Text('ข้อมูลล่าสุด · เครื่องออฟไลน์', style: AquaType.caption)
-          else if (count < 3 && data?.averagedTemperatureControl == true)
+          else if (count < Telemetry.waterTemperaturePointTotal &&
+              data?.averagedTemperatureControl == true)
             const Text(
-              'รอข้อมูลครบ 3 จุดเพื่อควบคุมอุณหภูมิอัตโนมัติ',
+              'รอข้อมูลครบ 2 จุดเพื่อควบคุมอุณหภูมิอัตโนมัติ',
               style: AquaType.caption,
             ),
           const SizedBox(height: 16),
-          for (var i = 0; i < points.length; i++) ...[
+          for (var i = 0; !needsUpdate && i < points.length; i++) ...[
             _TemperatureLocation(point: points[i]),
             if (i < points.length - 1) const Divider(height: 24),
           ],

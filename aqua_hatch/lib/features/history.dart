@@ -7,7 +7,7 @@ import '../core/ui.dart';
 import '../core/models.dart';
 
 String telemetryCsv(List<Telemetry> samples) => [
-  'timestamp_utc,temperature_c,ph,ph_calibrated,water_level_ok,simulated,do_mg_l,temperature_status,do_status,temperature_sampled_at,do_sampled_at,ph_status,ph_adc_voltage,ph_sampled_at,tank_temperature_c,do_temperature_c,ph_temperature_c,water_temperature_c,water_temperature_count,jar_temperature_c,fry_tank_temperature_c,reservoir_temperature_c,ds18b20_temperature_status,do_temperature_status,ph_temperature_status',
+  'timestamp_utc,temperature_c,ph,ph_calibrated,water_level_ok,simulated,do_mg_l,temperature_status,do_status,temperature_sampled_at,do_sampled_at,ph_status,ph_adc_voltage,ph_sampled_at,do_temperature_c,legacy_ph_temperature_c,water_temperature_c,water_temperature_count,jar_temperature_c,reservoir_temperature_c,ds18b20_temperature_status,do_temperature_status',
   ...samples.map(
     (t) => [
       t.at.toUtc().toIso8601String(),
@@ -24,15 +24,16 @@ String telemetryCsv(List<Telemetry> samples) => [
       t.phSensor.supported ? t.phSensor.status : '',
       t.phSensor.adcVoltage ?? '',
       t.phSensor.sampledAt?.toUtc().toIso8601String() ?? '',
-      t.tankTemperature ?? '',
       t.doTemperature ?? '',
       t.phTemperature ?? '',
-      t.averageTemperature ?? '',
-      t.temperaturePointCount,
-      ...t.temperaturePoints.map((p) => p.celsius ?? ''),
-      t.temperaturePoints[1].readingStatus,
-      t.temperaturePoints[0].readingStatus,
-      t.temperaturePoints[2].readingStatus,
+      t.averagedTemperatureControl ? t.averageTemperature ?? '' : '',
+      t.averagedTemperatureControl ? t.temperaturePointCount : '',
+      t.averagedTemperatureControl ? t.jarTemperaturePoint.celsius ?? '' : '',
+      t.averagedTemperatureControl
+          ? t.reservoirTemperaturePoint.celsius ?? ''
+          : '',
+      t.reservoirTemperaturePoint.readingStatus,
+      t.jarTemperaturePoint.readingStatus,
     ].join(','),
   ),
 ].join('\r\n');
@@ -147,6 +148,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 itemCount: samples.length,
                 itemBuilder: (context, index) {
                   final t = samples[index];
+                  final temperatures = t.averagedTemperatureControl
+                      ? 'เฉลี่ย ${number(t.averageTemperature)} °C (${t.temperaturePointCount}/2 จุด)\nจาร์ ${number(t.jarTemperaturePoint.celsius)} °C · ถังพักน้ำ ${number(t.reservoirTemperaturePoint.celsius)} °C'
+                      : 'ข้อมูลก่อนใช้ตำแหน่งหัววัด Beta3';
                   return ListTile(
                     leading: Icon(
                       t.simulated
@@ -157,7 +161,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       '${fullTime(t.at)}${t.simulated ? ' · จำลอง' : ''}',
                     ),
                     subtitle: Text(
-                      'เฉลี่ย ${number(t.averageTemperature)} °C (${t.temperaturePointCount}/3 จุด)\nจาร์ ${number(t.temperaturePoints[0].celsius)} °C · ลูกปลา ${number(t.tankTemperature)} °C · พักน้ำ ${number(t.temperaturePoints[2].celsius)} °C\nDO ${number(t.dissolvedOxygen, decimals: 2)} mg/L   •   pH ${number(t.ph)}${t.phCalibrated ? '' : ' (ยังไม่สอบเทียบ)'}   •   น้ำ ${t.waterLevelOk == null
+                      '$temperatures\nDO ${number(t.dissolvedOxygen, decimals: 2)} mg/L   •   pH ${number(t.ph)}${t.phCalibrated ? '' : ' (ยังไม่สอบเทียบ)'}   •   น้ำ ${t.waterLevelOk == null
                           ? 'ไม่ทราบ'
                           : t.waterLevelOk!
                           ? 'ปกติ'

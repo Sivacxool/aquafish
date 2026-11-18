@@ -1,12 +1,12 @@
-# AquaHatch Beta2
+# AquaHatch Beta3
 
 ระบบเครื่องฟักไข่ปลาดุกด้วยบอร์ด ET-ESP32 WROOM32UE, กล้อง Arducam B0434 และแอป Flutter สำหรับ Android/iOS
 
 | ชุดติดตั้ง | ดาวน์โหลด |
 | --- | --- |
-| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/Beta2/AquaHatch-Beta2-Android.apk) |
-| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/Beta2/AquaHatch-Beta2-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
-| ETT WROOM32UE + B0434 | [FirstBoot ZIP](https://github.com/Sivacxool/aquafish/releases/download/Beta2/AquaHatch-Beta2-ETT-WROOM32UE-FirstBoot.zip) |
+| Android / LDPlayer | [APK Universal](https://github.com/Sivacxool/aquafish/releases/download/Beta3/AquaHatch-Beta3-Android.apk) |
+| iPhone iOS 16+ | [IPA unsigned](https://github.com/Sivacxool/aquafish/releases/download/Beta3/AquaHatch-Beta3-iOS-unsigned.ipa) · [วิธีเซ็นและติดตั้ง](IOS_INSTALL_TH.md) |
+| ETT WROOM32UE + B0434 | [FirstBoot ZIP](https://github.com/Sivacxool/aquafish/releases/download/Beta3/AquaHatch-Beta3-ETT-WROOM32UE-FirstBoot.zip) |
 
 ## เริ่มใช้งาน
 
@@ -16,20 +16,15 @@
 4. เปิด **นับลูกปลา** ตั้งความละเอียดหรือค่ากล้องด้วยไอคอนปรับค่า กดถ่าย แล้วเลือก AI หรือแก้จุดนับด้วยมือก่อนบันทึกผล
 5. เมื่อต้องใช้จากเครือข่ายอื่น เพิ่มสิทธิ์ห้องกล้องของ ETT ใน Cloudflare แล้วเปิด **ตั้งค่า → ดูจากระยะไกล** ตาม [คู่มือ](REMOTE_SETUP_TH.md)
 
-## Beta2
+## Beta3
 
-แอป 0.25.0 (2039) และเฟิร์มแวร์ 0.25.0-ett32ue.beta2 ใช้อุณหภูมิเฉลี่ย 3 จุด กดการ์ด **อุณหภูมิเฉลี่ย** เพื่อดูแยกเป็นแมคโดนัลด์จาร์ ถังพักลูกปลา และถังพักน้ำ โดยไม่แสดงชื่อเซนเซอร์บนการ์ด
+แอป 0.26.0 (2040) และเฟิร์มแวร์ 0.26.0-ett32ue.beta3 ใช้ค่าเฉลี่ยอุณหภูมิจาก DO ที่แมคโดนัลด์จาร์ และ DS18B20 ที่ถังพักน้ำด้านล่าง แตะการ์ด **อุณหภูมิเฉลี่ย** เพื่อดูสองจุดแยกกัน
 
-- DO ย้ายไปแมคโดนัลด์จาร์, DS18B20 ย้ายไปถังพักลูกปลา และ pH อยู่ถังพักน้ำด้านล่าง ใช้จุดต่อเดิมทั้งหมด [ผัง Beta2](BETA2_SENSOR_LAYOUT_TH.md)
-- ค่าเฉลี่ยใช้เฉพาะตัวเลข 0–50 °C ที่สถานะถูกต้องและอายุไม่เกิน 10 วินาที ค่าที่หาย/หมดอายุแสดงเป็นขีด พร้อมจำนวนจุดที่ใช้เฉลี่ย
-- ETT คุม Auto จากค่าเฉลี่ยเมื่อครบ 3 จุด ถ้าขาดจุดใด ฮีตเตอร์และพัดลม Auto หยุดจนอ่านครบ ปั๊มยังทำตามลูกลอย Manual พัดลมยังสั่งได้ ฮีตเตอร์ต้องมีอุณหภูมิครบและทุกจุดต่ำกว่า 35 °C
-- แนวโน้มและ CSV บันทึกค่าเฉลี่ยและค่าแยก 3 จุด รวมสถานะของแต่ละจุด ดูค่า DO และ pH ได้เช่นเดิม
+- ย้ายเฉพาะหัว DS18B20 ไปถังพักน้ำ สาย DATA ยังต่อ IO32 ชุด pH ยังรายงานค่าความเป็นกรด–ด่างผ่าน RS485 เดิม
+- Auto คุมฮีตเตอร์และพัดลมเมื่ออ่านอุณหภูมิครบ 2 จุด หากหัวใดอ่านไม่ได้หรือค่าเกิน 10 วินาที ระบบพักการคุมอุณหภูมิจนข้อมูลครบ ปั๊มยังทำตามลูกลอย
+- กราฟอุณหภูมิใช้ประวัติจากตำแหน่งใหม่ ส่วนค่าดิบเดิมยังส่งออกเป็น CSV ได้
 
-ต้องอัปเดต **ทั้งแอปและเฟิร์มแวร์ ETT** ก่อนใช้ตำแหน่งและการควบคุม Beta2 ข้อมูลอุณหภูมิเก่าเก็บค่าดิบเดิม การเปรียบเทียบตามจุดติดตั้งให้เริ่มหลังย้ายหัววัดแล้ว
-
-- แอปใช้ Field v3 ซึ่งนับจากจุดหัวบน heatmap ตามแนวคิด DEKNet สำหรับภาพจากกล้อง ภาพที่เลือก และเฟรมจากคลิปบน Android/iOS
-- แตะค่าทันทีที่ **ออกซิเจน · DO** เพื่อเปิดแนวโน้ม mg/L เลือกช่วง 1, 6 หรือ 24 ชั่วโมง แอปเก็บข้อมูลขณะเปิดใช้งาน
-- ETT ส่งเสียงสั้นสามครั้งก่อนเริ่มปั๊มถ้าลูกลอยขอเติมน้ำตอนเปิดเครื่อง และส่งเสียงสองครั้งเมื่อเชื่อม Wi-Fi สำเร็จ
+อัปเดตทั้งแอปและเฟิร์มแวร์ ETT ตาม [ผังเซนเซอร์ Beta3](BETA3_SENSOR_LAYOUT_TH.md)
 
 ## โครงสร้างและการทำงาน
 

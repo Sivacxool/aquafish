@@ -5,7 +5,7 @@
 
 namespace temperature_fusion {
 constexpr uint32_t StaleMs = 10000;
-constexpr uint8_t Expected = 3;
+constexpr uint8_t Expected = 2;
 // Operational water-temperature range, shared with the app. Never clamp or
 // substitute a failed sample; retain the reason and omit it from the average.
 struct Reading {
@@ -28,18 +28,18 @@ struct Summary {
   uint8_t count = 0;
   bool complete() const { return count == Expected; }
   // Do not silently change the thermostat's measurement locations after a
-  // disconnect. Partial averages are display-only until all three recover.
+  // disconnect. Partial readings are display-only until both points recover.
   float controlCelsius() const { return complete() ? mean : NAN; }
   const char *status() const {
     return complete() ? "ok" : count ? "partial" : "unavailable";
   }
 };
 
-inline Summary summarize(const Reading &jar, const Reading &fryTank,
-                         const Reading &reservoir, uint32_t now) {
+inline Summary summarize(const Reading &jar, const Reading &reservoir,
+                         uint32_t now) {
   Summary result;
   float sum = 0;
-  const Reading readings[] = {jar, fryTank, reservoir};
+  const Reading readings[] = {jar, reservoir};
   for (const Reading &reading : readings) {
     if (!reading.valid(now)) continue;
     sum += reading.celsius;

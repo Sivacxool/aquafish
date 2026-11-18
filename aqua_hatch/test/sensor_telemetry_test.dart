@@ -7,6 +7,7 @@ import 'package:aqua_hatch/features/history.dart';
 void main() {
   final sample = <String, dynamic>{
     'timestamp': '2026-10-30T09:00:02Z',
+    'temperature_control_source': 'two_point_average',
     'temperature_c': 28.125,
     'temperature_status': 'ok',
     'temperature_sampled_at': '2026-10-30T09:00:01Z',
@@ -30,8 +31,8 @@ void main() {
       expect(restored.temperature, 28.125);
       expect(restored.doTemperature, 29.5);
       expect(restored.phTemperature, 31.25);
-      expect(restored.tankTemperature, 28.125);
-      expect(restored.averageTemperature, 29.625);
+      expect(restored.reservoirTemperaturePoint.celsius, 28.125);
+      expect(restored.averageTemperature, 28.8125);
       expect(restored.dissolvedOxygen, 6.78);
       expect(
         restored.temperatureSampledAt?.toUtc().toIso8601String(),
@@ -47,44 +48,41 @@ void main() {
       expect(telemetryCsv([restored]), contains('6.78,ok,ok'));
       expect(
         telemetryCsv([restored]),
-        contains('28.125,29.5,31.25,29.625,3,29.5,28.125,31.25'),
+        contains('29.5,31.25,28.8125,2,29.5,28.125,ok,ok'),
       );
     },
   );
   test(
-    'Beta2 averages the three locations and retains independent readings',
+    'Beta3 uses only DO and DS18B20 even if an old pH temperature is present',
     () {
       final remote = Telemetry.fromJson({...sample, 'via_relay': true});
-      expect(remote.averageTemperature, 29.625);
-      expect(remote.tankTemperature, 28.125);
-      expect(remote.temperaturePoints.map((p) => p.celsius), [
-        29.5,
-        28.125,
-        31.25,
-      ]);
-      expect(remote.temperaturePointCount, 3);
+      expect(remote.averageTemperature, 28.8125);
+      expect(remote.temperaturePoints.map((p) => p.celsius), [29.5, 28.125]);
+      expect(remote.temperaturePointCount, 2);
       expect(remote.temperatureControlReady, isTrue);
-      final missing = Telemetry.fromJson({...sample, 'ph_status': 'stale'});
-      expect(missing.phTemperature, isNull);
-      expect(missing.averageTemperature, 28.8125);
-      expect(missing.temperaturePointCount, 2);
-      expect(missing.temperatureControlReady, isFalse);
+      final failedPh = Telemetry.fromJson({...sample, 'ph_status': 'timeout'});
+      expect(failedPh.averageTemperature, 28.8125);
+      expect(failedPh.temperatureControlReady, isTrue);
+      final legacy = Telemetry.fromJson({
+        ...sample,
+        'firmware_version': '0.25.0-ett32ue.beta2',
+        'temperature_control_source': 'three_point_average',
+      });
+      expect(legacy.needsTemperatureFirmwareUpdate, isTrue);
+      expect(legacy.toJson()['temperature_control_source'], isNull);
+      expect(telemetryCsv([legacy]), contains('29.5,31.25,,,,,ok,ok'));
     },
   );
   test(
     'sample ages use monotonic board age rather than phone/NTP clock skew',
     () {
-      for (final source in [
-        'temperature_age_ms',
-        'do_temperature_age_ms',
-        'ph_temperature_age_ms',
-      ]) {
+      for (final source in ['temperature_age_ms', 'do_temperature_age_ms']) {
         final fresh = Telemetry.fromJson({...sample, source: 10000});
-        expect(fresh.temperaturePointCount, 3);
+        expect(fresh.temperaturePointCount, 2);
         final stale = Telemetry.fromJson({...sample, source: 10001});
-        expect(stale.temperaturePointCount, 2);
+        expect(stale.temperaturePointCount, 1);
         expect(stale.temperatureControlReady, isFalse);
-        expect(Telemetry.fromJson(stale.toJson()).temperaturePointCount, 2);
+        expect(Telemetry.fromJson(stale.toJson()).temperaturePointCount, 1);
       }
     },
   );
@@ -94,12 +92,12 @@ void main() {
       for (final status in ['timeout', 'stale', 'crc_error', 'invalid_value']) {
         final t = Telemetry.fromJson({
           ...sample,
-          'ph_temperature_status': status,
-          'ph_temperature_age_ms': 100000,
+          'ds18b20_temperature_status': status,
+          'temperature_age_ms': 100000,
         });
         expect(t.temperaturePoints.last.celsius, isNull);
         expect(t.temperaturePoints.last.readingStatus, status);
-        expect(t.averageTemperature, 28.8125);
+        expect(t.averageTemperature, 29.5);
       }
       for (final value in [
         null,
@@ -110,8 +108,8 @@ void main() {
         '28.5',
       ]) {
         final t = Telemetry.fromJson({...sample, 'temperature_c': value});
-        expect(t.temperaturePoints[1].celsius, isNull);
-        expect(t.averageTemperature, 30.375);
+        expect(t.reservoirTemperaturePoint.celsius, isNull);
+        expect(t.averageTemperature, 29.5);
       }
       final empty = Telemetry.fromJson({
         ...sample,
